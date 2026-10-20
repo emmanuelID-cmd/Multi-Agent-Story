@@ -1,0 +1,35 @@
+# Local secrets; keep the safe template trackable.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# JavaScript dependencies and generated output (if adopted).
+node_modules/
+dist/
+build/
+.next/
+coverage/
+.cache/
+
+# Python environments, caches, and tooling (if adopted).
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+
+# Logs, temporary files, OS and editor artifacts.
+*.log
+*.tmp
+*.swp
+*~
+.DS_Store
+Thumbs.db
+Desktop.ini
+.idea/
+.vscode/
