@@ -15,6 +15,7 @@ for Justin; this READ pass does not claim that his lane is complete or reviewed.
 
 - [Product requirements](docs/prd/Multi-Agent-Story-Builder-PRD.md)
 - [PRD PDF](docs/prd/Multi-Agent-Story-Builder-PRD.pdf)
+- [Multi-agent workflow](docs/multi-agent-workflow.md)
 - [Contributor instructions](AGENTS.md)
 - [Team handoff](docs/TEAM-REFERENCE.md)
 - [External AGENTS guide](https://github.com/emmanuelID-cmd/AGENTS)

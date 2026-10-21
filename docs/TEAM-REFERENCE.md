@@ -247,3 +247,28 @@ this handoff solely to record that result.
 
 - None for this documentation scope. Live writer agent implementation in LangGraph is the next planned step.
 
+## 2026-10-21T12:35:00-04:00
+
+- Preparation time: America/New_York.
+- Destination: `emmanuelID-cmd/Multi-Agent-Story`, branch `main`.
+- Verified remote baseline: `0b1c1d151d484068fdaa25c850e720346025292d`.
+- Contributor: Justin (WRITE lane lead).
+- Scope: Update multi-agent workflow documentation with the conversational AI Showrunner architecture, Dual-Channel Artifact Pointer pattern, and step-by-step Orchestration Runtime Flowchart.
+  The owner authorized direct publication to `main`.
+- Content: Roles, Dual-Channel architecture, Mermaid orchestration runtime flowchart, Artifact Pointer schema, 300-token Scope Classifier, and token budget simulation (~52,700 tokens base run).
+
+### Done
+
+- [x] Update Showrunner role to an interactive conversational AI agent and central orchestrator.
+- [x] Document the revised 3-Bible ideation, 3-Chapter drafting, and 2-Critic/Editor revision workflow.
+- [x] Add the Dual-Channel architecture (Chat vs. Artifact stream) and Artifact Pointer pattern.
+- [x] Add the step-by-step Orchestration Runtime Flowchart mapping tools, parallel workers, DB persistence, and human checkpoints.
+- [x] Add the 300-token Scope Classifier for Gate #2 and the 2-cycle rewrite loop guardrail.
+- [x] Link `docs/multi-agent-workflow.md` in `README.md`.
+- [x] Verify markdown fences, syntax, and zero trailing whitespace across all modified documentation.
+
+### Not completed
+
+- None for this documentation scope. Task runners and native TypeScript orchestration implementation are the next planned step.
+
+
