@@ -22,12 +22,22 @@ An empty local `.env` is ignored; `.env.example` contains no credentials.
 No application, database, live provider integration, or collected book dataset exists.
 
 The private remote is verified as `emmanuelID-cmd/Multi-Agent-Story` at
-https://github.com/emmanuelID-cmd/Multi-Agent-Story. Only the empty bootstrap
-baseline has been pushed so far; project files await the initial lane push.
+https://github.com/emmanuelID-cmd/Multi-Agent-Story. Project documentation and
+safe configuration are merged into `main` through PR #1.
+The prepared handoff below accompanies the authorized direct-to-main push.
+Publication is verified after the push without a second log-only edit.
 Before implementation, agree the stack, schema representation, Justin's branch,
 provider access and usage terms, and manuscript handling policies.
 NYT Books live access remains unverified; Gutendex metadata research is in scope,
 while excerpts are deferred. See [README](../README.md) for source links and gates.
+
+PR #1 merged on October 20, 2026 at 16:36:10 America/New_York (UTC-04:00).
+Verified merge: `9d8122c843358c77c1e1fcad88933479358409e8`.
+Local `manny/read-agents` fast-forwarded to that merge with no tree changes;
+the existing uncommitted push log was preserved. Its remote branch remains at
+`73d53806b4da936f32d4a77a83cb5b8061410eab`; no follow-up lane push was performed.
+Justin's branch is not configured; remind Justin to fast-forward his lane after
+he establishes it, checking for unique work before synchronization.
 
 ## Recovery baseline
 
@@ -55,3 +65,54 @@ Verified move hashes:
   provides the ancestor for the forthcoming documentation PR; no merge performed.
 - Validation: remote `refs/heads/main` matched the local commit; GitHub owner and
   private visibility verified. Timestamp records the immediate post-push check.
+
+## 2026-10-20T16:31:34-04:00
+
+- Destination: `emmanuelID-cmd/Multi-Agent-Story`, branch `manny/read-agents`;
+  initial lane push. Previous remote branch tip: absent.
+- Verified branch point on `main`: `06ee7e0f9d920212102b950bd75394f68916015a`.
+- Reviewed range: `06ee7e0f9d920212102b950bd75394f68916015a..b4cd7ff717ea0906ed5b9fad9d468de518b6b4c4`.
+- Verified pushed range: `06ee7e0f9d920212102b950bd75394f68916015a..73d53806b4da936f32d4a77a83cb5b8061410eab`.
+- Includes README, AGENTS, this handoff through the bootstrap entry, both original
+  PRD artifacts, `.gitignore`, `.env.example`, and the metadata-only review marker.
+- Validation: remote branch SHA matches local; text whitespace, Markdown fences,
+  local links, environment exclusion, and source-artifact byte checks passed.
+  PDF internals were excluded from text whitespace checks; bytes were verified.
+- Integration: [PR #1](https://github.com/emmanuelID-cmd/Multi-Agent-Story/pull/1)
+  opened into `main`; no merge performed. Timestamp is the immediate post-push check.
+
+# Handoffs prepared for push
+
+## 2026-10-20T22:37:00-04:00
+
+- Preparation time: America/New_York; this is not a verified push timestamp.
+- Destination: `emmanuelID-cmd/Multi-Agent-Story`, branch `main`.
+- Verified remote baseline: `9d8122c843358c77c1e1fcad88933479358409e8`.
+- Known artifact work commit: `167d86e2faead3399fff5024d154810c31703b38`.
+- Incoming check: current work matched `origin/main`; the stale local `main`
+  reference was fast-forwarded to the already reviewed PR #1 merge.
+- Scope: publish the single offline guide and the previously local push/merge
+  history. The owner temporarily waived PR-first and authorized direct publication
+  to `main`. External AGENTS instructions are not included as artifact sources.
+
+### Done
+
+- [x] Combine the repository PRD, AGENTS, and README into
+  [one usable artifact](artifacts/story-builder-guide.html).
+- [x] Apply UX Design Reference and Consistency Page to the six-tab interface.
+- [x] Provide source search, all 22 requirement filters, nine schema entities,
+  four proposed tools, print handling, and combined Markdown download.
+- [x] Verify desktop/mobile layout, keyboard navigation, empty-state recovery,
+  download source equality, JavaScript syntax, ARIA references, and whitespace.
+- [x] Preserve original source documents and keep `.env` ignored.
+- [x] Include the previously verified lane push and PR #1 merge records.
+
+### Not completed
+
+None of the agreed artifact and handoff changes remain unfinished. Native print
+output and full screen-reader conformance remain unverified; no pass is claimed.
+
+Collaborator context: Manny owns READ Agents and Justin owns WRITE Agents.
+The artifact is a documentation snapshot, not the implemented story product.
+The final metadata-only review marker will identify the actual completed work
+range; publication verification and final SHA are reported after pushing.
