@@ -33,3 +33,9 @@ Thumbs.db
 Desktop.ini
 .idea/
 .vscode/
+
+# Project-local runtime and test artifacts.
+.tools/
+test-results/
+playwright-report/
+*.tsbuildinfo

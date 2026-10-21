@@ -116,3 +116,112 @@ Collaborator context: Manny owns READ Agents and Justin owns WRITE Agents.
 The artifact is a documentation snapshot, not the implemented story product.
 The final metadata-only review marker will identify the actual completed work
 range; publication verification and final SHA are reported after pushing.
+
+## 2026-10-21T10:34:27-04:00
+
+- Preparation time: America/New_York; no SQL push or PR merge is claimed here.
+- Destination: `emmanuelID-cmd/Multi-Agent-Story`, initial remote branch
+  `manny/sql-foundation`; the remote branch was verified absent before this
+  preparation. The verified branch point on `main` is
+  `2ee98e67d64a98f6ab805ec4bd8da5f6a6b569f0`.
+- Known committed foundation work:
+  `e74c3c990be68958b1271ef61a932c26c3ec35fb` and
+  `2dd7f4069c47964cb41c5a2773c2612abea981d4`. The foundation changes
+  span 34 files from that branch point and are unchanged in this SQL worktree.
+  The seven separate SQL files are `compose.yaml`, `drizzle.config.ts`,
+  `drizzle/0000_tough_typhoid_mary.sql`, `drizzle/meta/0000_snapshot.json`,
+  `drizzle/meta/_journal.json`, `scripts/migrate.ts`, and
+  `src/server/db/schema.ts`. No future SQL work or handoff commit SHA is assumed.
+- This SQL worktree's isolated unit suite passed 8/8 tests in three files, and
+  its production build passed including TypeScript. This is separate from the
+  READ worktree's 37/37 unit result. No live database, provider, or recovery
+  test was rerun for this preparation.
+- Current GitHub repository visibility was verified public; no visibility
+  setting was changed. The older local handoff text above records its earlier
+  inspection state and is superseded by this verified publication baseline.
+
+### Done
+
+- [x] Preserve the reviewed synthetic foundation's 34-file committed changes
+  while isolating schema and migration work on `manny/sql-foundation`.
+- [x] Verify the seven SQL source files match their source bytes (7/7) and keep
+  the READ-lane preservation baseline intact (17/17 hashes).
+- [x] Pass the isolated SQL fixture unit suite (8/8) and production build.
+- [x] Keep Justin WRITE, worker, and interface implementation unchanged during
+  this READ/SQL publication preparation.
+
+### Not completed
+
+- [ ] Publish the already implemented READ services and metadata boundary in
+  the separate `manny/read-agents` PR after the SQL PR; they are not in this
+  initial SQL branch push.
+
+Existing limitations: live book-provider terms, availability, quotas, caching,
+and production privacy/recovery controls remain unverified. Synthetic fixtures
+and disabled metadata gates do not establish production readiness.
+
+This handoff is prepared before publication. After the authorized push, verify
+the remote tip and report its actual SHA without rewriting this entry solely
+to record the verification. Merge to `main` only through reviewed PRs; update
+both persistent lanes by safe fast-forward after their work is in `main`.
+
+## 2026-10-21T10:40:23-04:00
+
+- Preparation time: America/New_York; this is not a verified READ push time.
+- Destination: `emmanuelID-cmd/Multi-Agent-Story`, existing remote branch
+  `manny/read-agents`. Its verified remote baseline is
+  `73d53806b4da936f32d4a77a83cb5b8061410eab`. The local READ tip before
+  new READ work is `44e0ac421f72d39d5a968ea6bcb3b7394c9b5075`; no READ
+  work commit or final push SHA is assumed. `main` remains at
+  `2ee98e67d64a98f6ab805ec4bd8da5f6a6b569f0` at preparation.
+- The outgoing history from the READ remote baseline carries the four earlier
+  main artifact/documentation commits, the committed synthetic foundation and
+  input safeguards, and the SQL schema/migration work. The SQL branch push to
+  `manny/sql-foundation` was separately verified at
+  `44e0ac421f72d39d5a968ea6bcb3b7394c9b5075`; its
+  [PR #2](https://github.com/emmanuelID-cmd/Multi-Agent-Story/pull/2) is open,
+  not merged. This READ handoff does not claim another SQL publication.
+- The new READ scope is twelve files: authenticated owner-scoped state and
+  research routes, read-only state service, bounded NYT Books/Gutendex metadata
+  adapter and request boundary, their focused tests, and READ/input-boundary
+  documentation. README and AGENTS also document PR-only main changes and safe
+  branch fast-forwards. Existing Justin WRITE, worker, and interface work is
+  preserved without further implementation.
+- The READ worktree passed 37/37 unit tests, TypeScript typecheck, and the
+  production build. The SQL worktree's isolated 8/8 unit result and build are
+  separate checks. No new live database, live provider, or recovery check was
+  run for this READ publication preparation.
+- Recovery context: scoped stash
+  `3bf5bfdca2a35347bc4f2004001b532642a1ef41` retains seven SQL source
+  copies only; the source copies still match 7/7 after the safe fast-forward.
+  Justin/shared preservation checks matched 17/17 files. No `.env` content was
+  put in the stash or this handoff.
+
+### Done
+
+- [x] Carry the previously published main artifact/documentation history and
+  committed foundation into the READ lane without rewriting that work.
+- [x] Implement and review owner-scoped state reads with exact approved-bible
+  versions, ordered chapters, a read-only snapshot, and explicit partial and
+  unavailable sections.
+- [x] Implement the authenticated, owner-scoped optional metadata request with
+  fixed NYT Books/Gutendex providers, disabled live gates, bounded input and
+  responses, source attribution, and untrusted-text quarantine.
+- [x] Pass the READ unit suite (37/37), typecheck, and production build while
+  preserving Justin/shared files (17/17) and SQL source copies (7/7).
+- [x] Document PR-only changes to `main` and safe fast-forwards that stop when
+  a target lane has commits absent from the destination or overwrite risk.
+
+### Not completed
+
+- [ ] Complete the reviewed PR integration into `main` and safely align both
+  persistent lanes after their work is merged. Main merges remain subject to
+  the required approval and branch checks.
+
+Existing limitations: live book-provider terms, quotas, caching, production
+privacy/retention, and recovery readiness remain unresolved release gates.
+The metadata gates remain disabled, and fixture checks do not establish live
+provider or production behavior. The earlier SQL handoff above is retained as
+historical preparation; this entry records the newer READ publication scope.
+After the authorized READ push, verify its actual remote tip without editing
+this handoff solely to record that result.
