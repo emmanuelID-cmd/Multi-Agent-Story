@@ -116,3 +116,51 @@ Collaborator context: Manny owns READ Agents and Justin owns WRITE Agents.
 The artifact is a documentation snapshot, not the implemented story product.
 The final metadata-only review marker will identify the actual completed work
 range; publication verification and final SHA are reported after pushing.
+
+## 2026-10-21T10:34:27-04:00
+
+- Preparation time: America/New_York; no SQL push or PR merge is claimed here.
+- Destination: `emmanuelID-cmd/Multi-Agent-Story`, initial remote branch
+  `manny/sql-foundation`; the remote branch was verified absent before this
+  preparation. The verified branch point on `main` is
+  `2ee98e67d64a98f6ab805ec4bd8da5f6a6b569f0`.
+- Known committed foundation work:
+  `e74c3c990be68958b1271ef61a932c26c3ec35fb` and
+  `2dd7f4069c47964cb41c5a2773c2612abea981d4`. The foundation changes
+  span 34 files from that branch point and are unchanged in this SQL worktree.
+  The seven separate SQL files are `compose.yaml`, `drizzle.config.ts`,
+  `drizzle/0000_tough_typhoid_mary.sql`, `drizzle/meta/0000_snapshot.json`,
+  `drizzle/meta/_journal.json`, `scripts/migrate.ts`, and
+  `src/server/db/schema.ts`. No future SQL work or handoff commit SHA is assumed.
+- This SQL worktree's isolated unit suite passed 8/8 tests in three files, and
+  its production build passed including TypeScript. This is separate from the
+  READ worktree's 37/37 unit result. No live database, provider, or recovery
+  test was rerun for this preparation.
+- Current GitHub repository visibility was verified public; no visibility
+  setting was changed. The older local handoff text above records its earlier
+  inspection state and is superseded by this verified publication baseline.
+
+### Done
+
+- [x] Preserve the reviewed synthetic foundation's 34-file committed changes
+  while isolating schema and migration work on `manny/sql-foundation`.
+- [x] Verify the seven SQL source files match their source bytes (7/7) and keep
+  the READ-lane preservation baseline intact (17/17 hashes).
+- [x] Pass the isolated SQL fixture unit suite (8/8) and production build.
+- [x] Keep Justin WRITE, worker, and interface implementation unchanged during
+  this READ/SQL publication preparation.
+
+### Not completed
+
+- [ ] Publish the already implemented READ services and metadata boundary in
+  the separate `manny/read-agents` PR after the SQL PR; they are not in this
+  initial SQL branch push.
+
+Existing limitations: live book-provider terms, availability, quotas, caching,
+and production privacy/recovery controls remain unverified. Synthetic fixtures
+and disabled metadata gates do not establish production readiness.
+
+This handoff is prepared before publication. After the authorized push, verify
+the remote tip and report its actual SHA without rewriting this entry solely
+to record the verification. Merge to `main` only through reviewed PRs; update
+both persistent lanes by safe fast-forward after their work is in `main`.
