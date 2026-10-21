@@ -1,0 +1,250 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 1280" width="100%" height="100%">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;600;700&amp;family=Gaegu:wght@400;700&amp;display=swap');
+      
+      .title { font-family: 'Caveat', 'Comic Sans MS', cursive, sans-serif; font-size: 34px; font-weight: 700; fill: #2c3e50; }
+      .subtitle { font-family: 'Caveat', cursive, sans-serif; font-size: 20px; fill: #607d8b; }
+      .node-text { font-family: 'Caveat', 'Comic Sans MS', cursive, sans-serif; font-size: 19px; font-weight: 600; fill: #263238; text-anchor: middle; }
+      .node-subtext { font-family: 'Caveat', cursive, sans-serif; font-size: 15px; fill: #546e7a; text-anchor: middle; }
+      .step-tag { font-family: 'Caveat', cursive, sans-serif; font-size: 18px; font-weight: 700; fill: #5c6bc0; }
+      .arrow-label { font-family: 'Caveat', cursive, sans-serif; font-size: 15px; font-weight: 600; fill: #546e7a; text-anchor: middle; }
+      .accent-label { font-family: 'Caveat', cursive, sans-serif; font-size: 16px; font-weight: 700; fill: #c2185b; text-anchor: middle; }
+      
+      .sketch-box { fill: #ffffff; stroke: #37474f; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+      .sketch-line { stroke: #37474f; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+      .dash-line { stroke: #78909c; stroke-width: 1.8; stroke-dasharray: 6 5; fill: none; stroke-linecap: round; }
+      .loop-line { stroke: #c2185b; stroke-width: 2.2; stroke-dasharray: 6 4; fill: none; stroke-linecap: round; }
+    </style>
+
+    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 1 2 L 8 5 L 1 8" fill="none" stroke="#37474f" stroke-width="2" stroke-linecap="round" />
+    </marker>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 1 2 L 8 5 L 1 8" fill="none" stroke="#c2185b" stroke-width="2.2" stroke-linecap="round" />
+    </marker>
+    
+    <filter id="roughpaper">
+      <feTurbulence type="fractalNoise" baseFrequency="0.04" result="noise" numOctaves="3" />
+      <feDiffuseLighting in="noise" lighting-color="#fffdfa" surfaceScale="1.2" result="light">
+        <feDistantLight azimuth="60" elevation="50" />
+      </feDiffuseLighting>
+      <feBlend mode="multiply" in="SourceGraphic" in2="light" />
+    </filter>
+  </defs>
+
+  <!-- Background paper -->
+  <rect width="100%" height="100%" fill="#faf8f5" />
+  
+  <!-- Subtle decorative grid dots -->
+  <pattern id="grid-dots" width="30" height="30" patternUnits="userSpaceOnUse">
+    <circle cx="15" cy="15" r="0.8" fill="#e0dcd5" />
+  </pattern>
+  <rect width="100%" height="100%" fill="url(#grid-dots)" opacity="0.6" />
+
+  <!-- Outer sketchy border -->
+  <path d="M 22 25 Q 460 18 898 22 Q 905 640 895 1255 Q 460 1262 25 1252 Q 18 640 22 25 Z" 
+        fill="none" stroke="#cfc8bc" stroke-width="1.5" stroke-dasharray="12 8" />
+
+  <!-- ==================== HEADER ==================== -->
+  <g id="header" transform="translate(460, 65)">
+    <text class="title" x="0" y="0" text-anchor="middle">Multi-Agent Story Builder</text>
+    <text class="subtitle" x="0" y="28" text-anchor="middle">Orchestration &amp; Agent Flow (Hand-Drawn Overview)</text>
+    <path d="M -180 38 Q 0 44 180 38" fill="none" stroke="#ab9072" stroke-width="1.8" stroke-linecap="round" />
+  </g>
+
+  <!-- ==================== START: USER BRIEF ==================== -->
+  <g id="user-brief" transform="translate(460, 155)">
+    <!-- Sketchy box with slight wobble -->
+    <path class="sketch-box" fill="#fff9db" 
+          d="M -140 -28 C -60 -31, 60 -26, 140 -28 C 143 -5, 138 20, 140 28 C 60 31, -60 27, -140 28 C -144 8, -137 -15, -140 -28 Z" />
+    <text class="node-text" x="0" y="-3">1. Writer Inputs Creative Brief</text>
+    <text class="node-subtext" x="0" y="18">Premise • Genre • Tone • Desired Ending</text>
+  </g>
+
+  <!-- Arrow: Brief -> Showrunner -->
+  <path class="sketch-line" marker-end="url(#arrow)" d="M 460 185 Q 461 205 460 225" />
+
+  <!-- ==================== SHOWRUNNER (CENTRAL ORCHESTRATOR) ==================== -->
+  <g id="showrunner" transform="translate(460, 260)">
+    <path class="sketch-box" fill="#ede7f6" stroke="#4527a0" stroke-width="2.5"
+          d="M -160 -32 C -80 -36, 80 -29, 160 -32 C 165 -10, 157 20, 160 32 C 80 35, -80 30, -160 32 C -164 10, -157 -18, -160 -32 Z" />
+    <!-- Secondary sketchy contour for hand-drawn double-ink effect -->
+    <path d="M -157 -29 C -78 -33, 78 -27, 157 -29 C 161 -8, 155 18, 157 29 C 78 32, -78 28, -157 29 Z" 
+          fill="none" stroke="#7e57c2" stroke-width="1" opacity="0.6" />
+    <text class="node-text" x="0" y="-5" fill="#311b92">Showrunner (AI Orchestrator)</text>
+    <text class="node-subtext" x="0" y="18" fill="#512da8">Conversational Interface &amp; Task Dispatcher</text>
+  </g>
+
+  <!-- Side branch: Research Agent -->
+  <g id="research-branch">
+    <path class="dash-line" marker-end="url(#arrow)" d="M 300 260 Q 230 260 190 260" />
+    <g transform="translate(115, 260)">
+      <path class="sketch-box" fill="#e0f7fa" stroke="#00838f"
+            d="M -65 -24 C -30 -26, 30 -22, 65 -24 C 68 -5, 63 18, 65 24 C 30 26, -30 23, -65 24 C -68 5, -63 -15, -65 -24 Z" />
+      <text class="node-text" x="0" y="-2" font-size="16" fill="#006064">Research</text>
+      <text class="node-subtext" x="0" y="16" font-size="13" fill="#00838f">NYT &amp; Gutendex</text>
+    </g>
+    <!-- Curve back from research to showrunner -->
+    <path class="dash-line" marker-end="url(#arrow)" d="M 115 285 Q 115 320 380 310 Q 430 305 450 295" />
+    <text class="arrow-label" x="250" y="325">Reference Metadata</text>
+  </g>
+
+  <!-- Arrow down to Phase 1 -->
+  <path class="sketch-line" marker-end="url(#arrow)" d="M 460 295 Q 460 325 460 348" />
+  <text class="step-tag" x="475" y="330">Phase 1: Parallel Ideation</text>
+
+  <!-- ==================== PHASE 1: 3 BIBLE AGENTS ==================== -->
+  <g id="phase1-bibles" transform="translate(460, 395)">
+    <!-- Bible A -->
+    <g transform="translate(-250, 0)">
+      <path class="sketch-box" fill="#e1f5fe" stroke="#0277bd"
+            d="M -90 -28 C -40 -31, 40 -26, 90 -28 C 93 -5, 88 20, 90 28 C 40 31, -40 27, -90 28 C -93 8, -87 -18, -90 -28 Z" />
+      <text class="node-text" x="0" y="-4" fill="#01579b">Bible Agent A</text>
+      <text class="node-subtext" x="0" y="17">Mystery / Plot Focus</text>
+    </g>
+    <!-- Bible B -->
+    <g transform="translate(0, 0)">
+      <path class="sketch-box" fill="#e1f5fe" stroke="#0277bd"
+            d="M -90 -28 C -40 -31, 40 -26, 90 -28 C 93 -5, 88 20, 90 28 C 40 31, -40 27, -90 28 C -93 8, -87 -18, -90 -28 Z" />
+      <text class="node-text" x="0" y="-4" fill="#01579b">Bible Agent B</text>
+      <text class="node-subtext" x="0" y="17">Character &amp; Arc Focus</text>
+    </g>
+    <!-- Bible C -->
+    <g transform="translate(250, 0)">
+      <path class="sketch-box" fill="#e1f5fe" stroke="#0277bd"
+            d="M -90 -28 C -40 -31, 40 -26, 90 -28 C 93 -5, 88 20, 90 28 C 40 31, -40 27, -90 28 C -93 8, -87 -18, -90 -28 Z" />
+      <text class="node-text" x="0" y="-4" fill="#01579b">Bible Agent C</text>
+      <text class="node-subtext" x="0" y="17">World &amp; Tone Focus</text>
+    </g>
+  </g>
+
+  <!-- Fan-in lines from Bibles to Gate 1 -->
+  <path class="sketch-line" marker-end="url(#arrow)" d="M 210 425 Q 260 480 340 495" />
+  <path class="sketch-line" marker-end="url(#arrow)" d="M 460 425 Q 460 460 460 480" />
+  <path class="sketch-line" marker-end="url(#arrow)" d="M 710 425 Q 660 480 580 495" />
+
+  <!-- ==================== HUMAN GATE 1 ==================== -->
+  <g id="gate1" transform="translate(460, 520)">
+    <!-- Sketchy diamond / rounded decision box -->
+    <path class="sketch-box" fill="#fff8e1" stroke="#f57f17" stroke-width="2.3"
+          d="M -150 -26 C -60 -30, 60 -25, 150 -26 C 154 -5, 148 18, 150 26 C 60 29, -60 25, -150 26 C -154 5, -147 -15, -150 -26 Z" />
+    <text class="node-text" x="0" y="-3" fill="#e65100">Human Gate #1: Writer Chooses Bible</text>
+    <text class="node-subtext" x="0" y="18" fill="#f57f17">Reviews 3 Options in Viewer • Selects or Refines</text>
+  </g>
+
+  <!-- Arrow down to Phase 2 with Approved Bible -->
+  <path class="sketch-line" marker-end="url(#arrow)" d="M 460 550 Q 460 580 460 605" />
+  <text class="arrow-label" x="535" y="582">Approved Bible v1</text>
+  <text class="step-tag" x="475" y="600">Phase 2: Parallel Drafting</text>
+
+  <!-- ==================== PHASE 2: 3 CHAPTER WRITERS ==================== -->
+  <g id="phase2-writers" transform="translate(460, 655)">
+    <!-- Chapter 1 -->
+    <g transform="translate(-250, 0)">
+      <path class="sketch-box" fill="#e8f5e9" stroke="#2e7d32"
+            d="M -90 -28 C -40 -31, 40 -26, 90 -28 C 93 -5, 88 20, 90 28 C 40 31, -40 27, -90 28 C -93 8, -87 -18, -90 -28 Z" />
+      <text class="node-text" x="0" y="-4" fill="#1b5e20">Chapter 1 Writer</text>
+      <text class="node-subtext" x="0" y="17">Beat 1 &amp; Setup</text>
+    </g>
+    <!-- Chapter 2 -->
+    <g transform="translate(0, 0)">
+      <path class="sketch-box" fill="#e8f5e9" stroke="#2e7d32"
+            d="M -90 -28 C -40 -31, 40 -26, 90 -28 C 93 -5, 88 20, 90 28 C 40 31, -40 27, -90 28 C -93 8, -87 -18, -90 -28 Z" />
+      <text class="node-text" x="0" y="-4" fill="#1b5e20">Chapter 2 Writer</text>
+      <text class="node-subtext" x="0" y="17">Beat 2 + Memory Handoff</text>
+    </g>
+    <!-- Chapter 3 -->
+    <g transform="translate(250, 0)">
+      <path class="sketch-box" fill="#e8f5e9" stroke="#2e7d32"
+            d="M -90 -28 C -40 -31, 40 -26, 90 -28 C 93 -5, 88 20, 90 28 C 40 31, -40 27, -90 28 C -93 8, -87 -18, -90 -28 Z" />
+      <text class="node-text" x="0" y="-4" fill="#1b5e20">Chapter 3 Writer</text>
+      <text class="node-subtext" x="0" y="17">Beat 3 &amp; Climax</text>
+    </g>
+  </g>
+
+  <!-- Fan-in lines to Write Barrier -->
+  <path class="sketch-line" marker-end="url(#arrow)" d="M 210 685 Q 260 725 350 740" />
+  <path class="sketch-line" marker-end="url(#arrow)" d="M 460 685 Q 460 715 460 730" />
+  <path class="sketch-line" marker-end="url(#arrow)" d="M 710 685 Q 660 725 570 740" />
+
+  <!-- ==================== WRITE BARRIER & REDUCER ==================== -->
+  <g id="reducer" transform="translate(460, 755)">
+    <path class="sketch-box" fill="#eceff1" stroke="#455a64"
+          d="M -120 -20 C -50 -23, 50 -18, 120 -20 C 123 -4, 118 15, 120 20 C 50 22, -50 19, -120 20 C -123 4, -118 -12, -120 -20 Z" />
+    <text class="node-text" x="0" y="-2" font-size="17" fill="#263238">Write Barrier &amp; Reducer</text>
+    <text class="node-subtext" x="0" y="15" font-size="13">Validates &amp; Sorts by Index [1, 2, 3]</text>
+  </g>
+
+  <!-- Arrow down to Phase 3 -->
+  <path class="sketch-line" marker-end="url(#arrow)" d="M 460 778 Q 460 800 460 825" />
+  <text class="step-tag" x="475" y="810">Phase 3: Parallel Revisions</text>
+
+  <!-- ==================== PHASE 3: 2 CRITIC / EDITORS ==================== -->
+  <g id="phase3-editors" transform="translate(460, 875)">
+    <!-- Editor A -->
+    <g transform="translate(-140, 0)">
+      <path class="sketch-box" fill="#fce4ec" stroke="#c2185b" stroke-width="2.2"
+            d="M -110 -28 C -50 -31, 50 -26, 110 -28 C 114 -5, 107 20, 110 28 C 50 31, -50 27, -110 28 C -114 8, -107 -18, -110 -28 Z" />
+      <text class="node-text" x="0" y="-4" fill="#880e4f">Critic / Editor A</text>
+      <text class="node-subtext" x="0" y="17" fill="#ad1457">Produces Revised Version A</text>
+    </g>
+    <!-- Editor B -->
+    <g transform="translate(140, 0)">
+      <path class="sketch-box" fill="#fce4ec" stroke="#c2185b" stroke-width="2.2"
+            d="M -110 -28 C -50 -31, 50 -26, 110 -28 C 114 -5, 107 20, 110 28 C 50 31, -50 27, -110 28 C -114 8, -107 -18, -110 -28 Z" />
+      <text class="node-text" x="0" y="-4" fill="#880e4f">Critic / Editor B</text>
+      <text class="node-subtext" x="0" y="17" fill="#ad1457">Produces Revised Version B</text>
+    </g>
+  </g>
+
+  <!-- Fan-in lines to Gate 2 -->
+  <path class="sketch-line" marker-end="url(#arrow)" d="M 320 905 Q 380 945 420 960" />
+  <path class="sketch-line" marker-end="url(#arrow)" d="M 600 905 Q 540 945 500 960" />
+
+  <!-- ==================== HUMAN GATE 2 ==================== -->
+  <g id="gate2" transform="translate(460, 990)">
+    <path class="sketch-box" fill="#f3e5f5" stroke="#6a1b9a" stroke-width="2.4"
+          d="M -160 -28 C -70 -32, 70 -26, 160 -28 C 165 -6, 157 20, 160 28 C 70 31, -70 27, -160 28 C -165 7, -156 -17, -160 -28 Z" />
+    <text class="node-text" x="0" y="-4" fill="#4a148c">Human Gate #2: Reviews Version A &amp; B</text>
+    <text class="node-subtext" x="0" y="18" fill="#6a1b9a">Pick Version A • Pick Version B • Or Custom Feedback</text>
+  </g>
+
+  <!-- Option branches from Gate 2 -->
+  <!-- Branch 1: Pick A or B -> Final Export -->
+  <path class="sketch-line" marker-end="url(#arrow)" d="M 390 1020 Q 320 1070 320 1130" />
+  <text class="arrow-label" x="270" y="1065">Option 1 or 2: Pick A/B</text>
+
+  <!-- Branch 2: Custom feedback -> Scope Check -->
+  <path class="sketch-line" marker-end="url(#arrow)" d="M 530 1020 Q 600 1060 600 1090" />
+  <text class="arrow-label" x="655" y="1055">Option 3: Feedback</text>
+
+  <!-- Scope Classifier Box -->
+  <g id="classifier" transform="translate(600, 1125)">
+    <path class="sketch-box" fill="#fff3e0" stroke="#e65100" stroke-width="1.8"
+          d="M -75 -22 C -30 -24, 30 -20, 75 -22 C 78 -4, 73 16, 75 22 C 30 24, -30 21, -75 22 C -78 4, -73 -14, -75 -22 Z" />
+    <text class="node-text" x="0" y="-3" font-size="15" fill="#bf360c">Scope Classifier</text>
+    <text class="node-subtext" x="0" y="15" font-size="12">~300-Token Check</text>
+  </g>
+
+  <!-- Scope routes -->
+  <!-- Route A: Minor edit -> direct edit to export -->
+  <path class="sketch-line" marker-end="url(#arrow)" d="M 525 1125 Q 430 1130 380 1150" />
+  <text class="arrow-label" x="455" y="1120">Minor Polish</text>
+
+  <!-- Route B: Substantial rewrite -> Loopback to Phase 2 -->
+  <path class="loop-line" marker-end="url(#arrow-red)" 
+        d="M 675 1125 C 840 1120, 870 700, 770 650 Q 740 645 615 645" />
+  <text class="accent-label" x="830" y="870" transform="rotate(90, 830, 870)">
+    Substantial Rewrite Loop (Max 2 Loops)
+  </text>
+
+  <!-- ==================== FINAL EXPORT ==================== -->
+  <g id="final-export" transform="translate(320, 1175)">
+    <path class="sketch-box" fill="#e8f5e9" stroke="#1b5e20" stroke-width="2.5"
+          d="M -110 -26 C -40 -29, 40 -24, 110 -26 C 114 -5, 108 19, 110 26 C 40 29, -40 25, -110 26 C -114 6, -107 -16, -110 -26 Z" />
+    <text class="node-text" x="0" y="-3" fill="#1b5e20">Ordered Markdown Export</text>
+    <text class="node-subtext" x="0" y="17" fill="#2e7d32">Chapters 1-3 • Approved Bible • Notes</text>
+  </g>
+
+</svg>
