@@ -1,0 +1,21 @@
+{
+  "name": "multi-agent-story", "version": "0.1.0", "private": true, "type": "module",
+  "engines": { "node": ">=24 <25" },
+  "scripts": {
+    "dev": "next dev --hostname 127.0.0.1", "build": "next build", "start": "next start --hostname 127.0.0.1",
+    "worker": "tsx --env-file=.env src/worker/index.ts", "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx --env-file=.env scripts/migrate.ts", "typecheck": "tsc --noEmit",
+    "test": "vitest run", "test:integration": "tsx --env-file=.env scripts/integration.ts", "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "@langchain/core": "^1.1.48", "@langchain/langgraph": "1.5.1", "@langchain/langgraph-checkpoint-postgres": "^1.0.0",
+    "better-auth": "1.7.12", "drizzle-orm": "^0.45.2", "next": "16.4.2", "pg": "^8.16.0", "pg-boss": "12.38.0",
+    "react": "^19.2.0", "react-dom": "^19.2.0", "zod": "^4.2.0"
+  },
+  "overrides": { "esbuild": "0.28.2" },
+  "devDependencies": {
+    "@playwright/test": "^1.58.0", "@types/node": "^24.0.0", "@types/pg": "^8.15.0",
+    "@types/react": "^19.0.0", "@types/react-dom": "^19.0.0", "drizzle-kit": "^0.31.4",
+    "tsx": "^4.21.0", "typescript": "^5.9.0", "vitest": "^4.0.0"
+  }
+}
