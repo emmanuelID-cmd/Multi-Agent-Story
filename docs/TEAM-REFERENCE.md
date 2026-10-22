@@ -294,3 +294,48 @@ this handoff solely to record that result.
 
 
 
+## 2026-10-22T15:23:36-04:00
+
+- Preparation time: America/New_York; this is a prepared handoff, not a verified push time.
+- Destination: `emmanuelID-cmd/Multi-Agent-Story`, branch `manny/read-agents`.
+- Verified remote baseline: `4b340485bd0cf94b52294150c44b28d4ba890aa3`.
+- Integration target: `developer`; only a later `developer` release PR targets `main`.
+- Scope: publish the approved documentation organization, workspace configuration,
+  portable guide archive, developer-branch guidance, and intake/research PRD alignment.
+  Work commits are being prepared; no final commit identifier exists yet.
+- Ownership: Manny's READ lane publishes these project documents. Existing Justin
+  WRITE code, shared runtime, SQL, and the external AGENTS repository are unchanged.
+
+### Done
+
+- [x] Organize architecture/chart assets, implementation notes, and PRD drafts under
+  their documented folders; preserve submitted PRD files and historical draft copies.
+- [x] Add the project-first VS Code workspace configuration. Its external AGENTS
+  folder is an optional workstation-relative reference, not bundled repository content.
+- [x] Include the portable guide ZIP; its single HTML entry matches the existing guide.
+- [x] Route contributor and SQL PRs to `developer`, with safe fast-forward checks
+  and a separate `developer`-to-`main` release PR.
+- [x] Align active PRD v2, README, and local AGENTS: intake and gap review precede
+  mandatory NYT Books/Gutendex research; accepted evidence gates planning.
+- [x] Document permitted-text craft/character analysis, explicit suggestion acceptance,
+  the 12 proposed agent instances, READ/WRITE ownership, and unresolved product choices.
+- [x] Clarify sparse-brief optional fields and permitted-reference wording after review.
+- [x] Prepare Justin's local change-only review at
+  `.tools/reviews/justin-prd-alignment-changes.md` with exact locations.
+  It remains ignored and is not part of the outgoing Git files.
+- [x] Complete independent documentation review and resolve both findings.
+- [x] Pass unit tests: 37/37 across 7 files; check links, Markdown fences, and whitespace.
+
+### Not completed
+
+- [ ] Publish this prepared branch and open its PR into `developer`; verify the
+  remote commit and PR after the push without adding a log-only follow-up commit.
+- [ ] Recheck branch alignment after pushing; fast-forward only eligible branches.
+  Sharing this lane's new commits requires the reviewed PR into `developer`;
+  neither integration nor release merging is authorized by this publication request.
+
+The application remains a synthetic fixture foundation. Mandatory research,
+expanded intake, text analysis, and the full proposed roster are documentation
+requirements, not newly implemented behavior. Architecture variants, source rights,
+research coverage, and measured budgets remain visible product decisions.
+

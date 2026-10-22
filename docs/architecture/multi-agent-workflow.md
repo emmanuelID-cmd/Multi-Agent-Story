@@ -29,7 +29,7 @@ The system decouples story creation into specialized, parallel agent roles coord
 ## 2. End-to-End Multi-Agent Flow & Human Gates
 
 > [!TIP]
-> **Hand-Drawn Architecture Charts:** Visual hand-drawn sketches of this workflow are available in [`docs/artifacts/flow-architecture-sketch.jpg`](artifacts/flow-architecture-sketch.jpg) (whiteboard illustration) and [`docs/artifacts/flow-architecture-sketch.svg`](artifacts/flow-architecture-sketch.svg) (vector sketch).
+> **Hand-Drawn Architecture Charts:** Visual hand-drawn sketches of this workflow are available in [`docs/architecture/assets/flow-architecture-sketch.jpg`](assets/flow-architecture-sketch.jpg) (whiteboard illustration) and [`docs/architecture/assets/flow-architecture-sketch.svg`](assets/flow-architecture-sketch.svg) (vector sketch).
 
 ```mermaid
 flowchart TD

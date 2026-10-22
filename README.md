@@ -7,15 +7,17 @@ three-chapter draft, with writer-approved planning and bounded critique.
 authentication, project ownership, a minimal story workspace, fixture-backed
 workflow execution, and Markdown export. It has no live model or research
 provider enabled, and it has not processed a real manuscript. Current development
-is limited to Manny's [READ lane](docs/read-lane.md): owner-scoped state retrieval
+is limited to Manny's [READ lane](docs/implementation/read-lane.md): owner-scoped state retrieval
 and gated book-metadata adapters. Existing WRITE and interface work is preserved
 for Justin; this READ pass does not claim that his lane is complete or reviewed.
 
 ## Project references
 
-- [Product requirements](docs/prd/Multi-Agent-Story-Builder-PRD.md)
+- [Active PRD v2 working draft](docs/prd/drafts/PRD-v2-draft.md) — intake-first research alignment; product choices remain under review
+- [Original submitted PRD](docs/prd/Multi-Agent-Story-Builder-PRD.md) — preserved historical baseline
 - [PRD PDF](docs/prd/Multi-Agent-Story-Builder-PRD.pdf)
-- [Multi-agent workflow](docs/multi-agent-workflow.md)
+- [Documentation index](docs/README.md)
+- [Multi-agent workflow](docs/architecture/multi-agent-workflow.md)
 - [Contributor instructions](AGENTS.md)
 - [Team handoff](docs/TEAM-REFERENCE.md)
 - [External AGENTS guide](https://github.com/emmanuelID-cmd/AGENTS)
@@ -24,7 +26,7 @@ for Justin; this READ pass does not claim that his lane is complete or reviewed.
 
 | Contributor | Assignment | Approved interpretation |
 | --- | --- | --- |
-| Manny | READ Agents | Authorized state retrieval, optional book research, source attribution, and read contracts |
+| Manny | READ Agents | Research, Reader, and Consistency analysis; authorized retrieval, evidence attribution, and read contracts |
 | Justin | WRITE Agents | Chapter generation and revision proposals against approved state |
 | Both | Shared contract | Agree on schemas, version handling, fixtures, and integration boundaries before implementation |
 
@@ -52,17 +54,75 @@ fixed writer policy from JSON-serialized story data, declares a fixed role-to-to
 allowlist, quarantines flagged optional metadata, and validates chapter outputs.
 These controls reduce risk; keyword and role-delimiter signals do not prove that
 content is safe. The current workflow uses fixtures and has no live model. See
-[Input boundaries](docs/input-boundaries.md) for the implemented flow, server
+[Input boundaries](docs/implementation/input-boundaries.md) for the implemented flow, server
 authorization boundary, detector contract, test coverage, and remaining limits.
 
-1. Collect premise, genre, audience, tone, and desired ending; research is optional.
-2. Coordinate plot, character, and world planning into a proposed story bible.
-3. Wait for the writer to approve that exact bible version and chapter beats.
-4. Dispatch three indexed chapter writers against the same approved version.
-5. Validate all required outputs, assemble chapters by index, then run continuity,
-   style, pacing, and available market-reader critique.
-6. Propose edits, wait for acceptance, and repeat critique for at most two rounds.
-7. Export ordered chapters, bible, unresolved issues, versions, and evidence as Markdown.
+The following is the proposed v2 flow, not behavior already implemented by the
+fixture workspace. The submitted PRD, architecture drafts, and guide snapshots
+remain historical references where they differ from this intake/research correction.
+
+1. Collect and save the writer's brief before research. Ask for premise, genre,
+   optional subgenre, audience, tone, desired ending, character names and roles,
+   settings, lore, time period, beginning/middle/end direction, apex, climax,
+   and falling action as known.
+2. Show missing or ambiguous details and offer suggestions grounded in the
+   writer's intent. Preserve valid input; confirm the genre and research scope.
+   Suggestions become constraints only when the writer accepts them.
+3. Run mandatory Research using both NYT Books and Gutendex. Save both provider
+   outcomes in a versioned dossier. Required evidence must be accepted before
+   any Bible planning; insufficient evidence pauses work for bounded recovery
+   or a visible scope decision, with no silent story-only fallback.
+4. Plan plot, character, and world against the accepted dossier. The v2 roster
+   includes three Bible roles; one merged bible versus three candidate bibles
+   remains a product decision.
+5. Wait for the writer to approve the exact story-bible version and three beats.
+6. Dispatch three indexed chapter writers against the same approved version.
+7. Validate every chapter, assemble by index, and have Reader prepare the
+   required versioned handoff. Critic/Editors validate it before editing;
+   Consistency checks the exact resulting versions. One revision proposal
+   versus two complete editorial alternatives remains a product decision.
+8. Wait for human acceptance of changes, with at most two revision rounds and
+   a budget check before every dispatch. Limits never imply automatic success.
+9. Export ordered chapters, bible, unresolved issues, versions, and evidence
+   as Markdown; label partial work explicitly.
+
+Group intake into story, cast, world, and plot questions, retaining answers
+between steps. A sparse brief is saveable; the detailed prompts are not all
+new mandatory fields. More information can improve specificity, without
+guaranteeing quality. Suggested optional details include point of view, tense,
+character goals, motivations, obstacles, stakes, relationships, and turning
+points. Positive, negative, and flat arcs are valid; ancillary characters need
+development only where relevant. The draft proposes apex as peak pressure and
+climax as the decisive confrontation, pending the writer's vocabulary choice.
+Use focused follow-ups, keyboard access, visible status, field guidance, and
+clear recovery actions. This is a design specification, not a new interface.
+
+### Proposed agent roster
+
+The full v2 architecture has **12 proposed instances**, including unresolved
+planning and editorial alternatives. These are trace labels, not 12 implemented
+live agents. Coordinator and Showrunner name one agent; each Critic/Editor is
+one combined agent. Intake belongs to Coordinator, not an extra agent.
+
+| Trace ID | Agent name | Development lane |
+| --- | --- | --- |
+| `coordinator` | Coordinator / Showrunner | Shared |
+| `research` | Research | Manny READ |
+| `bible_a` | Bible A — plot / mystery | Planning ownership unassigned |
+| `bible_b` | Bible B — character / emotion | Planning ownership unassigned |
+| `bible_c` | Bible C — world / atmosphere | Planning ownership unassigned |
+| `chapter_writer_1` | Chapter Writer 1 | Justin WRITE |
+| `chapter_writer_2` | Chapter Writer 2 | Justin WRITE |
+| `chapter_writer_3` | Chapter Writer 3 | Justin WRITE |
+| `reader` | Reader | Manny READ |
+| `critic_editor_a` | Critic / Editor A — continuity / pacing | Justin WRITE |
+| `critic_editor_b` | Critic / Editor B — voice / atmosphere | Justin WRITE |
+| `consistency` | Consistency | Manny READ |
+
+Counts: Manny 3 READ + Justin 5 WRITE + 3 unassigned planning + 1 shared = 12.
+READ agents return analysis and handoffs; WRITE agents return proposals. Both
+Critic/Editors validate Reader inputs. Only authenticated application acceptance
+commits approved story state; ownership labels grant no runtime permissions.
 
 Proposed scope: one English-language story of approximately 3,000 words, one
 writer per project, three concurrent model tasks, one retry per failed task,
@@ -86,23 +146,32 @@ All project-scoped references must belong to the same authorized project.
 
 | Entity | Proposed fields | Required invariants |
 | --- | --- | --- |
-| Project | id, owner_id, brief {premise, genre, audience, tone, desired_ending}, research_enabled, current_state_version, created_at | Server checks ownership for every read, write, restore, and export; research can be disabled |
-| StoryBibleVersion | id, project_id, version, facts [{id, kind, text}], chapter_beats [{chapter_index, beats, relevant_fact_ids}], approval_status, approved_at | Approved versions immutable; chapter indexes exactly 1, 2, 3; facts have stable IDs |
+| Project | id, owner_id, brief_version, brief {premise, genre?, subgenre?, audience?, tone?, desired_ending?, characters?, settings?, lore?, time_period?, direction?, apex?, climax?, falling_action?, pov?, tense?}, current_state_version, created_at | Server checks ownership for every operation; save sparse input; confirm genre and research scope before mandatory research |
+| IntakeReview | id, project_id, brief_version, supplied_facts[], missing_items[], suggestions [{id, text, status}], confirmed_scope, confirmed_at? | Distinguish supplied, suggested, accepted, and unresolved information; no suggestion silently becomes a constraint |
+| StoryBibleVersion | id, project_id, version, research_dossier_id, facts [{id, kind, text}], character_arcs[], chapter_beats [{chapter_index, beats, relevant_fact_ids}], approval_status, approved_at | Uses accepted current research; approved versions immutable; chapter indexes exactly 1, 2, 3; facts have stable IDs |
 | Run | id, project_id, bible_version_id, status, revision_round, limits, usage, canceled_at, started_at, finished_at | Only an approved bible; rounds 0 through 2; server enforces limits and cancellation |
 | Task | id, project_id, run_id, role, chapter_index?, input_version, saved_input_ref, attempt, status, output_ref?, error_code?, elapsed_ms, usage | Fixed role graph; one retry; chapter index required for writers; stale or canceled results cannot commit |
 | ChapterVersion | id, project_id, run_id, task_id, chapter_index, bible_version_id, draft_version, text, approval_status | Unique task attempt result; ordered merge; no overwrite of approved text |
 | MemoryHandoff | id, project_id, bible_version_id, chapter_index, fact_ids, summary, planned_events, unresolved_threads | Compression cannot replace canonical facts; parallel writers receive planned handoffs without requiring another writer's finished prose |
 | Critique | id, project_id, run_id, draft_version_refs, dimension, availability, score?, notes [{chapter_index, passage_ref, severity, rationale, fact_ids, evidence_ids, proposed_edit}] | Critics wait for all valid chapters; scores 1 through 5 only when available; actionable notes have locations |
 | Proposal | id, project_id, base_state_version, kind, diff, affected_fact_ids, chapter_version_refs, validation_issues, status, decided_at | Pending, accepted, rejected, or stale; application commits acceptance atomically only against current base version |
-| ResearchEvidence | id, project_id, provider, provider_record_id?, title?, authors[], isbns[], source_url, fetched_at, provider_published_at?, availability, permitted_use_status, match_confidence, missing_fields[], signals | Attributed metadata; unknown fields null; retain retrieval failures separately from empty results |
+| ResearchEvidence | id, project_id, provider, provider_record_id?, title?, authors[], isbns[], source_url, fetched_at?, provider_published_at?, availability, permitted_use_status, match_confidence, missing_fields[], signals, text_reference?, passage_locator?, rights_basis?, observations[], inferences[] | Separate metadata from permitted-text observations and inference; unknown fields null; retain failures separately from empty results |
+| ResearchDossier | id, project_id, version, brief_version, confirmed_scope, provider_outcomes[], evidence_ids[], craft_profiles[], character_observations[], required_criteria, gaps[], status, accepted_at? | Both provider outcomes recorded; readable current evidence meets agreed criteria before planning; a partial provider outcome alone is insufficient; brief/scope changes invalidate affected acceptance |
 
 Proposed task states: pending, running, completed, failed, canceled. Proposed run
 states: pending, running, paused, completed, failed, canceled. A completed run
 requires all required chapter outputs validated; partial drafts remain labeled.
 Availability values: available, empty, unavailable, rate_limited, not_requested.
 Match confidence: confirmed, tentative, unmatched; title alone cannot confirm identity.
+Dossier gate states are proposed as pending, blocked, or accepted. A provider's
+`not_requested` outcome never satisfies the mandatory research gate. There is
+no `research_enabled` bypass in the v2 design. These additions are conceptual;
+the current runtime schema and SQL have not been extended by this documentation.
 Permitted-use status: unverified, allowed, restricted; activate collection only
 after provider-use review. Optional fields marked `?` may be null.
+An intake draft may omit these optional fields. Genre and confirmed scope become
+required at the research gate. When supplied, characters and settings are arrays;
+direction contains optional beginning, middle, and end entries.
 
 Research signals remain provider-specific: NYT list name, list date, rank, and
 weeks on list; Gutendex subjects, bookshelves, languages, copyright status,
@@ -120,7 +189,7 @@ approved state directly.
 
 ## Research sources and verification
 
-Research checked October 20, 2026. The approved interpretation of "NYC Data"
+Provider documentation rechecked October 22, 2026. The approved interpretation of "NYC Data"
 is general book metadata from NYT Books and Gutendex, with no NYC geographic filter.
 No book dataset has been collected; the schema is supplied instead.
 
@@ -133,13 +202,31 @@ No book dataset has been collected; the schema is supplied instead.
   The documentation recommends self-hosting for long-term use. Hosted availability,
   usage terms, and sustainable request limits still need review before integration.
 
-The approved addition covers Gutendex metadata only. Excerpts and full-text
-ingestion remain deferred under the PRD. A copyright flag is not global rights
-clearance. The PRD's Open Library and Hardcover candidates remain deferred here.
-Before any adapter is built, approve its directory, request/response validation,
-credential handling, caching and retention, quotas, timeout, and failure behavior.
-Outage, empty result, or rate limit must allow a disclosed story-only fallback.
-No composite popularity score or fabricated comparable-book evidence is permitted.
+The current adapters remain metadata-only and disabled by default. The v2
+design expands research to bounded analysis of identified, permitted text;
+this change does not enable ingestion or a live provider. Verify rights for
+the intended jurisdiction or the user's license before analysis. A Gutendex
+copyright flag is not global rights clearance; see [Gutenberg permissions](https://www.gutenberg.org/policy/permission.html).
+NYT metadata is bestseller context, not an open license to manuscript text.
+Gutendex download popularity is not a sales rank, and the catalogs need not
+contain the same works. Open Library and Hardcover remain deferred.
+
+Research should produce an original genre-aware blend of reusable craft traits,
+with per-work references, located observations, intended story use, confidence,
+and gaps. Example profile: horror; slow disclosure, restricted viewpoint,
+atmospheric detail, and escalating uncertainty, supported by permitted passages.
+Do not infer craft or protagonist, antagonist, and ancillary-character arcs
+from title/rank alone, copy passages, or claim unsupported signature imitation.
+Keep source facts, text observations, inference, and writer-accepted choices
+distinct; the writer's creative intent controls the resulting plan.
+
+Before extending or enabling adapters, verify provider availability and terms,
+request/response validation, credentials, caching/retention, quotas, timeouts,
+matching, and text-use scope. Minimum research coverage, sample size, and
+recency remain decisions to calibrate; five books is an assumption, not a gate.
+Outage, empty results, rate limits, or unsafe required evidence pause planning
+for bounded recovery or an explicit scope decision. No silent story-only
+continuation, composite popularity score, or fabricated evidence is permitted.
 
 ## Local setup and implementation
 
@@ -231,9 +318,11 @@ as part of this foundation; their embedded text may predate the implementation.
 
 ## Validation and release gates
 
-Before broader product release, freeze fixtures for the PRD's three eval cases: normal
-approved drafting; continuity errors and ambiguous/missing research; adversarial
-metadata, timeout/retry, cross-project access, cancellation, and late responses.
+Before broader product release, freeze fixtures for the active PRD's eval cases:
+sparse intake and accepted suggestions; mandatory research before planning;
+permitted-text attribution and unsupported craft claims; normal approved drafting;
+continuity errors and ambiguous/missing research; adversarial metadata,
+timeout/retry, cross-project access, cancellation, and late responses.
 Verify version barriers, ordering, proposal acceptance, budget checks, recovery,
 keyboard access, focus, error announcements, and screen-reader behavior.
 
@@ -262,26 +351,53 @@ Multi-Agent-Story/
   tests/               # automated checks
   docs/
     TEAM-REFERENCE.md
+    README.md
+    architecture/
+      multi-agent-workflow.md
+      assets/
+        flow-architecture-sketch.jpg
+        flow-architecture-sketch.svg
+      drafts/
+        multi-agent-workflow-v2-draft.md
+        copies/
+          multi-agent-workflow-v2-draft.md
+    implementation/
+      read-lane.md
+      input-boundaries.md
     prd/
       Multi-Agent-Story-Builder-PRD.md
       Multi-Agent-Story-Builder-PRD.pdf
+      drafts/
+        PRD-v2-draft.md
+        PRD-v2-draft - Copy.md
+    artifacts/
+      story-builder-guide.html
+      story-builder-guide.zip
 ```
 
-The committed synthetic foundation is the shared starting point. Schema and
-migration changes belong on the persistent `manny/sql-foundation` lane; Manny's
-READ work belongs on `manny/read-agents`. Publish changes to `main` only through
-reviewed pull requests. Verify publication and branch status from Git and the
-[team handoff](docs/TEAM-REFERENCE.md), not from this static description.
+The committed synthetic foundation is the shared starting point. Use `developer`
+as the integration and starting base for all contributor, task, and SQL work
+branches. Schema and migration changes belong on the separate persistent
+`manny/sql-foundation` lane; Manny's READ work belongs on `manny/read-agents`.
+Both lanes send reviewed pull requests to `developer`; only pull requests from
+`developer` target `main`. Do routine work on lane or task branches rather than
+directly on `developer` or `main`. These rules describe branch ancestry and PR
+targets; each persistent lane continues tracking its own remote ref. Verify
+publication and branch status from Git and the [team handoff](docs/TEAM-REFERENCE.md),
+not from this static description.
 
 Before switching or updating either lane, inspect its working tree, exact local
-and remote tips, ancestry, and commits unique to the target. Fast-forward a
-non-main lane only when its tip is an ancestor of the verified destination and
-the operation cannot overwrite local changes. If histories diverge, the target
-lane contains commits absent from the destination, or local changes could be
-overwritten, stop and present exact evidence for a human decision;
-never reset or delete work to force alignment. After each successful PR merge,
-fast-forward both persistent lanes to `main` when `main` contains their work
-and each lane passes those checks, so all branches can reach the same commit.
-Preserve existing PRD content and do not infer cloud backup from its OneDrive
-path. Branching, staging, committing, pushing, merging, and branch deletion
-remain subject to the approved plan and external AGENTS gates.
+and remote tips, ancestry, and commits unique to the target. After a PR into
+`developer` merges, fast-forward an eligible lane from `developer` only when the
+lane tip is its ancestor and the operation cannot overwrite local changes.
+After the reviewed `developer`-to-`main` release PR merges, fast-forward
+`developer` from `main` only when the `developer` tip is an ancestor of `main`
+and the release commit contains its work; then fast-forward eligible lanes from
+`developer` under the same ancestry and no-overwrite checks. `main` may remain
+behind `developer` while the release PR is pending; do not bypass the PR gate to
+align it. If histories diverge, a target has unique commits absent from its
+destination, or local changes could be overwritten, stop and present exact
+evidence for a human decision. Never force, reset, discard, or delete work to
+force alignment. Preserve existing PRD content and do not infer cloud backup
+from its OneDrive path. Branching, staging, committing, pushing, merging, and
+branch deletion remain subject to the approved plan and external AGENTS gates.

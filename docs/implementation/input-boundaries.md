@@ -12,24 +12,24 @@ preserved for Justin and is not being extended in this pass.
 
 Inspected implementation and test sources:
 
-- [`src/contracts/index.ts`](../src/contracts/index.ts) — brief, bible, chapter,
+- [`src/contracts/index.ts`](../../src/contracts/index.ts) — brief, bible, chapter,
   fixture, evidence, and run schemas.
-- [`src/contracts/input-policy.ts`](../src/contracts/input-policy.ts) — field
+- [`src/contracts/input-policy.ts`](../../src/contracts/input-policy.ts) — field
   signals, fixed role-to-tool map, and optional-metadata quarantine.
-- [`src/agents/context.ts`](../src/agents/context.ts) and
-  [`src/agents/graph.ts`](../src/agents/graph.ts) — writer context assembly,
+- [`src/agents/context.ts`](../../src/agents/context.ts) and
+  [`src/agents/graph.ts`](../../src/agents/graph.ts) — writer context assembly,
   fixture execution, and chapter validation.
-- [`src/server/research/index.ts`](../src/server/research/index.ts) —
+- [`src/server/research/index.ts`](../../src/server/research/index.ts) —
   fixture-only research evidence.
-- [`src/server/research/book-metadata.ts`](../src/server/research/book-metadata.ts)
+- [`src/server/research/book-metadata.ts`](../../src/server/research/book-metadata.ts)
   — disabled-by-default NYT Books and Gutendex metadata adapters and reader context.
-- [`src/server/read-state.ts`](../src/server/read-state.ts) — owner-scoped,
+- [`src/server/read-state.ts`](../../src/server/read-state.ts) — owner-scoped,
   version-specific state reads in a read-only database transaction.
-- [`src/server/http.ts`](../src/server/http.ts),
-  [`src/server/projects.ts`](../src/server/projects.ts), and
-  [`src/app/api/projects/[id]/route.ts`](../src/app/api/projects/%5Bid%5D/route.ts)
+- [`src/server/http.ts`](../../src/server/http.ts),
+  [`src/server/projects.ts`](../../src/server/projects.ts), and
+  [`src/app/api/projects/[id]/route.ts`](../../src/app/api/projects/%5Bid%5D/route.ts)
   — session checks, owner-scoped actions, and explicit approval.
-- [`tests/input-boundary.test.ts`](../tests/input-boundary.test.ts) — Unicode,
+- [`tests/input-boundary.test.ts`](../../tests/input-boundary.test.ts) — Unicode,
   field signals, metadata quarantine, context separation, and tool rejection.
 
 ## Boundary map
@@ -83,7 +83,7 @@ safety.
 
 ## Test evidence and residual risk
 
-[`tests/input-boundary.test.ts`](../tests/input-boundary.test.ts) covers valid
+[`tests/input-boundary.test.ts`](../../tests/input-boundary.test.ts) covers valid
 Unicode examples, hidden/control formatting in labels, a control character,
 role-delimiter and instruction-like metadata, safe metadata, JSON data separation,
 and denied writer tool names. The READ tests additionally cover ownership,
