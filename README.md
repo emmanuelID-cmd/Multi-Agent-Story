@@ -146,7 +146,7 @@ All project-scoped references must belong to the same authorized project.
 
 | Entity | Proposed fields | Required invariants |
 | --- | --- | --- |
-| Project | id, owner_id, brief_version, brief {premise, genre, subgenre?, audience, tone, desired_ending, characters[], settings[], lore?, time_period?, direction {beginning?, middle?, end?}, apex?, climax?, falling_action?, pov?, tense?}, current_state_version, created_at | Server checks ownership for every operation; save sparse input; confirm genre and research scope before mandatory research |
+| Project | id, owner_id, brief_version, brief {premise, genre?, subgenre?, audience?, tone?, desired_ending?, characters?, settings?, lore?, time_period?, direction?, apex?, climax?, falling_action?, pov?, tense?}, current_state_version, created_at | Server checks ownership for every operation; save sparse input; confirm genre and research scope before mandatory research |
 | IntakeReview | id, project_id, brief_version, supplied_facts[], missing_items[], suggestions [{id, text, status}], confirmed_scope, confirmed_at? | Distinguish supplied, suggested, accepted, and unresolved information; no suggestion silently becomes a constraint |
 | StoryBibleVersion | id, project_id, version, research_dossier_id, facts [{id, kind, text}], character_arcs[], chapter_beats [{chapter_index, beats, relevant_fact_ids}], approval_status, approved_at | Uses accepted current research; approved versions immutable; chapter indexes exactly 1, 2, 3; facts have stable IDs |
 | Run | id, project_id, bible_version_id, status, revision_round, limits, usage, canceled_at, started_at, finished_at | Only an approved bible; rounds 0 through 2; server enforces limits and cancellation |
@@ -169,6 +169,9 @@ no `research_enabled` bypass in the v2 design. These additions are conceptual;
 the current runtime schema and SQL have not been extended by this documentation.
 Permitted-use status: unverified, allowed, restricted; activate collection only
 after provider-use review. Optional fields marked `?` may be null.
+An intake draft may omit these optional fields. Genre and confirmed scope become
+required at the research gate. When supplied, characters and settings are arrays;
+direction contains optional beginning, middle, and end entries.
 
 Research signals remain provider-specific: NYT list name, list date, rank, and
 weeks on list; Gutendex subjects, bookshelves, languages, copyright status,
