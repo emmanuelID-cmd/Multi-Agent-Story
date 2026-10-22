@@ -339,3 +339,28 @@ expanded intake, text analysis, and the full proposed roster are documentation
 requirements, not newly implemented behavior. Architecture variants, source rights,
 research coverage, and measured budgets remain visible product decisions.
 
+
+## 2026-10-22T15:53:17-04:00
+
+- Prepared for the authorized push to `manny/read-agents` in
+  `emmanuelID-cmd/Multi-Agent-Story`; PR target: `developer`.
+- Verified remote baseline: `627380d7d2908c57f125b5090314228df094cd01`.
+- Scope: track exactly the two previously local review reports so collaborators
+  can read them immediately from the repository. Review text is preserved;
+  extra blank lines at the ends of the reports are normalized for Git checks.
+- Files: `.tools/reviews/justin-prd-alignment-changes.md` and
+  `.tools/reviews/publication-plan.md`. All other `.tools/` material stays ignored.
+- The publication plan is a historical preparation snapshot for PR #4; its
+  local-only descriptions reflect that earlier push. This entry records the
+  user's later request to publish both reports. No final commit or push is claimed.
+
+### Done
+
+- [x] Select both review reports for tracking and preserve all review text.
+- [x] Review the reports and their file locations; retain the original change ranges.
+- [x] Preserve application code, SQL, main, and external AGENTS files.
+
+### Not completed
+
+- [ ] Commit and push the selected reports and this handoff, then open the PR
+  into `developer` and verify the remote result. Integration remains a PR action.
