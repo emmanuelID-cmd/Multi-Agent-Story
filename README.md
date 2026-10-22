@@ -7,7 +7,7 @@ three-chapter draft, with writer-approved planning and bounded critique.
 authentication, project ownership, a minimal story workspace, fixture-backed
 workflow execution, and Markdown export. It has no live model or research
 provider enabled, and it has not processed a real manuscript. Current development
-is limited to Manny's [READ lane](docs/read-lane.md): owner-scoped state retrieval
+is limited to Manny's [READ lane](docs/implementation/read-lane.md): owner-scoped state retrieval
 and gated book-metadata adapters. Existing WRITE and interface work is preserved
 for Justin; this READ pass does not claim that his lane is complete or reviewed.
 
@@ -15,7 +15,8 @@ for Justin; this READ pass does not claim that his lane is complete or reviewed.
 
 - [Product requirements](docs/prd/Multi-Agent-Story-Builder-PRD.md)
 - [PRD PDF](docs/prd/Multi-Agent-Story-Builder-PRD.pdf)
-- [Multi-agent workflow](docs/multi-agent-workflow.md)
+- [Documentation index](docs/README.md)
+- [Multi-agent workflow](docs/architecture/multi-agent-workflow.md)
 - [Contributor instructions](AGENTS.md)
 - [Team handoff](docs/TEAM-REFERENCE.md)
 - [External AGENTS guide](https://github.com/emmanuelID-cmd/AGENTS)
@@ -52,7 +53,7 @@ fixed writer policy from JSON-serialized story data, declares a fixed role-to-to
 allowlist, quarantines flagged optional metadata, and validates chapter outputs.
 These controls reduce risk; keyword and role-delimiter signals do not prove that
 content is safe. The current workflow uses fixtures and has no live model. See
-[Input boundaries](docs/input-boundaries.md) for the implemented flow, server
+[Input boundaries](docs/implementation/input-boundaries.md) for the implemented flow, server
 authorization boundary, detector contract, test coverage, and remaining limits.
 
 1. Collect premise, genre, audience, tone, and desired ending; research is optional.
@@ -262,9 +263,28 @@ Multi-Agent-Story/
   tests/               # automated checks
   docs/
     TEAM-REFERENCE.md
+    README.md
+    architecture/
+      multi-agent-workflow.md
+      assets/
+        flow-architecture-sketch.jpg
+        flow-architecture-sketch.svg
+      drafts/
+        multi-agent-workflow-v2-draft.md
+        copies/
+          multi-agent-workflow-v2-draft.md
+    implementation/
+      read-lane.md
+      input-boundaries.md
     prd/
       Multi-Agent-Story-Builder-PRD.md
       Multi-Agent-Story-Builder-PRD.pdf
+      drafts/
+        PRD-v2-draft.md
+        PRD-v2-draft - Copy.md
+    artifacts/
+      story-builder-guide.html
+      story-builder-guide.zip
 ```
 
 The committed synthetic foundation is the shared starting point. Schema and

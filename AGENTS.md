@@ -42,7 +42,7 @@ TEST MODE is explicitly requested and read-only; it never authorizes edits.
 - **Shared:** versioned schemas, task envelopes, fixtures, integration boundaries,
   and schema changes require coordination before either lane depends on them.
 
-Manny's approved implementation lane is [READ](docs/read-lane.md).
+Manny's approved implementation lane is [READ](docs/implementation/read-lane.md).
 Preserve existing Justin WRITE, worker, and interface work without extending or
 deleting it. The optional metadata adapters remain disabled by default; do not
 enable live providers or connect a model as part of a READ-only change.
@@ -80,7 +80,7 @@ with any non-ACCEPT verdict is excluded, and chapter outputs are schema-checked.
 These are bounded controls, not proof that prompt injection is detected. Model
 text cannot grant server permissions: routes require an authenticated user and
 project services check ownership. SQL parameter binding and prompt-injection
-handling address different risks. See [the input-boundary notes](docs/input-boundaries.md)
+handling address different risks. See [the input-boundary notes](docs/implementation/input-boundaries.md)
 for the implemented map, detector result fields, test coverage, and gaps.
 
 ## Research and configuration
@@ -132,8 +132,11 @@ neither the orchestrator nor the queue grants approval or replaces those control
 
 ## Files, recovery, and Git
 
-Keep entry points at the root, PRD artifacts under `docs/prd/`, and team handoff
-under `docs/`. Add feature directories only when implementation establishes them.
+Keep entry points at the root, current PRD artifacts under `docs/prd/`, PRD
+drafts under `docs/prd/drafts/`, workflow architecture and chart assets under
+`docs/architecture/`, implementation notes under `docs/implementation/`, and
+team handoff under `docs/`. Keep the HTML guide and ZIP under `docs/artifacts/`.
+Add feature directories only when implementation establishes them.
 Preserve PRD bytes when organizing artifacts; verify moves with SHA-256 hashes.
 Inventory durable state before risky changes. A synchronized folder or local Git
 directory alone is not evidence of backup; report unverified restores honestly.
