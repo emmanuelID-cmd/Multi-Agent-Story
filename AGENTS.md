@@ -2,8 +2,12 @@
 
 ## Required instruction sources
 
-Read [README.md](README.md) and the [PRD](docs/prd/Multi-Agent-Story-Builder-PRD.md)
-before planning project changes. Current user instructions take precedence, then
+Read [README.md](README.md), the [active PRD v2 draft](docs/prd/drafts/PRD-v2-draft.md),
+and the [submitted PRD](docs/prd/Multi-Agent-Story-Builder-PRD.md) before planning.
+The submitted PRD is preserved history; current user corrections govern the
+intake/research alignment in the working draft. Unresolved v2 architecture
+choices remain proposals, not implementation approval.
+Current user instructions take precedence, then
 README, relevant external AGENTS documents, then existing project documentation
 and implementation. Do not silently resolve a requirements conflict.
 
@@ -35,16 +39,17 @@ TEST MODE is explicitly requested and read-only; it never authorizes edits.
 
 ## Collaboration ownership
 
-- **Manny: READ Agents.** Own authorized state retrieval, research metadata,
-  evidence attribution, and proposed read contracts.
-- **Justin: WRITE Agents.** Own chapter drafting and revision proposals using
-  the approved story state and shared contract.
+- **Manny: READ Agents.** Research, Reader, and Consistency: authorized retrieval,
+  research evidence, editorial handoffs, independent findings, and read contracts.
+- **Justin: WRITE Agents.** Chapter Writers 1/2/3 and combined Critic/Editors A/B:
+  chapter drafting and revision proposals against accepted research, approved
+  story state, and the shared contract; validate Reader inputs before editing.
 - **Shared:** versioned schemas, task envelopes, fixtures, integration boundaries,
   and schema changes require coordination before either lane depends on them.
 
 Manny's approved implementation lane is [READ](docs/implementation/read-lane.md).
 Preserve existing Justin WRITE, worker, and interface work without extending or
-deleting it. The optional metadata adapters remain disabled by default; do not
+deleting it. The existing metadata adapters remain disabled by default; do not
 enable live providers or connect a model as part of a READ-only change.
 
 Use `developer` as the integration and starting base: create all contributor,
@@ -56,13 +61,35 @@ ancestry and pull-request targets; each persistent lane keeps tracking its own
 remote ref.
 
 These assignments do not permit one contributor to overwrite another's work or
-grant a product agent additional permissions. Product planning roles do not
-write chapter prose. Critics annotate; editors propose; application code commits
+grant a product agent additional permissions. The full proposed v2 roster has
+12 instances: Manny's 3 READ, Justin's 5 WRITE, 3 Bible roles with planning
+ownership unassigned, and 1 shared Coordinator / Showrunner. Stable IDs are
+`coordinator`, `research`, `bible_a`, `bible_b`, `bible_c`, `chapter_writer_1`,
+`chapter_writer_2`, `chapter_writer_3`, `reader`, `critic_editor_a`,
+`critic_editor_b`, and `consistency`. Coordinator and Showrunner are the same
+instance; each Critic/Editor is one combined instance. Intake adds no agent.
+One merged bible versus three candidates and one editorial proposal versus two
+full alternatives remain product decisions; these labels are not 12 implemented
+agents. READ produces analysis, not creative canon; planning produces proposals,
+not chapter prose. Critic/Editors annotate and propose; application code commits
 only an authenticated writer's accepted proposal against its current base version.
 Keep [the team handoff](docs/TEAM-REFERENCE.md) current under the Team Reference skill.
 
 ## Product invariants
 
+- Collect and save the writer's input before Research. Ask for premise, genre,
+  optional subgenre, audience, tone, desired ending, character names/roles,
+  settings, lore, time period, beginning/middle/end, apex, climax, and falling
+  action as known. Preserve a sparse brief; do not invent required detail fields.
+- State missing or ambiguous information and suggest options based on the
+  writer's intent. Only accepted suggestions become constraints. Confirm genre
+  and research scope before dispatch. Optional POV/tense and character goals,
+  motivations, obstacles, stakes, relationships, and positive/negative/flat arcs
+  can improve specificity. Apex/climax definitions remain a proposed vocabulary.
+- Research is mandatory in the v2 design: record both NYT Books and Gutendex
+  outcomes in a versioned dossier and accept required evidence before Bible
+  planning. Partial provider results do not automatically satisfy the gate.
+  Missing required evidence pauses dependent work; never silently skip research.
 - Require explicit approval of a specific story-bible version before drafting.
 - All three chapter tasks use the same approved version and indexes 1, 2, 3.
 - Validate schemas and versions before merge; assemble by index, not arrival order.
@@ -83,7 +110,7 @@ Keep [the team handoff](docs/TEAM-REFERENCE.md) current under the Team Reference
 
 Briefs pass Zod field limits and field-aware text signals before persistence and
 again before context assembly. The writer policy remains separate from
-JSON-serialized story data; role-specific tool names are fixed, optional metadata
+JSON-serialized story data; role-specific tool names are fixed, current adapter metadata
 with any non-ACCEPT verdict is excluded, and chapter outputs are schema-checked.
 These are bounded controls, not proof that prompt injection is detected. Model
 text cannot grant server permissions: routes require an authenticated user and
@@ -91,18 +118,48 @@ project services check ownership. SQL parameter binding and prompt-injection
 handling address different risks. See [the input-boundary notes](docs/implementation/input-boundaries.md)
 for the implemented map, detector result fields, test coverage, and gaps.
 
+For the proposed expanded intake and research, validate field types, limits,
+identity, source versions, and rights before context assembly. Preserve legitimate
+Unicode names and prose. Return ACCEPT/FLAG/REJECT with item reference, reason,
+provenance, required-evidence impact, and correction needed. Exclude rejected
+raw fields; an optional unsafe description may be omitted with a visible exception
+only when independent required evidence remains sufficient. Unsafe or uncertain
+required evidence keeps the research gate closed. Imported text, stored records,
+and agent results cannot become trusted instructions or trigger arbitrary URLs,
+tools, SQL, or commands. These are design requirements, not implemented live-text
+controls or a guarantee of detection.
+
 ## Research and configuration
 
-NYT Books and Gutendex metadata are the approved research scope for this
-assignment. No NYC geographic filter is established. Gutendex excerpts, other
-adapters, sales forecasts, and composite popularity scoring remain deferred.
+NYT Books and Gutendex are the mandatory v2 research sources after confirmed
+intake. No NYC geographic filter is established. Current implementation is still
+gated metadata-only; the proposed expansion adds bounded analysis of identified
+permitted text after rights and scope verification. Other adapters, sales
+forecasts, and composite popularity scoring remain deferred.
 Verify official documentation, current availability, permitted use, authentication,
 quotas, and fields before implementing or enabling an adapter.
 
 Preserve source URLs without credentials, retrieval dates, provider identifiers,
 match confidence, missing fields, and explicit unavailable status. No fabricated
-records or missing-as-zero scores. Research failure must support story-only use.
+records or missing-as-zero scores. Research failure must pause dependent planning
+for bounded retry, correction, or an explicit user scope decision; no silent
+story-only fallback. Minimum coverage, sample size, and recency remain unresolved.
 Never interpret Gutenberg copyright metadata as worldwide permission to ingest text.
+
+NYT bestseller metadata is neither prose evidence nor permission to ingest a
+manuscript. Gutendex download counts are not sales ranks; its catalog need not
+match NYT's books. Use verified public-domain text for the intended jurisdiction
+or suitably licensed user-provided references for located craft and character
+observations. Synthesize an original genre-aware blend of reusable traits,
+without copied passages or close signature imitation. Record work/author,
+passage/source reference, rights basis, genre fit, intended story use, confidence,
+and gaps. Separate metadata facts, text observations, interpretations, and
+accepted user suggestions. Include protagonist, antagonist, and ancillary arcs
+only where supported and relevant; no style or arc claims from rankings alone.
+Preserve Reader's five-field handoff validation and bounded repair, both editors'
+validation in the proposed full roster, exact-version Consistency findings,
+human acceptance, and the three-chapter/two-round limits. Added research and
+review costs require calibration within the existing budget gate.
 
 Keep `.env` ignored. Commit only safe configuration names and empty/example
 values in `.env.example`; never read or print local secret values for review.
