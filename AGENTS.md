@@ -47,6 +47,14 @@ Preserve existing Justin WRITE, worker, and interface work without extending or
 deleting it. The optional metadata adapters remain disabled by default; do not
 enable live providers or connect a model as part of a READ-only change.
 
+Use `developer` as the integration and starting base: create all contributor,
+task, and SQL work branches from it, and target `developer` with pull requests
+from `manny/read-agents` and the separate persistent `manny/sql-foundation`
+lane. Only pull requests from `developer` target `main`. Do routine work on lane
+or task branches, not directly on `developer` or `main`. This describes branch
+ancestry and pull-request targets; each persistent lane keeps tracking its own
+remote ref.
+
 These assignments do not permit one contributor to overwrite another's work or
 grant a product agent additional permissions. Product planning roles do not
 write chapter prose. Critics annotate; editors propose; application code commits
@@ -143,23 +151,34 @@ directory alone is not evidence of backup; report unverified restores honestly.
 
 Verify the exact repository root, branch, status, and remote before Git actions.
 Preserve pre-existing untracked and modified files. If no remote exists, do not
-invent one or attempt synchronization. Agree persistent contributor branch names
-before creating them. The persistent `manny/read-agents` lane owns READ work;
-the separate persistent `manny/sql-foundation` lane owns schema and migration
-work. All changes to `main` go through reviewed pull requests. Before each lane
-switch or update, inspect its dirty tree, exact local and remote tips, ancestry,
-and commits unique to the target. Fast-forward a non-main lane only when its
-tip is an ancestor of the verified destination and no work can be overwritten.
-If the target lane has commits absent from the destination, histories diverge,
-or local changes could be overwritten, stop and give the human exact evidence
-and safe recommendations. Never reset, delete, or merge automatically to make
-branches appear synchronized. After a successful PR merge,
-fast-forward both persistent lanes to `main` when `main`
-contains their work and each lane passes these checks. Return to the READ lane
-for non-SQL work. Delete any branch only after it is merged, has no unique
-work, and deletion is explicitly approved. Ask explicitly before branching,
-staging, committing, pushing, merging, or deleting a branch; general elevated
-access is not approval of a specific action.
+invent one or attempt synchronization. The persistent `manny/read-agents` lane
+owns READ work; the separate persistent `manny/sql-foundation` lane owns schema
+and migration work. Use `developer` as their integration and starting base: all
+contributor, task, and SQL work branches originate from `developer`, and both
+persistent lanes send reviewed pull requests to `developer`. Only `developer`
+pull requests target `main`; keep routine work on lane or task branches rather
+than directly on `developer` or `main`. This is branch ancestry and PR routing;
+each persistent lane continues tracking its own remote ref.
+
+Before each lane switch or update, inspect its dirty tree, exact local and
+remote tips, ancestry, and commits unique to the target. After a PR into
+`developer` merges, fast-forward an eligible lane from `developer` only when the
+lane tip is its ancestor and no work can be overwritten. After the reviewed
+`developer`-to-`main` release PR merges, fast-forward `developer` from `main`
+only when the `developer` tip is an ancestor of `main` and the release commit
+contains its work; then fast-forward eligible lanes from `developer` under the
+same ancestry and no-overwrite checks. After SQL work, return to
+`manny/read-agents` for non-SQL work only after checking its dirty tree, exact
+local and remote tips, ancestry, unique commits, and confirming no local work
+could be overwritten. `main` may remain behind `developer`
+while the release PR is pending; do not bypass that PR gate to align it. If
+histories diverge, a target has unique commits absent from its destination, or
+local changes could be overwritten, stop and give the human exact evidence and
+safe recommendations. Never force, reset, discard, or merge automatically to
+make branches appear synchronized. Delete any branch only after it is merged,
+has no unique work, and deletion is explicitly approved. Ask explicitly before
+branching, staging, committing, pushing, merging, or deleting a branch; general
+elevated access is not approval of a specific action.
 Shared work follows the external PR-first and commit/review-summary requirements.
 Record only verified pushes in the team handoff; do not report local work as pushed.
 

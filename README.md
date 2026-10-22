@@ -287,21 +287,29 @@ Multi-Agent-Story/
       story-builder-guide.zip
 ```
 
-The committed synthetic foundation is the shared starting point. Schema and
-migration changes belong on the persistent `manny/sql-foundation` lane; Manny's
-READ work belongs on `manny/read-agents`. Publish changes to `main` only through
-reviewed pull requests. Verify publication and branch status from Git and the
-[team handoff](docs/TEAM-REFERENCE.md), not from this static description.
+The committed synthetic foundation is the shared starting point. Use `developer`
+as the integration and starting base for all contributor, task, and SQL work
+branches. Schema and migration changes belong on the separate persistent
+`manny/sql-foundation` lane; Manny's READ work belongs on `manny/read-agents`.
+Both lanes send reviewed pull requests to `developer`; only pull requests from
+`developer` target `main`. Do routine work on lane or task branches rather than
+directly on `developer` or `main`. These rules describe branch ancestry and PR
+targets; each persistent lane continues tracking its own remote ref. Verify
+publication and branch status from Git and the [team handoff](docs/TEAM-REFERENCE.md),
+not from this static description.
 
 Before switching or updating either lane, inspect its working tree, exact local
-and remote tips, ancestry, and commits unique to the target. Fast-forward a
-non-main lane only when its tip is an ancestor of the verified destination and
-the operation cannot overwrite local changes. If histories diverge, the target
-lane contains commits absent from the destination, or local changes could be
-overwritten, stop and present exact evidence for a human decision;
-never reset or delete work to force alignment. After each successful PR merge,
-fast-forward both persistent lanes to `main` when `main` contains their work
-and each lane passes those checks, so all branches can reach the same commit.
-Preserve existing PRD content and do not infer cloud backup from its OneDrive
-path. Branching, staging, committing, pushing, merging, and branch deletion
-remain subject to the approved plan and external AGENTS gates.
+and remote tips, ancestry, and commits unique to the target. After a PR into
+`developer` merges, fast-forward an eligible lane from `developer` only when the
+lane tip is its ancestor and the operation cannot overwrite local changes.
+After the reviewed `developer`-to-`main` release PR merges, fast-forward
+`developer` from `main` only when the `developer` tip is an ancestor of `main`
+and the release commit contains its work; then fast-forward eligible lanes from
+`developer` under the same ancestry and no-overwrite checks. `main` may remain
+behind `developer` while the release PR is pending; do not bypass the PR gate to
+align it. If histories diverge, a target has unique commits absent from its
+destination, or local changes could be overwritten, stop and present exact
+evidence for a human decision. Never force, reset, discard, or delete work to
+force alignment. Preserve existing PRD content and do not infer cloud backup
+from its OneDrive path. Branching, staging, committing, pushing, merging, and
+branch deletion remain subject to the approved plan and external AGENTS gates.
