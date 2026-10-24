@@ -2,12 +2,16 @@ import { randomUUID } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
 import { Annotation, StateGraph, START, END, MemorySaver, interrupt, Command } from "@langchain/langgraph";
 import { PostgresSaver } from "@langchain/langgraph-checkpoint-postgres";
-import { and, eq } from "drizzle-orm";
+import { and, eq, like } from "drizzle-orm";
 import { db } from "../server/db";
-import { runs, tasks, chapters, bibles, critiques, evidence } from "../server/db/schema";
-import { chapterSchema, orderedChapters, canDispatch, limits } from "../contracts";
+import { runs, tasks, chapters, bibles, critiques, evidence, projects, proposals } from "../server/db/schema";
+import { chapterSchema, orderedChapters, canDispatch, limits, type Fixture } from "../contracts";
 import { getGenreBenchmarks } from "../server/research";
-import {buildWriterContext} from "./context";
+import { buildWriterContext } from "./context";
+import { draftChapter } from "./writers";
+import { buildFixtureHandoff, validateHandoff, repairFixtureHandoff } from "./handoff";
+import { criticEditorA, criticEditorB } from "./editors";
+import { consistencyShell } from "./consistency-shell";
 
 const State = Annotation.Root({ runId: Annotation<string> });
 export async function writeChapter(runId: string, index: number, delayMs = (4-index)*80) {
@@ -28,12 +32,7 @@ export async function writeChapter(runId: string, index: number, delayMs = (4-in
     const signal=AbortSignal.timeout(limits.timeoutMs);
     await delay(delayMs,undefined,{signal});
     if(task.fixture==="timeout"&&index===2)throw Error("SYNTHETIC_TIMEOUT: chapter 2 timeout fixture. No real model call occurred.");
-    const paragraphs=[
-      "Mara watched a blue signal blink beyond the lighthouse. She marked its pattern on paper and checked the tide. She could not swim, so she kept clear of the water and prepared the harbor boat. The light was a clue, not a command.",
-      task.fixture==="continuity"?"Mara swam toward the signal. This deliberately contradicts approved fact F1 and must remain visible to the continuity critic.":"Mara investigated from the boat, following the marked pattern. A shuttered lantern on the breakwater made the blue signal: it was human-made. She called to the missing sailor and planned a safe approach without entering the water.",
-      "Mara secured the boat alongside the breakwater and helped the missing sailor aboard. They returned to the harbor together. The human-made signal had guided the rescue, and the boat had kept her out of the water. She recorded what remained to investigate after everyone was safe.",
-    ];
-    const output=chapterSchema.parse({chapterIndex:index,bibleVersion:context.bibleVersion,text:`[Synthetic fixture — not model-generated prose]\n\n${paragraphs[index-1]}`});
+    const output=draftChapter(index, context.bibleVersion, task.fixture as Fixture);
     await db.transaction(async tx=>{
       const [run]=await tx.select().from(runs).where(eq(runs.id,runId)).for("update");
       if(!run||run.canceledAt||!["running","pending"].includes(run.status))return;
@@ -57,8 +56,70 @@ export async function finishRun(runId: string) {
     if(all.length!==3||all.some(t=>t.status!=="completed")){await tx.update(runs).set({status:"failed"}).where(eq(runs.id,runId));return {};}
     const [bible]=await tx.select().from(bibles).where(eq(bibles.id,run.bibleId));
     const outputs=orderedChapters(await tx.select().from(chapters).where(eq(chapters.runId,runId)),bible.version);
+
+    const [firstTask]=await tx.select().from(tasks).where(eq(tasks.runId,runId)).limit(1);
+    const recordedRequest=firstTask?.savedInput?.brief?.desiredEnding ?? "A safe rescue by boat.";
+    const revisionRounds=firstTask?.savedInput?.revisionRound ?? 0;
+
+    // 1. Reader handoff shell and harness validation
+    const initialHandoff=buildFixtureHandoff(outputs,bible.version,recordedRequest,revisionRounds);
+    let validation=validateHandoff(initialHandoff,recordedRequest);
+    let validHandoff=initialHandoff;
+    if(!validation.valid){
+      validHandoff=repairFixtureHandoff(initialHandoff,recordedRequest);
+      validation=validateHandoff(validHandoff,recordedRequest);
+      if(!validation.valid){
+        await tx.update(runs).set({status:"failed"}).where(eq(runs.id,runId));
+        return {};
+      }
+    }
+
+    // 2. Parallel Critic/Editors A & B
+    const manuscriptA=criticEditorA(validHandoff,outputs,bible.data);
+    const manuscriptB=criticEditorB(validHandoff,outputs,bible.data);
+
+    // Validate both manuscripts before inserting proposals: must be indexes 1, 2, 3 on approved bible version
+    try {
+      orderedChapters(manuscriptA.chapters, bible.version);
+      orderedChapters(manuscriptB.chapters, bible.version);
+    } catch {
+      await tx.update(runs).set({status:"failed"}).where(eq(runs.id,runId));
+      return {};
+    }
+
+    // 3. Consistency shell
+    const checkA=consistencyShell("manuscript_a");
+    const checkB=consistencyShell("manuscript_b");
+
+    // 4. Reject older pending manuscripts for this project before inserting new pair
+    await tx.update(proposals)
+      .set({ status: "rejected" })
+      .where(and(
+        eq(proposals.projectId, run.projectId),
+        eq(proposals.status, "pending"),
+        like(proposals.kind, "manuscript_%")
+      ));
+
+    // Store manuscript proposals for Gate #2 review
+    await tx.insert(proposals).values([
+      { id:randomUUID(), projectId:run.projectId, baseVersion:bible.version, kind:"manuscript_a", data:manuscriptA },
+      { id:randomUUID(), projectId:run.projectId, baseVersion:bible.version, kind:"manuscript_b", data:manuscriptB },
+    ]);
+
     const contradiction=outputs.find(c=>c.text.includes("Mara swam"));
-    const critique={synthetic:true,revisionRounds:0,continuity:{score:contradiction?2:4,notes:contradiction?[{chapterIndex:2,passage:"Mara swam toward the signal.",severity:"critical",factId:"F1",rationale:"Approved F1 says Mara cannot swim.",proposedEdit:"Mara approached in the boat."}]:[]},style:{score:4,label:"Synthetic fixture score, not evaluated model quality."},pacing:{score:4,label:"Synthetic fixture score, not evaluated model quality."},marketReader:{availability:"unavailable",score:null},unresolvedIssues:contradiction?["Critical continuity contradiction in chapter 2. Revision proposal workflow is deferred beyond this foundation."]:[]};
+    const critique={
+      synthetic:true,
+      revisionRounds,
+      continuity:{score:contradiction?2:4,notes:contradiction?[{chapterIndex:2,passage:"Mara swam toward the signal.",severity:"critical",factId:"F1",rationale:"Approved F1 says Mara cannot swim.",proposedEdit:"Mara approached in the boat."}]:[]},
+      style:{score:4,label:"Synthetic fixture score, not evaluated model quality."},
+      pacing:{score:4,label:"Synthetic fixture score, not evaluated model quality."},
+      marketReader:{availability:"unavailable",score:null},
+      consistency:{versionA:checkA,versionB:checkB},
+      unresolvedIssues:[
+        ...(contradiction?["Base chapter 2 contains a critical continuity contradiction; resolved in Version A & B proposals."]:[]),
+        `Consistency findings: ${checkA.reason}`,
+      ],
+    };
     await tx.insert(critiques).values({id:randomUUID(),runId,data:critique}).onConflictDoNothing();
     const research=await getGenreBenchmarks(run.fixture);
     await tx.insert(evidence).values(research.map(data=>({id:randomUUID(),projectId:run.projectId,runId,data})));
