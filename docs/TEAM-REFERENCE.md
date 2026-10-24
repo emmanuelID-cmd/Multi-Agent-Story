@@ -368,10 +368,10 @@ research coverage, and measured budgets remain visible product decisions.
 ## 2026-10-24T09:10:00-04:00
 
 - Preparation time: America/New_York.
-- Destination: `emmanuelID-cmd/Multi-Agent-Story`, branch `justins-side`; PR target: `developer`.
+- Destination: `emmanuelID-cmd/Multi-Agent-Story`, branch `justin/workspace-ui-and-docs`; PR target: `justins-side` (chain PR #9).
 - Verified remote baseline: `afcf240ffdce02ad216d5f78399db008a00cc670`.
 - Contributor: Justin (WRITE lane lead).
-- Scope: Implement WRITE lane agents (3 chapter writers, 2 critic/editors), 3-candidate story bibles at Gate #1, proposal kind guard, 5-field Reader handoff harness, 2 full manuscript proposals at Gate #2, consistency shell, and 2-cycle revision loop.
+- Scope: Implement WRITE lane agents (3 chapter writers, 2 critic/editors), 3-candidate story bibles at Gate #1, proposal kind guard, 5-field Reader handoff harness, 2 full manuscript proposals at Gate #2, manuscript acceptance and export, consistency shell, and 2-cycle revision loop.
 
 ### Done
 
@@ -379,10 +379,11 @@ research coverage, and measured budgets remain visible product decisions.
 - [x] Add proposal kind guard in `approveProposal` rejecting non-bible proposals with HTTP 400.
 - [x] Implement pure specialist chapter writers (`src/agents/writers.ts`) and write barrier verification.
 - [x] Implement Reader handoff validation harness and shells (`src/agents/handoff.ts`: `buildFixtureHandoff`, `repairFixtureHandoff`, `validateHandoff`).
-- [x] Implement parallel Critic/Editors A and B (`src/agents/editors.ts`: `criticEditorA` for continuity/pacing, `criticEditorB` for voice/atmosphere) producing complete 3-chapter manuscript proposals.
+- [x] Implement parallel Critic/Editors A and B (`src/agents/editors.ts`: `criticEditorA` for continuity/pacing, `criticEditorB` for voice/atmosphere) producing complete 3-chapter manuscript proposals without chapter index skew or phantom swim corrections.
+- [x] Implement Human Gate #2 manuscript acceptance (`approveManuscriptProposal`) with baseVersion check, 3-chapter validation, competing proposal rejection, and Markdown export rendering.
 - [x] Implement Consistency shell (`src/agents/consistency-shell.ts`: `consistencyShell`) returning explicit `unavailable` status.
-- [x] Implement outer server revision loop with 2-round cap (`rewriteRun`) and workspace UI integration.
-- [x] Add dedicated WRITE lane test harness (`tests/write-lane-harness.test.ts`), passing 19/19 tests (56/56 suite total) and TypeScript typecheck.
+- [x] Implement outer server revision loop with 2-round cap (`rewriteRun`) tracked via `savedInput` without SQL migrations, feedback length limits, and workspace UI integration.
+- [x] Add dedicated WRITE lane test harness (`tests/write-lane-harness.test.ts`), passing 28/28 tests (65/65 suite total) and TypeScript typecheck.
 - [x] Document WRITE lane implementation and boundaries in `docs/implementation/write-lane.md`.
 
 ### Missing READ lane pieces for Manny to connect

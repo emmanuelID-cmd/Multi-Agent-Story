@@ -125,6 +125,7 @@ export function buildFixtureHandoff(
   chapters: Chapter[],
   bibleVersion: number,
   recordedRequest: string,
+  revisionRound = 0,
   handoffRevision = 1
 ): ReaderToEditorHandoff {
   return {
@@ -136,7 +137,7 @@ export function buildFixtureHandoff(
     },
     userInstructions: {
       recordedRequest,
-      revision: 0,
+      revision: revisionRound,
       hasAdditionalInstructions: false,
     },
     sourceReferences: chapters.map(c => ({
@@ -162,11 +163,17 @@ export function buildFixtureHandoff(
 /**
  * Shell for Reader's bounded repair.
  * Returns one repaired handoff revision when requested; cannot loop infinitely.
+ * Does not claim isComplete: true if any required chapter reference is missing.
  */
 export function repairFixtureHandoff(
   rejectedHandoff: ReaderToEditorHandoff,
   recordedRequest: string
 ): ReaderToEditorHandoff {
+  const availableLocators = new Set(
+    rejectedHandoff.sourceReferences.filter(r => r.status === "available").map(r => r.locator)
+  );
+  const hasAllChapters = rejectedHandoff.task.scope.every(idx => availableLocators.has(`chapter_${idx}`));
+
   return {
     ...rejectedHandoff,
     userInstructions: {
@@ -174,9 +181,10 @@ export function repairFixtureHandoff(
       recordedRequest,
     },
     completeness: {
-      isComplete: true,
-      missingItems: [],
-      confidence: 1.0,
+      ...rejectedHandoff.completeness,
+      isComplete: hasAllChapters,
+      missingItems: hasAllChapters ? [] : rejectedHandoff.completeness.missingItems,
+      confidence: hasAllChapters ? 1.0 : 0.5,
     },
     version: {
       ...rejectedHandoff.version,

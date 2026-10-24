@@ -37,14 +37,26 @@ Local synthetic shells owned by this lane:
 ## Parallel Critic / Editors and manuscripts
 
 Two independent, pure editor functions in `src/agents/editors.ts` produce full 3-chapter manuscript proposals:
-- `criticEditorA` (`manuscript_a`): continuity and pacing lens. Corrects contradictions (such as rewriting "Mara swam" into boat maneuvering) to honor fact F1 and sharpens transitions.
+- `criticEditorA` (`manuscript_a`): continuity and pacing lens. Corrects contradictions (such as rewriting "Mara swam" into boat maneuvering) to honor fact F1 and sharpens transitions. On normal fixtures without contradictions, preserves chapter text without bogus swim correction claims.
 - `criticEditorB` (`manuscript_b`): voice and atmosphere lens. Elevates sensory imagery, oceanic fog, and prose cadence while strictly respecting canon.
 
 Neither editor commits database state or approves canon. Proposals are stored as pending proposals (`kind: "manuscript_a"`, `"manuscript_b"`) for writer review at Human Gate #2.
 
+### Manuscript proposal acceptance and export
+
+- `approveManuscriptProposal(ownerId, id, proposalId)`: writer accepts a manuscript proposal at Human Gate #2.
+  - Enforces `proposal.kind.startsWith("manuscript_")` (rejecting non-manuscript proposals with status 400).
+  - Enforces `proposal.baseVersion === project.version` (rejecting stale proposals with status 409).
+  - Validates that the manuscript contains all three chapters `[1, 2, 3]`.
+  - Rejects competing pending manuscript proposals and sets the chosen proposal to `status: "accepted"`.
+- `projectState`: queries and returns `acceptedManuscript` matching the project version, displaying it in the workspace UI with an accepted badge and rationale.
+- `exportProject`: outputs Markdown with the accepted manuscript when available, or indicates that draft chapters remain pending review.
+
 ## Bounded revision loop
 
 The revision loop operates as an outer server-driven loop via `rewriteRun`:
-- Verifies `revisionRounds < 2`.
-- Increments the round counter, updates recorded user instructions, resets chapter tasks against the existing approved bible version, and re-dispatches execution.
-- When `revisionRounds >= 2`, further rewrite requests are rejected with status 409, leaving both proposals and unresolved issues visible.
+- Checks `currentRound < limits.revisionRounds` (2). The counter is tracked in `tasks.savedInput.revisionRound` without requiring database schema migrations.
+- Validates that optional feedback does not cause `desiredEnding` to exceed the 500-character brief limit.
+- Increments `nextRound`, records feedback into `savedInput.brief.desiredEnding`, and rejects older pending manuscript proposals.
+- `finishRun` reads `recordedRequest` from `savedInput.brief.desiredEnding` and passes `revisionRound` to `buildFixtureHandoff`.
+- When `currentRound >= limits.revisionRounds`, further rewrite requests are rejected with status 409, preserving existing proposals for writer review.

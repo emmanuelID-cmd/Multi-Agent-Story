@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
 import { Annotation, StateGraph, START, END, MemorySaver, interrupt, Command } from "@langchain/langgraph";
 import { PostgresSaver } from "@langchain/langgraph-checkpoint-postgres";
-import { and, eq } from "drizzle-orm";
+import { and, eq, like } from "drizzle-orm";
 import { db } from "../server/db";
 import { runs, tasks, chapters, bibles, critiques, evidence, projects, proposals } from "../server/db/schema";
 import { chapterSchema, orderedChapters, canDispatch, limits, type Fixture } from "../contracts";
@@ -57,11 +57,12 @@ export async function finishRun(runId: string) {
     const [bible]=await tx.select().from(bibles).where(eq(bibles.id,run.bibleId));
     const outputs=orderedChapters(await tx.select().from(chapters).where(eq(chapters.runId,runId)),bible.version);
 
-    const [project]=await tx.select().from(projects).where(eq(projects.id,run.projectId));
-    const recordedRequest=project?.brief?.desiredEnding ?? "A safe rescue by boat.";
+    const [firstTask]=await tx.select().from(tasks).where(eq(tasks.runId,runId)).limit(1);
+    const recordedRequest=firstTask?.savedInput?.brief?.desiredEnding ?? "A safe rescue by boat.";
+    const revisionRounds=firstTask?.savedInput?.revisionRound ?? 0;
 
     // 1. Reader handoff shell and harness validation
-    const initialHandoff=buildFixtureHandoff(outputs,bible.version,recordedRequest);
+    const initialHandoff=buildFixtureHandoff(outputs,bible.version,recordedRequest,revisionRounds);
     let validation=validateHandoff(initialHandoff,recordedRequest);
     let validHandoff=initialHandoff;
     if(!validation.valid){
@@ -77,19 +78,33 @@ export async function finishRun(runId: string) {
     const manuscriptA=criticEditorA(validHandoff,outputs,bible.data);
     const manuscriptB=criticEditorB(validHandoff,outputs,bible.data);
 
+    // Validate both manuscripts before inserting proposals: must be indexes 1, 2, 3 on approved bible version
+    try {
+      orderedChapters(manuscriptA.chapters, bible.version);
+      orderedChapters(manuscriptB.chapters, bible.version);
+    } catch {
+      await tx.update(runs).set({status:"failed"}).where(eq(runs.id,runId));
+      return {};
+    }
+
     // 3. Consistency shell
     const checkA=consistencyShell("manuscript_a");
     const checkB=consistencyShell("manuscript_b");
 
-    // 4. Store manuscript proposals for Gate #2 review
-    await tx.insert(proposals).values([
-      { id:randomUUID(), projectId:run.projectId, baseVersion:bible.version, kind:"manuscript_a", data:manuscriptA as any },
-      { id:randomUUID(), projectId:run.projectId, baseVersion:bible.version, kind:"manuscript_b", data:manuscriptB as any },
-    ]);
+    // 4. Reject older pending manuscripts for this project before inserting new pair
+    await tx.update(proposals)
+      .set({ status: "rejected" })
+      .where(and(
+        eq(proposals.projectId, run.projectId),
+        eq(proposals.status, "pending"),
+        like(proposals.kind, "manuscript_%")
+      ));
 
-    // 5. Revision rounds calculation
-    const priorRuns=await tx.select().from(runs).where(and(eq(runs.projectId,run.projectId),eq(runs.status,"completed")));
-    const revisionRounds=priorRuns.length;
+    // Store manuscript proposals for Gate #2 review
+    await tx.insert(proposals).values([
+      { id:randomUUID(), projectId:run.projectId, baseVersion:bible.version, kind:"manuscript_a", data:manuscriptA },
+      { id:randomUUID(), projectId:run.projectId, baseVersion:bible.version, kind:"manuscript_b", data:manuscriptB },
+    ]);
 
     const contradiction=outputs.find(c=>c.text.includes("Mara swam"));
     const critique={

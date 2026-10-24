@@ -20,6 +20,7 @@ for Justin; this READ pass does not claim that his lane is complete or reviewed.
 - [Multi-agent workflow](docs/architecture/multi-agent-workflow.md)
 - [Contributor instructions](AGENTS.md)
 - [Team handoff](docs/TEAM-REFERENCE.md)
+- [WRITE lane implementation](docs/implementation/write-lane.md)
 - [External AGENTS guide](https://github.com/emmanuelID-cmd/AGENTS)
 
 ## Collaboration

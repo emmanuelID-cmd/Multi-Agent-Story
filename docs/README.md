@@ -5,6 +5,7 @@
 - [Product requirements document](prd/Multi-Agent-Story-Builder-PRD.md) and [PDF](prd/Multi-Agent-Story-Builder-PRD.pdf)
 - [Multi-agent workflow architecture](architecture/multi-agent-workflow.md)
 - [READ lane implementation notes](implementation/read-lane.md)
+- [WRITE lane implementation notes](implementation/write-lane.md)
 - [Input boundaries and injection risks](implementation/input-boundaries.md)
 - [Team handoff](TEAM-REFERENCE.md)
 

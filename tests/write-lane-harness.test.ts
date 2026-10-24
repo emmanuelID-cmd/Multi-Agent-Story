@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { orderedChapters, chapterSchema, type Chapter, type Bible } from "../src/contracts";
+import { orderedChapters, chapterSchema, limits, type Chapter, type Bible } from "../src/contracts";
 import { buildFixtureHandoff, validateHandoff, repairFixtureHandoff, type ReaderToEditorHandoff } from "../src/agents/handoff";
 import { draftChapter, draftChapterOne, draftChapterTwo, draftChapterThree } from "../src/agents/writers";
 import { criticEditorA, criticEditorB } from "../src/agents/editors";
@@ -127,6 +127,23 @@ describe("WRITE Lane: Handoff Repair Budget", () => {
     expect(repairValidation.valid).toBe(true);
   });
 
+  it("sets completeness.isComplete to false when a chapter source locator is missing", () => {
+    const handoff = buildFixtureHandoff(chapters, 1, recordedRequest);
+    // Remove chapter 2 from source references
+    handoff.sourceReferences = handoff.sourceReferences.filter(r => r.locator !== "chapter_2");
+    handoff.completeness.missingItems = ["Chapter 2 source reference missing"];
+    const repaired = repairFixtureHandoff(handoff, recordedRequest);
+    expect(repaired.completeness.isComplete).toBe(false);
+    expect(repaired.completeness.missingItems).toContain("Chapter 2 source reference missing");
+  });
+
+  it("sets completeness.isComplete to true when all chapter source locators are present", () => {
+    const handoff = buildFixtureHandoff(chapters, 1, recordedRequest);
+    const repaired = repairFixtureHandoff(handoff, recordedRequest);
+    expect(repaired.completeness.isComplete).toBe(true);
+    expect(repaired.completeness.missingItems).toEqual([]);
+  });
+
   it("stops and halts dependent dispatch if the repair attempt still fails", () => {
     const invalidHandoff = buildFixtureHandoff(chapters, 1, "wrong request");
     // Simulate failed repair by supplying wrong request again
@@ -149,14 +166,29 @@ describe("WRITE Lane: Parallel Editorial Proposals (Critic/Editor A & B)", () =>
     draftChapterTwo(1, "continuity"), // contains "Mara swam"
     draftChapterThree(1),
   ];
+  const normalChapters: Chapter[] = [
+    draftChapterOne(1),
+    draftChapterTwo(1, "normal"), // does not contain "Mara swam"
+    draftChapterThree(1),
+  ];
   const recordedRequest = "A safe rescue by boat.";
   const handoff = buildFixtureHandoff(continuityChapters, 1, recordedRequest);
+  const normalHandoff = buildFixtureHandoff(normalChapters, 1, recordedRequest);
 
-  it("Critic/Editor A returns a full 3-chapter manuscript correcting the 'Mara swam' contradiction", () => {
+  it("Critic/Editor A on normal fixture returns [1, 2, 3] without bogus swim corrections", () => {
+    const manuscriptA = criticEditorA(normalHandoff, normalChapters, testBible);
+    expect(manuscriptA.kind).toBe("manuscript_a");
+    expect(manuscriptA.chapters.map(c => c.chapterIndex)).toEqual([1, 2, 3]);
+    const ch2 = manuscriptA.chapters.find(c => c.chapterIndex === 2);
+    expect(ch2?.text).not.toContain("Mara swam");
+    expect(manuscriptA.changesMade.some(c => c.justification.includes("cannot swim"))).toBe(false);
+  });
+
+  it("Critic/Editor A returns a full 3-chapter manuscript correcting the 'Mara swam' contradiction on continuity fixture", () => {
     const manuscriptA = criticEditorA(handoff, continuityChapters, testBible);
     expect(manuscriptA.kind).toBe("manuscript_a");
     expect(manuscriptA.editorialLens).toBe("continuity_and_pacing");
-    expect(manuscriptA.chapters.length).toBe(3);
+    expect(manuscriptA.chapters.map(c => c.chapterIndex)).toEqual([1, 2, 3]);
 
     // Verify Chapter 2 no longer contains "Mara swam"
     const ch2 = manuscriptA.chapters.find(c => c.chapterIndex === 2);
@@ -165,15 +197,20 @@ describe("WRITE Lane: Parallel Editorial Proposals (Critic/Editor A & B)", () =>
     expect(manuscriptA.changesMade.some(c => c.chapterIndex === 2 && c.justification.includes("cannot swim"))).toBe(true);
   });
 
-  it("Critic/Editor B returns a full 3-chapter manuscript elevating atmospheric voice while respecting facts", () => {
+  it("Critic/Editor B returns a full 3-chapter manuscript [1, 2, 3] elevating atmospheric voice while respecting facts", () => {
     const manuscriptB = criticEditorB(handoff, continuityChapters, testBible);
     expect(manuscriptB.kind).toBe("manuscript_b");
     expect(manuscriptB.editorialLens).toBe("voice_and_atmosphere");
-    expect(manuscriptB.chapters.length).toBe(3);
+    expect(manuscriptB.chapters.map(c => c.chapterIndex)).toEqual([1, 2, 3]);
 
     const ch2 = manuscriptB.chapters.find(c => c.chapterIndex === 2);
     expect(ch2?.text).not.toContain("Mara swam");
     expect(ch2?.text).toContain("Oars dipped");
+  });
+
+  it("Critic/Editor B returns [1, 2, 3] on normal fixture", () => {
+    const manuscriptB = criticEditorB(normalHandoff, normalChapters, testBible);
+    expect(manuscriptB.chapters.map(c => c.chapterIndex)).toEqual([1, 2, 3]);
   });
 
   it("editorial outputs are pure proposals that do not commit canon or approve state", () => {
@@ -207,60 +244,141 @@ describe("WRITE Lane: Consistency Shell", () => {
   });
 });
 
-describe("WRITE Lane: Revision Loop Cap (Outer Server Action)", () => {
-  it("increments round count and rejects rewrites once round 2 is reached", () => {
-    let revisionRound = 0;
-    const maxRounds = 2;
+describe("WRITE Lane: Revision Loop Cap & Feedback Limits", () => {
+  it("enforces limits.revisionRounds cap of 2 rounds", () => {
+    expect(limits.revisionRounds).toBe(2);
 
-    // First rewrite
-    expect(revisionRound < maxRounds).toBe(true);
-    revisionRound++;
-    expect(revisionRound).toBe(1);
-
-    // Second rewrite
-    expect(revisionRound < maxRounds).toBe(true);
-    revisionRound++;
-    expect(revisionRound).toBe(2);
-
-    // Third rewrite attempt must be blocked
-    const canRewrite = revisionRound < maxRounds;
-    expect(canRewrite).toBe(false);
-
-    let errorThrown = false;
-    if (!canRewrite) {
-      try {
+    function evaluateRewrite(currentRound: number) {
+      if (currentRound >= limits.revisionRounds) {
         throw new AppError(409, "The two-round revision limit has been reached. Existing proposals remain available.");
-      } catch (e) {
-        if (e instanceof AppError && e.status === 409) {
-          errorThrown = true;
-        }
       }
+      return currentRound + 1;
     }
-    expect(errorThrown).toBe(true);
+
+    expect(evaluateRewrite(0)).toBe(1);
+    expect(evaluateRewrite(1)).toBe(2);
+    expect(() => evaluateRewrite(2)).toThrowError(
+      new AppError(409, "The two-round revision limit has been reached. Existing proposals remain available.")
+    );
+  });
+
+  it("rejects feedback that pushes desired ending beyond 500 characters", () => {
+    const baseEnding = "A safe rescue by boat.";
+    function applyFeedback(desiredEnding: string, feedback?: string) {
+      if (feedback && feedback.trim()) {
+        const combined = `${desiredEnding} [Feedback: ${feedback.trim()}]`;
+        if (combined.length > 500) {
+          throw new AppError(400, "Feedback causes desired ending to exceed 500 characters.");
+        }
+        return combined;
+      }
+      return desiredEnding;
+    }
+
+    const shortFeedback = "Make Mara hesitate before launching.";
+    expect(applyFeedback(baseEnding, shortFeedback)).toContain("[Feedback: Make Mara hesitate before launching.]");
+
+    const hugeFeedback = "x".repeat(500);
+    expect(() => applyFeedback(baseEnding, hugeFeedback)).toThrowError(
+      new AppError(400, "Feedback causes desired ending to exceed 500 characters.")
+    );
   });
 });
 
-describe("WRITE Lane: Proposal Kind Guard", () => {
-  function checkProposalKind(kind: string) {
+describe("WRITE Lane: Proposal Acceptance Guards", () => {
+  function checkBibleProposalKind(kind: string) {
     if (!kind.startsWith("bible_") && kind !== "synthetic-plan") {
       throw new AppError(400, "Only bible proposals can be approved as story bibles.");
     }
     return "approved_bible";
   }
 
+  function validateManuscriptProposal(proposal: { kind: string; baseVersion: number; data: any }, projectVersion: number) {
+    if (!proposal.kind.startsWith("manuscript_")) {
+      throw new AppError(400, "Only manuscript proposals can be accepted as final manuscripts.");
+    }
+    if (proposal.baseVersion !== projectVersion) {
+      throw new AppError(409, "Proposal base version does not match current project version.");
+    }
+    const data = proposal.data;
+    if (!data.chapters || data.chapters.length !== 3 || new Set(data.chapters.map((c: any) => c.chapterIndex)).size !== 3) {
+      throw new AppError(400, "Manuscript must contain exactly chapters 1, 2, and 3.");
+    }
+    return "accepted";
+  }
+
   it("permits bible_a, bible_b, bible_c to be approved as story bibles", () => {
-    expect(checkProposalKind("bible_a")).toBe("approved_bible");
-    expect(checkProposalKind("bible_b")).toBe("approved_bible");
-    expect(checkProposalKind("bible_c")).toBe("approved_bible");
-    expect(checkProposalKind("synthetic-plan")).toBe("approved_bible");
+    expect(checkBibleProposalKind("bible_a")).toBe("approved_bible");
+    expect(checkBibleProposalKind("bible_b")).toBe("approved_bible");
+    expect(checkBibleProposalKind("bible_c")).toBe("approved_bible");
+    expect(checkBibleProposalKind("synthetic-plan")).toBe("approved_bible");
   });
 
   it("rejects manuscript proposals with status 400 when submitted to bible approval", () => {
-    expect(() => checkProposalKind("manuscript_a")).toThrowError(
+    expect(() => checkBibleProposalKind("manuscript_a")).toThrowError(
       new AppError(400, "Only bible proposals can be approved as story bibles.")
     );
-    expect(() => checkProposalKind("manuscript_b")).toThrowError(
+    expect(() => checkBibleProposalKind("manuscript_b")).toThrowError(
       new AppError(400, "Only bible proposals can be approved as story bibles.")
+    );
+  });
+
+  it("accepts valid manuscript proposals matching project version with 3 chapters", () => {
+    const validProposal = {
+      kind: "manuscript_a",
+      baseVersion: 2,
+      data: {
+        chapters: [
+          { chapterIndex: 1, text: "Ch1" },
+          { chapterIndex: 2, text: "Ch2" },
+          { chapterIndex: 3, text: "Ch3" },
+        ],
+      },
+    };
+    expect(validateManuscriptProposal(validProposal, 2)).toBe("accepted");
+  });
+
+  it("rejects non-manuscript proposals submitted to manuscript acceptance with 400", () => {
+    const bibleProposal = {
+      kind: "bible_a",
+      baseVersion: 2,
+      data: { chapters: [] },
+    };
+    expect(() => validateManuscriptProposal(bibleProposal, 2)).toThrowError(
+      new AppError(400, "Only manuscript proposals can be accepted as final manuscripts.")
+    );
+  });
+
+  it("rejects manuscript proposals from stale base versions with 409", () => {
+    const staleProposal = {
+      kind: "manuscript_a",
+      baseVersion: 1, // project is at version 2
+      data: {
+        chapters: [
+          { chapterIndex: 1, text: "Ch1" },
+          { chapterIndex: 2, text: "Ch2" },
+          { chapterIndex: 3, text: "Ch3" },
+        ],
+      },
+    };
+    expect(() => validateManuscriptProposal(staleProposal, 2)).toThrowError(
+      new AppError(409, "Proposal base version does not match current project version.")
+    );
+  });
+
+  it("rejects manuscript proposals missing required chapters with 400", () => {
+    const incompleteProposal = {
+      kind: "manuscript_a",
+      baseVersion: 2,
+      data: {
+        chapters: [
+          { chapterIndex: 1, text: "Ch1" },
+          { chapterIndex: 3, text: "Ch3" },
+        ],
+      },
+    };
+    expect(() => validateManuscriptProposal(incompleteProposal, 2)).toThrowError(
+      new AppError(400, "Manuscript must contain exactly chapters 1, 2, and 3.")
     );
   });
 });

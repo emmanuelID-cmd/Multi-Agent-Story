@@ -26,20 +26,9 @@ export function criticEditorA(
 ): RevisedManuscript {
   const bibleVersion = handoff.version.bibleVersion;
   const cannotSwimFact = approvedBible.facts.find(f => f.id === "F1")?.text ?? "Mara cannot swim.";
+  const ch2HasContradiction = baseChapters.some(c => c.chapterIndex === 2 && c.text.includes("Mara swam"));
 
   const revisedChapters: Chapter[] = baseChapters.map(c => {
-    if (c.chapterIndex === 2 && c.text.includes("Mara swam")) {
-      return chapterSchema.parse({
-        chapterIndex: 2,
-        bibleVersion,
-        text: "[Revised Version A — Continuity & Pacing]\n\n" +
-          "Mara investigated strictly from the boat, tracking the rhythmic blue pulses along the harbor wall. " +
-          `Remembering that she could not swim (${cannotSwimFact}), she held fast to the gunwale and adjusted her rudder. ` +
-          "A shuttered lantern on the breakwater produced the signal: it was unmistakably human-made. " +
-          "She hailed the missing sailor and held the boat steady in the surging tide.",
-      });
-    }
-
     if (c.chapterIndex === 1) {
       return chapterSchema.parse({
         chapterIndex: 1,
@@ -51,39 +40,76 @@ export function criticEditorA(
       });
     }
 
-    return chapterSchema.parse({
-      chapterIndex: 3,
-      bibleVersion,
-      text: "[Revised Version A — Continuity & Pacing]\n\n" +
-        "Mara brought the skiff alongside the breakwater and assisted the exhausted sailor aboard. " +
-        "Together they steered back through the harbor channel. The human-made signal had guided the mission, " +
-        "and her vessel had kept her safely out of the water.",
-    });
+    if (c.chapterIndex === 2) {
+      if (c.text.includes("Mara swam")) {
+        return chapterSchema.parse({
+          chapterIndex: 2,
+          bibleVersion,
+          text: "[Revised Version A — Continuity & Pacing]\n\n" +
+            "Mara investigated strictly from the boat, tracking the rhythmic blue pulses along the harbor wall. " +
+            `Remembering that she could not swim (${cannotSwimFact}), she held fast to the gunwale and adjusted her rudder. ` +
+            "A shuttered lantern on the breakwater produced the signal: it was unmistakably human-made. " +
+            "She hailed the missing sailor and held the boat steady in the surging tide.",
+        });
+      }
+      return chapterSchema.parse({
+        chapterIndex: 2,
+        bibleVersion,
+        text: "[Revised Version A — Continuity & Pacing]\n\n" +
+          "Mara investigated from the boat, tracking the marked pattern with deliberate care. " +
+          `Mindful that she could not swim (${cannotSwimFact}), she kept the skiff aligned against the breakwater surge. ` +
+          "A shuttered lantern on the rocks produced the blue signal: it was confirmed human-made. " +
+          "She called to the missing sailor and prepared a secure approach without entering the water.",
+      });
+    }
+
+    if (c.chapterIndex === 3) {
+      return chapterSchema.parse({
+        chapterIndex: 3,
+        bibleVersion,
+        text: "[Revised Version A — Continuity & Pacing]\n\n" +
+          "Mara brought the skiff alongside the breakwater and assisted the exhausted sailor aboard. " +
+          "Together they steered back through the harbor channel. The human-made signal had guided the mission, " +
+          "and her vessel had kept her safely out of the water.",
+      });
+    }
+
+    throw new Error(`Unexpected chapter index: ${c.chapterIndex}`);
   });
+
+  const changesMade = [
+    ...(ch2HasContradiction ? [{
+      chapterIndex: 2,
+      summary: "Replaced swimming action with boat maneuvering.",
+      justification: "Approved fact F1 explicitly establishes that Mara cannot swim.",
+    }] : [{
+      chapterIndex: 2,
+      summary: "Refined approach pacing and reinforced boat-only navigation.",
+      justification: "Maintains narrative momentum while strictly adhering to approved fact F1.",
+    }]),
+    {
+      chapterIndex: 1,
+      summary: "Tightened opening cadence.",
+      justification: "Improves narrative momentum leading into the inciting signal.",
+    },
+    {
+      chapterIndex: 3,
+      summary: "Reinforced resolution coherence.",
+      justification: "Confirms safe recovery by boat without water contact.",
+    },
+  ];
+
+  const rationale = ch2HasContradiction
+    ? "Corrected critical continuity contradiction in chapter 2 regarding Mara swimming. " +
+      "Realigned scene actions with approved fact F1 (cannot swim) and tightened transition pacing."
+    : "Polished scene transitions and narrative pacing across all three chapters while strictly honoring approved story facts.";
 
   return {
     kind: "manuscript_a",
     editorialLens: "continuity_and_pacing",
-    rationale: "Corrected critical continuity contradiction in chapter 2 regarding Mara swimming. " +
-      "Realigned scene actions with approved fact F1 (cannot swim) and tightened transition pacing.",
+    rationale,
     chapters: revisedChapters,
-    changesMade: [
-      {
-        chapterIndex: 2,
-        summary: "Replaced swimming action with boat maneuvering.",
-        justification: "Approved fact F1 explicitly establishes that Mara cannot swim.",
-      },
-      {
-        chapterIndex: 1,
-        summary: "Tightened opening cadence.",
-        justification: "Improves narrative momentum leading into the inciting signal.",
-      },
-      {
-        chapterIndex: 3,
-        summary: "Reinforced resolution coherence.",
-        justification: "Confirms safe recovery by boat without water contact.",
-      },
-    ],
+    changesMade,
   };
 }
 
@@ -125,14 +151,18 @@ export function criticEditorB(
       });
     }
 
-    return chapterSchema.parse({
-      chapterIndex: 3,
-      bibleVersion,
-      text: "[Revised Version B — Voice & Atmosphere]\n\n" +
-        "With a heave of canvas and rope, she drew the shivering sailor onto the dry floorboards. " +
-        "The skiff turned its bow toward the beacon's warm amber arc. Behind them, the mystery on the rocks fell quiet, " +
-        "leaving only the rhythmic crash of surf against stone and the quiet relief of survival.",
-    });
+    if (c.chapterIndex === 3) {
+      return chapterSchema.parse({
+        chapterIndex: 3,
+        bibleVersion,
+        text: "[Revised Version B — Voice & Atmosphere]\n\n" +
+          "With a heave of canvas and rope, she drew the shivering sailor onto the dry floorboards. " +
+          "The skiff turned its bow toward the beacon's warm amber arc. Behind them, the mystery on the rocks fell quiet, " +
+          "leaving only the rhythmic crash of surf against stone and the quiet relief of survival.",
+      });
+    }
+
+    throw new Error(`Unexpected chapter index: ${c.chapterIndex}`);
   });
 
   return {
