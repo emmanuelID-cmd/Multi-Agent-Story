@@ -21,6 +21,7 @@ export const bibleSchema = z.object({
 }).refine(b => new Set(b.beats.map(v => v.chapterIndex)).size === 3, "Each chapter needs a unique index.");
 export type Bible = z.infer<typeof bibleSchema>;
 export const chapterSchema = z.object({ chapterIndex, bibleVersion: z.number().int().positive(), text: z.string().min(1).max(20000) });
+export type Chapter = z.infer<typeof chapterSchema>;
 export const fixtureSchema = z.enum(["normal", "continuity", "timeout", "research-outage", "adversarial"]);
 export const runInput = z.object({ fixture: fixtureSchema.default("normal") });
 export type Fixture = z.infer<typeof fixtureSchema>;
