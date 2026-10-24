@@ -31,29 +31,120 @@ export async function projectState(ownerId: string, id: string) {
     evidence:await db.select().from(evidence).where(eq(evidence.runId,run.id)) };
 }
 export async function proposePlan(ownerId: string, id: string) {
-  const project = await ownedProject(ownerId,id);
-  const data = bibleSchema.parse({ facts:[
-    {id:"F1",text:"Mara, a lighthouse keeper, cannot swim."},
-    {id:"F2",text:"The blue signal is human-made."},
-    {id:"F3",text:"The missing sailor is rescued using a boat."}],
-    beats:[{chapterIndex:1,text:"Discover the blue signal."},{chapterIndex:2,text:"Investigate its human origin."},{chapterIndex:3,text:"Rescue the missing sailor by boat."}] });
-  const [proposal] = await db.insert(proposals).values({ id:randomUUID(), projectId:id, baseVersion:project.version, kind:"synthetic-plan", data }).returning();
-  return proposal;
+  const project = await ownedProject(ownerId, id);
+  const bibleA = bibleSchema.parse({
+    facts: [
+      { id: "F1", text: "Mara, a lighthouse keeper, cannot swim." },
+      { id: "F2", text: "The blue signal pulses at precise clockwork three-minute intervals." },
+      { id: "F3", text: "The missing sailor is trapped on the outer breakwater and rescued by boat." },
+    ],
+    beats: [
+      { chapterIndex: 1, text: "Discover and time the blue signal's three-minute rhythm." },
+      { chapterIndex: 2, text: "Navigate the harbor boat to investigate the breakwater lantern." },
+      { chapterIndex: 3, text: "Rescue the stranded sailor by boat before the rising tide cuts them off." },
+    ],
+  });
+  const bibleB = bibleSchema.parse({
+    facts: [
+      { id: "F1", text: "Mara, a lighthouse keeper, cannot swim." },
+      { id: "F2", text: "The missing sailor is Mara's estranged mentor who taught her the lighthouse craft." },
+      { id: "F3", text: "The rescue requires mutual cooperation and trust to navigate safely home." },
+    ],
+    beats: [
+      { chapterIndex: 1, text: "Recognize her mentor's distinctive lantern shutter pattern in the blue light." },
+      { chapterIndex: 2, text: "Overcome personal fear of the deep water and steer the harbor skiff into the fog." },
+      { chapterIndex: 3, text: "Reach the breakwater and reconcile with her mentor while pulling together through the swells." },
+    ],
+  });
+  const bibleC = bibleSchema.parse({
+    facts: [
+      { id: "F1", text: "Mara, a lighthouse keeper, cannot swim." },
+      { id: "F2", text: "Gale winds and Atlantic swells isolate the harbor when the fog horn sounds." },
+      { id: "F3", text: "A heavy wooden harbor dory is the only craft that can withstand the breakwater surges." },
+    ],
+    beats: [
+      { chapterIndex: 1, text: "Spot the eerie blue glow piercing through a dense Atlantic squall." },
+      { chapterIndex: 2, text: "Battle surging cross-currents and slippery granite ledges in the heavy wooden dory." },
+      { chapterIndex: 3, text: "Haul the soaked survivor aboard as storm waves crest against the breakwater." },
+    ],
+  });
+  const inserted = await db.insert(proposals).values([
+    { id: randomUUID(), projectId: id, baseVersion: project.version, kind: "bible_a", data: bibleA },
+    { id: randomUUID(), projectId: id, baseVersion: project.version, kind: "bible_b", data: bibleB },
+    { id: randomUUID(), projectId: id, baseVersion: project.version, kind: "bible_c", data: bibleC },
+  ]).returning();
+  return inserted[0];
 }
 export async function approveProposal(ownerId: string, id: string, proposalId: string) {
-  await ownedProject(ownerId,id);
-  return db.transaction(async tx=>{
-    const [project] = await tx.select().from(projects).where(and(eq(projects.id,id),eq(projects.ownerId,ownerId))).for("update");
-    if (!project) throw new AppError(404,"Project unavailable.");
-    const [proposal] = await tx.select().from(proposals).where(and(eq(proposals.id,proposalId),eq(proposals.projectId,id))).for("update");
-    if (!proposal || proposal.status!=="pending" || proposal.baseVersion!==project.version) throw new AppError(409,"Proposal is stale or already decided. Review a new plan.");
-    const version = project.version+1;
-    const [bible] = await tx.insert(bibles).values({ id:randomUUID(),projectId:id,version,data:bibleSchema.parse(proposal.data) }).returning();
-    await tx.insert(memories).values(bible.data.beats.map(beat=>({id:randomUUID(),bibleId:bible.id,chapterIndex:beat.chapterIndex,data:{factIds:bible.data.facts.map(f=>f.id),plannedEvents:beat.text,unresolvedThreads:["Locate the missing sailor."],summary:"Synthetic handoff; canonical facts remain in the approved bible."}})));
-    await tx.update(projects).set({version}).where(eq(projects.id,id));
-    await tx.update(proposals).set({status:"accepted"}).where(eq(proposals.id,proposalId));
+  await ownedProject(ownerId, id);
+  return db.transaction(async tx => {
+    const [project] = await tx.select().from(projects).where(and(eq(projects.id, id), eq(projects.ownerId, ownerId))).for("update");
+    if (!project) throw new AppError(404, "Project unavailable.");
+    const [proposal] = await tx.select().from(proposals).where(and(eq(proposals.id, proposalId), eq(proposals.projectId, id))).for("update");
+    if (!proposal || proposal.status !== "pending" || proposal.baseVersion !== project.version) throw new AppError(409, "Proposal is stale or already decided. Review a new plan.");
+    if (!proposal.kind.startsWith("bible_") && proposal.kind !== "synthetic-plan") {
+      throw new AppError(400, "Only bible proposals can be approved as story bibles.");
+    }
+    const version = project.version + 1;
+    const [bible] = await tx.insert(bibles).values({ id: randomUUID(), projectId: id, version, data: bibleSchema.parse(proposal.data) }).returning();
+    await tx.insert(memories).values(bible.data.beats.map(beat => ({ id: randomUUID(), bibleId: bible.id, chapterIndex: beat.chapterIndex, data: { factIds: bible.data.facts.map(f => f.id), plannedEvents: beat.text, unresolvedThreads: ["Locate the missing sailor."], summary: "Synthetic handoff; canonical facts remain in the approved bible." } })));
+    await tx.update(projects).set({ version }).where(eq(projects.id, id));
+    await tx.update(proposals).set({ status: "accepted" }).where(eq(proposals.id, proposalId));
     return bible;
   });
+}
+export async function approveManuscriptProposal(ownerId: string, id: string, proposalId: string) {
+  await ownedProject(ownerId, id);
+  return db.transaction(async tx => {
+    const [project] = await tx.select().from(projects).where(and(eq(projects.id, id), eq(projects.ownerId, ownerId))).for("update");
+    if (!project) throw new AppError(404, "Project unavailable.");
+    const [proposal] = await tx.select().from(proposals).where(and(eq(proposals.id, proposalId), eq(proposals.projectId, id))).for("update");
+    if (!proposal || proposal.status !== "pending") throw new AppError(409, "Proposal is stale or already decided.");
+    if (!proposal.kind.startsWith("manuscript_")) {
+      throw new AppError(400, "Only manuscript proposals can be accepted as final manuscripts.");
+    }
+    await tx.update(proposals).set({ status: "accepted" }).where(eq(proposals.id, proposalId));
+    return proposal;
+  });
+}
+export async function rewriteRun(ownerId: string, id: string, feedback?: string, dispatch = true) {
+  await ownedProject(ownerId, id);
+  const [run] = await db.select().from(runs).where(eq(runs.projectId, id)).orderBy(desc(runs.createdAt)).limit(1);
+  if (!run) throw new AppError(409, "No run to rewrite.");
+  const [critique] = await db.select().from(critiques).where(eq(critiques.runId, run.id));
+  const currentRound = (critique?.data as { revisionRounds?: number } | undefined)?.revisionRounds ?? 0;
+  if (currentRound >= 2) {
+    throw new AppError(409, "The two-round revision limit has been reached. Existing proposals remain available.");
+  }
+  const nextRun = await db.transaction(async tx => {
+    const [project] = await tx.select().from(projects).where(eq(projects.id, id)).for("update");
+    const [bible] = await tx.select().from(bibles).where(and(eq(bibles.projectId, id), eq(bibles.version, project.version)));
+    if (!bible) throw new AppError(409, "Approve a story bible before drafting.");
+    const active = await tx.select().from(runs).where(eq(runs.projectId, id));
+    if (active.some(r => ["pending", "running"].includes(r.status))) throw new AppError(409, "A run is already active.");
+    const [created] = await tx.insert(runs).values({
+      id: randomUUID(),
+      projectId: id,
+      bibleId: bible.id,
+      fixture: run.fixture,
+    }).returning();
+    await tx.insert(tasks).values([1, 2, 3].map(chapterIndex => ({
+      id: randomUUID(),
+      runId: created.id,
+      chapterIndex,
+      savedInput: {
+        bible: bible.data,
+        version: bible.version,
+        brief: {
+          ...project.brief,
+          ...(feedback ? { desiredEnding: `${project.brief.desiredEnding} [Revision feedback: ${feedback}]` } : {}),
+        },
+      },
+    })));
+    return created;
+  });
+  if (dispatch) await dispatchRun(nextRun.id);
+  return nextRun;
 }
 export async function startRun(ownerId: string, id: string, input: unknown, dispatch=true) {
   const parsed = runInput.parse(input);
