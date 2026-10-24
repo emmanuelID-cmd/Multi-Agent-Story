@@ -40,6 +40,7 @@ The current foundation implements a bounded slice of this product. It supports
 authenticated synthetic users, owner-scoped projects and briefs, an exact-version
 proposal approval, three chapter tasks dispatched through a worker, fixture-based
 critique, cancellation and retry (at most two attempts), and Markdown export.
+The WRITE lane provides 3 candidate bibles at Gate #1, parallel chapter drafting, two competing editorial manuscripts (Version A and Version B) at Gate #2, an outer 2-round revision loop, and synthetic shells for Reader and Consistency.
 The displayed outputs are deterministic synthetic fixtures for the fixed Mara
 test case; they are not a generated three-thousand-word story. Research is
 reported as unavailable when no fixture evidence is supplied. The interface is
