@@ -44,7 +44,9 @@ is connected. The metadata button alone does not create or accept that dossier.
 
 ## Project references
 
-- [Active PRD v3 working draft](docs/prd/drafts/PRD-v3-draft.md) — approved input-to-research behavior and contributor connection agreement; draft, not a release approval
+- [Active PRD v4 working draft](docs/prd/drafts/PRD-v4-draft.md) — approved reliability-first MVP amendments and contributor boundaries; not a release approval
+- [Remaining MVP build checklist](docs/implementation/weaver-mvp-build-checklist.md) — owner-labeled inventory, including Justin's lane; no implementation authorization
+- [PRD v3 working draft](docs/prd/drafts/PRD-v3-draft.md) — prior intake/research revision retained for history
 - [PRD v2 working draft](docs/prd/drafts/PRD-v2-draft.md) — prior revision retained for history
 - [Original submitted PRD](docs/prd/Multi-Agent-Story-Builder-PRD.md) — preserved historical baseline
 - [PRD PDF](docs/prd/Multi-Agent-Story-Builder-PRD.pdf)
