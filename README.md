@@ -460,7 +460,8 @@ Multi-Agent-Story/
 The committed synthetic foundation is the shared starting point. Use `developer`
 as the integration and starting base for all contributor, task, and SQL work
 branches. Schema and migration changes belong on the separate persistent
-`manny/sql-foundation` lane; Manny's READ work belongs on `manny/read-agents`.
+`sql-foundation` lane, shared by either contributor; Manny's READ work belongs
+on `manny/read-agents`. The legacy ref transition is tracked in Shared Phase 1.2.
 Both lanes send reviewed pull requests to `developer`; only pull requests from
 `developer` target `main`. Do routine work on lane or task branches rather than
 directly on `developer` or `main`. These rules describe branch ancestry and PR
@@ -483,3 +484,12 @@ evidence for a human decision. Never force, reset, discard, or delete work to
 force alignment. Preserve existing PRD content and do not infer cloud backup
 from its OneDrive path. Branching, staging, committing, pushing, merging, and
 branch deletion remain subject to the approved plan and external AGENTS gates.
+
+## Phase accountability
+
+Follow the [owner phase plans](docs/phase/README.md),
+[26-item checklist](docs/implementation/weaver-mvp-build-checklist.md) and
+[phase commit groups](docs/phase/COMMIT-GROUPS.md). Check off each assignment
+only after verified completion, then record what changed and the acceptance/test
+evidence (actual X/Y). Phase-document creation completes none of the 26 items.
+Justin controls his WRITE phase organization; Manny owns READ; SQL is shared.
