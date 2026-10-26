@@ -1,0 +1,45 @@
+{
+  "brand": "Weaver",
+  "selectedDirection": "Threadkeeper",
+  "reference": "../06-threadkeeper.png",
+  "method": "Built-in image_gen reference-image edits",
+  "variations": [
+    {
+      "id": "01-art-nouveau",
+      "name": "Art Nouveau",
+      "file": "01-art-nouveau.png",
+      "sha256": "daf4400829c1f9fd28ae6fc4112a02d49a8d36fdd9d9372c40182911287a475c",
+      "prompt": "Use case: logo-brand, style-transfer edit. Asset: Weaver Threadkeeper logo variation. Use the supplied original as the identity and composition reference. Preserve the general design: hooded storyteller on the left/center, raised hand toward the upper right, floating thread spool above that hand, cyan ribbon-thread flowing around the body, cloak merging into an open book at the bottom, tiny warm gold accents, and the exact readable wordmark \"Weaver\" centered below. Blue and purple dominate. Preserve the visual story and friendly creative spirit while changing the art treatment as directed. One logo per image, plain warm ivory background, ample margins, no mockup, no extra captions or watermarks. Keep Weaver spelled W-e-a-v-e-r. Style direction: Reinterpret the mascot as an elegant adult androgynous storyteller with realistic facial proportions, flowing Art Nouveau contours, decorative engraved botanical-like thread flourishes and restrained gold detailing. Sophisticated illustrated literary emblem, not a child or cartoon. Keep the identifiable original hood, pose, spool, thread and open-book base."
+    },
+    {
+      "id": "02-editorial-minimal",
+      "name": "Editorial Minimal",
+      "file": "02-editorial-minimal.png",
+      "sha256": "b3796308b1ba31d2c1e5dd6a236edd5a5cd5e2e9325312cc5c27636ed4775aee",
+      "prompt": "Use case: logo-brand, style-transfer edit. Asset: Weaver Threadkeeper logo variation. Use the supplied original as the identity and composition reference. Preserve the general design: hooded storyteller on the left/center, raised hand toward the upper right, floating thread spool above that hand, cyan ribbon-thread flowing around the body, cloak merging into an open book at the bottom, tiny warm gold accents, and the exact readable wordmark \"Weaver\" centered below. Blue and purple dominate. Preserve the visual story and friendly creative spirit while changing the art treatment as directed. One logo per image, plain warm ivory background, ample margins, no mockup, no extra captions or watermarks. Keep Weaver spelled W-e-a-v-e-r. Style direction: A radically simplified sophisticated editorial logo in flat ink shapes, strong negative space and a few precise curves. A mature hooded storyteller in profile/three-quarter view, small human eye rather than oversized cartoon eyes. Reduce hood, hand, spool and book to clear iconic shapes. Blue/violet duotone with one cyan thread and tiny warm-gold spool detail. Recognizable at small sizes."
+    },
+    {
+      "id": "03-engraved-fantasy",
+      "name": "Engraved Fantasy",
+      "file": "03-engraved-fantasy.png",
+      "sha256": "5e4d8c455eb9847eded30ee37b826c926b787cacd943a2322ca928cff931557b",
+      "prompt": "Use case: logo-brand, style-transfer edit. Asset: Weaver Threadkeeper logo variation. Use the supplied original as the identity and composition reference. Preserve the general design: hooded storyteller on the left/center, raised hand toward the upper right, floating thread spool above that hand, cyan ribbon-thread flowing around the body, cloak merging into an open book at the bottom, tiny warm gold accents, and the exact readable wordmark \"Weaver\" centered below. Blue and purple dominate. Preserve the visual story and friendly creative spirit while changing the art treatment as directed. One logo per image, plain warm ivory background, ample margins, no mockup, no extra captions or watermarks. Keep Weaver spelled W-e-a-v-e-r. Style direction: A mature hooded storyteller rendered like a finely engraved illustrated bookplate, with controlled etched hatching, rich indigo and purple ink and cyan thread accents. Adult realistically proportioned face and graceful hand. Intricate but organized literary craftsmanship; strong outer silhouette and generous whitespace. Antique engraving meets contemporary fantasy publishing."
+    },
+    {
+      "id": "04-cut-paper",
+      "name": "Sculpted Paper",
+      "file": "04-cut-paper.png",
+      "sha256": "06c0631a83aecf9b1e36aab795c34568eb745e298b0ec13919adf4a523031ed6",
+      "prompt": "Use case: logo-brand, style-transfer edit. Asset: Weaver Threadkeeper logo variation. Use the supplied original as the identity and composition reference. Preserve the general design: hooded storyteller on the left/center, raised hand toward the upper right, floating thread spool above that hand, cyan ribbon-thread flowing around the body, cloak merging into an open book at the bottom, tiny warm gold accents, and the exact readable wordmark \"Weaver\" centered below. Blue and purple dominate. Preserve the visual story and friendly creative spirit while changing the art treatment as directed. One logo per image, plain warm ivory background, ample margins, no mockup, no extra captions or watermarks. Keep Weaver spelled W-e-a-v-e-r. Style direction: Layered handcrafted paper-cut art with tangible cut-paper edges, gentle dimensional shadows and elegant folded cloak shapes. Stylized adult human proportions, restrained expressive face, not a chibi child. Indigo and violet paper layers, luminous cyan paper-ribbon thread, warm gold spool rims. Open book formed by layered paper cutouts. A clean artful logo composition rather than a scene."
+    },
+    {
+      "id": "05-painterly-mythic",
+      "name": "Painterly Mythic",
+      "file": "05-painterly-mythic.png",
+      "sha256": "91e05069d087f081fa2d94e9ab2375de01e0678ca5aebf2083667c7520ad8d6c",
+      "prompt": "Use case: logo-brand, style-transfer edit. Asset: Weaver Threadkeeper logo variation. Use the supplied original as the identity and composition reference. Preserve the general design: hooded storyteller on the left/center, raised hand toward the upper right, floating thread spool above that hand, cyan ribbon-thread flowing around the body, cloak merging into an open book at the bottom, tiny warm gold accents, and the exact readable wordmark \"Weaver\" centered below. Blue and purple dominate. Preserve the visual story and friendly creative spirit while changing the art treatment as directed. One logo per image, plain warm ivory background, ample margins, no mockup, no extra captions or watermarks. Keep Weaver spelled W-e-a-v-e-r. Style direction: A luminous painterly fantasy-book illustration distilled into a logo emblem. A mature androgynous hooded storyteller with believable facial anatomy, thoughtful warm expression and graceful lifted hand, softly modeled blue/violet cloak and a radiant cyan story-thread. Brushwork and subtle watercolor-gouache texture, restrained gold light, clean isolated silhouette. More atmospheric and grown-up than the cartoon reference, but unmistakably the same Threadkeeper concept."
+    }
+  ],
+  "status": "Merged Threadkeeper approved by Manny and Justin",
+  "selectedLogo": "../weaver-logo.png"
+}

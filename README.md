@@ -1,7 +1,19 @@
-# Multi-Agent Story Builder
+# Weaver — Multi-Agent Storyteller
 
-A collaboration assignment to turn a fiction premise into an ordered, editable
-three-chapter draft, with writer-approved planning and bounded critique.
+<img src="docs/branding/weaver/weaver-logo.png" alt="Weaver Threadkeeper logo" width="280">
+
+Weaver is a collaborative storyteller designed around 12 coordinated agent
+roles, weaving a fiction premise into an ordered, editable three-chapter draft
+with writer-approved planning and bounded critique. The repository remains
+`Multi-Agent-Story`; the implementation status below distinguishes working
+capabilities from the proposed full agent workflow.
+
+Explore the ten [Weaver logo concepts](docs/branding/weaver/index.html), including
+the six selected creative directions and four new alternatives.
+**Approved logo: the merged Threadkeeper**, selected by Manny and Justin.
+It combines the clean Editorial Minimal silhouette with selective Art Nouveau
+gold details. The [five style explorations](docs/branding/weaver/threadkeeper/index.html)
+remain available for reference.
 
 **Status:** the local synthetic foundation is implemented. It includes
 authentication, project ownership, a minimal story workspace, fixture-backed
