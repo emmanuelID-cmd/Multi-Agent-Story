@@ -83,6 +83,34 @@ Verified move hashes:
 
 # Handoffs prepared for push
 
+## 2026-10-26T10:46:11-04:00
+
+- Preparation time: America/New_York; this is not a verified push timestamp.
+- Destination: `emmanuelID-cmd/Multi-Agent-Story`, branch `manny/read-agents`; PR target `developer`.
+- Verified destination remote baseline: `0b4666db28fa2f284c5308cb7ef21b633672967d`.
+- Commit author: Emmanuel De Jesus <emmanuel.dejesus@pursuit.org>, verified from the work commits below. Manny's READ work connects intake; Justin's existing WRITE implementation is preserved.
+- Known work commits: `1bd608e3513f123cfa7335ff18aef7ca2eb0e97d` (expanded Coordinator intake) and `1e94f2d4ebb16a0413373016cdba5f0b2be4b393` (private-data-safe failure recovery). The final visual documentation commit includes this handoff; its identifier is not yet known.
+- Activity: connect the real home page to the 18-detail helper, sparse original, bounded source-grounded analysis, independent suggestion decisions and confirmed scope; then separate failure recovery; publish matching PRD-v3 architecture and visual explanations.
+- Affected areas: `src/contracts/intake.ts`, `src/agents/intake.ts`, owner-scoped intake services/routes, `src/app/story-intake.tsx`, shared context/scope barriers, tests, `docs/architecture/`, `docs/artifacts/story-builder-visual-v3.*` and generators. Project README/AGENTS and documentation index explain the connection and limits.
+- Validation: 131/131 unit tests, TypeScript and 7/7 targeted browser tests passed. Both SECURITY rounds clear within tested scope. Ten native slides rendered; 45 links and persisted motion checked; full route 59.75 seconds natively and 59.5 seconds in HTML. Historical source hashes match; whitespace/fences pass.
+- Live check: one authenticated synthetic web intake returned HTTP 200/analyzed, ten observations and five suggestions in 21.943 seconds after one grounding repair. A preceding post-connection attempt failed output validation. This is a functional check, not a reliability benchmark; no model private reasoning is exposed.
+- Local recovery: restricted-process outbound HTTPS failed with EACCES, while elevated connectivity worked. The verified project Next server was restarted with authorized network access; no TLS verification bypass was introduced. Keys, saved manuscripts, private logs and local diagnostics are excluded from this push.
+- Integration: the authorized PR will merge into `developer`; eligible contributor/SQL branch refs may then fast-forward to that merged history. `main` stays unchanged. No SQL changes or external AGENTS files belong to this publication.
+
+### Done
+
+- [x] Replace the old five-field entry with the expanded helper, saved free-form idea and individually reviewable suggestions.
+- [x] Connect opt-in Coordinator analysis, exact-analysis scope confirmation, owner/version checks and bounded failure recovery.
+- [x] Preserve writer input and prevent unaccepted suggestions or missing dossier approval from entering planning.
+- [x] Create the current architecture document, synchronized diagram/data and modern ten-slide HTML/PPTX/PPSX presentations with illustrated handoff/revision loops.
+- [x] Verify the synthetic live intake example, tests, presentation controls, source preservation and security boundaries.
+
+### Not completed
+
+None within the approved intake and visual-presentation scope. The wider PRD still has an unconnected accepted research-dossier-to-planning path and fixture-backed web drafting/editing; this publication does not claim those capabilities are complete. Native animation is verified structurally, without sampling playback video frames.
+
+Collaborators should read the [current architecture](architecture/multi-agent-workflow-v3.md), [intake implementation](implementation/story-intake.md), and [interactive presentation](artifacts/story-builder-visual-v3.html). The final metadata-only review commit will identify the complete reviewed range; the actual push/merge result is verified separately afterward.
+
 ## 2026-10-20T22:37:00-04:00
 
 - Preparation time: America/New_York; this is not a verified push timestamp.

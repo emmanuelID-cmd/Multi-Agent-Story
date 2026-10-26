@@ -5,18 +5,30 @@ three-chapter draft, with writer-approved planning and bounded critique.
 
 **Status:** the local synthetic foundation is implemented. It includes
 authentication, project ownership, a minimal story workspace, fixture-backed
-workflow execution, and Markdown export. It has no live model or research
-provider enabled, and it has not processed a real manuscript. Current development
-is limited to Manny's [READ lane](docs/implementation/read-lane.md): owner-scoped state retrieval
-and gated book-metadata adapters. Existing WRITE and interface work is preserved
+workflow execution, and Markdown export. Opt-in web intake and a separate READ
+CLI harness use the existing Claude adapter; web drafting and editing remain
+synthetic, and book providers stay gated. No real manuscript processing is
+claimed. Current work stays in Manny's READ lane, including owner-scoped state,
+book-metadata boundaries and the approved intake connection. Existing WRITE behavior is preserved
 for Justin; this READ pass does not claim that his lane is complete or reviewed.
 
 The separate [executable READ harness](docs/implementation/read-runtime.md) now
 connects real Research, Reader, and Consistency model runners. Run
 `npm run agents:read` for fixture evaluation or add `-- --live` to call Claude
-with the controlled synthetic inputs. The web workspace remains fixture-backed.
+with the controlled synthetic inputs. Web drafting and editing remain fixture-backed.
 The harness records tools, source versions, failure states, and handoffs; its
 WRITE connectors and default NYT/Gutendex responses are explicitly synthetic.
+
+The web [story intake](docs/implementation/story-intake.md) now saves a sparse,
+free-form idea, displays the full story-material helper, and calls the existing
+Claude adapter when the writer selects **Analyze with Claude**. Review sourced
+details and individual suggestions, then confirm the exact brief and research
+scope. Editing the original invalidates prior analysis and confirmation. This
+intake task belongs to Coordinator; it adds no product agent to the roster.
+One authenticated synthetic web analysis returned HTTP 200 after restoring local
+server network access; this is a functional check, not a reliability benchmark.
+New intake projects keep planning blocked until an accepted research dossier
+is connected. The metadata button alone does not create or accept that dossier.
 
 ## Project references
 
@@ -25,7 +37,9 @@ WRITE connectors and default NYT/Gutendex responses are explicitly synthetic.
 - [Original submitted PRD](docs/prd/Multi-Agent-Story-Builder-PRD.md) — preserved historical baseline
 - [PRD PDF](docs/prd/Multi-Agent-Story-Builder-PRD.pdf)
 - [Documentation index](docs/README.md)
-- [Multi-agent workflow](docs/architecture/multi-agent-workflow.md)
+- [Current v3 architecture](docs/architecture/multi-agent-workflow-v3.md) and [diagram](docs/architecture/assets/flow-architecture-v3.svg)
+- [Interactive visual presentation](docs/artifacts/story-builder-visual-v3.html)
+- [Historical multi-agent workflow](docs/architecture/multi-agent-workflow.md)
 - [Contributor instructions](AGENTS.md)
 - [Team handoff](docs/TEAM-REFERENCE.md)
 - [WRITE lane implementation](docs/implementation/write-lane.md)
@@ -65,7 +79,7 @@ test case; they are not a generated three-thousand-word story. Research is
 reported as unavailable when no fixture evidence is supplied. The interface is
 minimal but functional.
 
-Full PRD revision editing, compare/restore UI, live model and research providers,
+Full PRD revision editing, compare/restore UI, live story generation and research providers,
 email verification and recovery delivery, deployment, and production privacy and
 retention controls remain deferred.
 
@@ -73,7 +87,7 @@ Input handling validates briefs with Zod and field-aware signals, separates a
 fixed writer policy from JSON-serialized story data, declares a fixed role-to-tool
 allowlist, quarantines flagged optional metadata, and validates chapter outputs.
 These controls reduce risk; keyword and role-delimiter signals do not prove that
-content is safe. The current workflow uses fixtures and has no live model. See
+content is safe. The drafting workflow uses fixtures; opt-in intake uses Claude. See
 [Input boundaries](docs/implementation/input-boundaries.md) for the implemented flow, server
 authorization boundary, detector contract, test coverage, and remaining limits.
 
@@ -361,10 +375,11 @@ ignored `.tools/` directory. `.tools/runtime-path.txt` records its `bin` path;
 the machine's default Node 26 installation remains unchanged. Docker Compose
 provides the isolated PostgreSQL 17 service. The project `.env` contains local
 random database and session secrets; never read or include those values in
-documentation, logs, or review output. Anthropic Claude Haiku 5.5
-(`claude-haiku-5-5`) is selected in PRD v3 for a future READ integration, but
-the application runtime is not configured or connected. Deployment target and
-production privacy and retention gates remain unresolved.
+documentation, logs, or review output. The existing Anthropic Claude Haiku 5.5
+(`claude-haiku-5-5`) adapter is connected to opt-in web intake review and the
+separate READ CLI harness. Web Research/Reader/Consistency dispatch and live
+WRITE generation are not connected. Deployment target and production privacy
+and retention gates remain unresolved.
 
 The HTML guide and ZIP are earlier document snapshots. They are not regenerated
 as part of this foundation; their embedded text may predate the implementation.

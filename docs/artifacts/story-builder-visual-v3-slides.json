@@ -1,0 +1,198 @@
+{
+  "version": "visual-deck-v3",
+  "design": {
+    "aspectRatio": "16:9",
+    "colors": {
+      "navy": "#0B1220",
+      "cream": "#f7f4ec",
+      "cyan": "#53d9e9",
+      "violet": "#aa91ff",
+      "blue": "#76a8ff",
+      "amber": "#f4bc6c"
+    },
+    "statusCaption": "Workflow illustration · not live activity"
+  },
+  "slides": [
+    {
+      "number": 1,
+      "kicker": "STORY BUILDER / V3",
+      "title": "One story. Twelve roles. One writer in control.",
+      "subtitle": "A proposed path from first idea to an accepted, ordered manuscript.",
+      "bullets": [
+        "Writer choices are explicit",
+        "Parallel work meets at barriers",
+        "Every accepted version is traceable"
+      ],
+      "diagramStageIds": [
+        "intake",
+        "research",
+        "bibles",
+        "writers",
+        "reader",
+        "editors",
+        "review",
+        "export"
+      ],
+      "visualType": "hero-flow",
+      "notes": "The 12 are proposed agent instances, including the shared Coordinator / Showrunner. This is an architecture illustration, not a live product run."
+    },
+    {
+      "number": 2,
+      "kicker": "SYSTEM MAP",
+      "title": "The whole route",
+      "subtitle": "Follow the light through the proposed workflow. Select a stage to jump to its explanation.",
+      "bullets": [],
+      "diagramStageIds": [
+        "intake",
+        "research",
+        "dossier_gate",
+        "bibles",
+        "bible_gate",
+        "writers",
+        "barrier",
+        "reader",
+        "editors",
+        "consistency",
+        "review",
+        "export"
+      ],
+      "visualType": "animated-architecture",
+      "notes": "The animated light is an illustration. Human gates pause the route. Current implementation does not establish a fully live twelve-instance flow."
+    },
+    {
+      "number": 3,
+      "kicker": "01 / INTAKE",
+      "title": "The writer shapes the brief",
+      "subtitle": "The original idea stays visible while suggestions are decided one by one.",
+      "bullets": [
+        "Accept, customize, reject, or defer",
+        "Only chosen details become constraints",
+        "Confirm brief and research scope"
+      ],
+      "diagramStageIds": [
+        "intake"
+      ],
+      "visualType": "idea-to-choices",
+      "notes": "Intake belongs to the shared Coordinator; it does not add a thirteenth agent. Premise and genre are requested, while other details are optional."
+    },
+    {
+      "number": 4,
+      "kicker": "02 / RESEARCH",
+      "title": "Evidence before planning",
+      "subtitle": "Both provider outcomes enter a versioned dossier, then the writer accepts the exact current version.",
+      "bullets": [
+        "NYT Books + Gutendex outcomes",
+        "Source and confidence attached",
+        "Missing evidence closes the gate"
+      ],
+      "diagramStageIds": [
+        "research",
+        "dossier_gate"
+      ],
+      "visualType": "sources-gate",
+      "notes": "Provider metadata, permitted text observations, interpretation, and writer choices remain separate. Partial provider results alone cannot open the dossier gate."
+    },
+    {
+      "number": 5,
+      "kicker": "03 / BIBLE",
+      "title": "Three plans. One approved version.",
+      "subtitle": "Candidate plans share stable facts and chapter assignments. The writer resolves conflicts.",
+      "bullets": [
+        "Bible A · B · C",
+        "Writer approves exact version",
+        "Facts lock before drafting"
+      ],
+      "diagramStageIds": [
+        "bibles",
+        "bible_gate"
+      ],
+      "visualType": "bible-fan",
+      "notes": "Planning output is candidate material. A specific bible version and beats require explicit writer approval before writer tasks are dispatched."
+    },
+    {
+      "number": 6,
+      "kicker": "04 / WRITE",
+      "title": "Three chapters in parallel",
+      "subtitle": "Each writer receives the same approved bible and a different chapter index.",
+      "bullets": [
+        "Chapter 1 · 2 · 3",
+        "Validate identity and version",
+        "Join by index at the barrier"
+      ],
+      "diagramStageIds": [
+        "writers",
+        "barrier"
+      ],
+      "visualType": "parallel-chapters",
+      "notes": "The barrier opens only when all three indexed chapter outputs are valid. Completion order does not determine manuscript order."
+    },
+    {
+      "number": 7,
+      "kicker": "05 / READ",
+      "title": "One structured handoff",
+      "subtitle": "Reader grounds editorial work in the ordered draft and accepted sources.",
+      "bullets": [
+        "Five required fields",
+        "Editors validate before editing",
+        "One bounded content repair"
+      ],
+      "diagramStageIds": [
+        "reader"
+      ],
+      "visualType": "handoff-schema",
+      "notes": "Top-level fields are task, userInstructions, sourceReferences, completeness, and version. A semantic rejection allows one Reader content repair; unresolved failure pauses the branch."
+    },
+    {
+      "number": 8,
+      "kicker": "06 / EDIT + CHECK",
+      "title": "Two candidates, checked separately",
+      "subtitle": "Editors propose changes. Consistency checks each exact proposal version.",
+      "bullets": [
+        "Editor A and Editor B diverge",
+        "Separate exact-version checks",
+        "Neither check approves an edit"
+      ],
+      "diagramStageIds": [
+        "editors",
+        "consistency"
+      ],
+      "visualType": "two-proposals",
+      "notes": "Each Critic/Editor is one combined instance. The same Consistency instance runs separate checks for proposal A and B; stale reports cannot certify changed content."
+    },
+    {
+      "number": 9,
+      "kicker": "07 / WRITER REVIEW",
+      "title": "The writer decides",
+      "subtitle": "Accept a current proposal, finish with labeled issues, or request a bounded revision.",
+      "bullets": [
+        "Revision returns to Reader + Editors",
+        "At most two rounds",
+        "Bible changes need a new approval"
+      ],
+      "diagramStageIds": [
+        "review",
+        "reader",
+        "editors",
+        "bible_gate"
+      ],
+      "visualType": "review-loop",
+      "notes": "Acceptance is an authenticated application action against the current base version. Revision never silently changes approved bible facts."
+    },
+    {
+      "number": 10,
+      "kicker": "08 / EXPORT",
+      "title": "An accepted version leaves the system",
+      "subtitle": "Markdown export uses the ordered accepted version and carries evidence and unresolved issue labels.",
+      "bullets": [
+        "Accepted manuscript",
+        "Approved bible + evidence",
+        "Recoverable version history"
+      ],
+      "diagramStageIds": [
+        "export"
+      ],
+      "visualType": "close-and-replay",
+      "notes": "A partial or failed branch is not presented as fully verified. This deck is design documentation, not evidence of production readiness or publication."
+    }
+  ]
+}

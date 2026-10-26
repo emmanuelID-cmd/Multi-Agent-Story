@@ -1,0 +1,206 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Multi-Agent Story Builder v3 workflow</title>
+  <desc id="desc">Proposed flow from writer-confirmed brief through required research, accepted dossier, Bible planning, three parallel chapter writers, Reader handoff, two editors, exact-version Consistency checks, writer review, and Markdown export. One bounded revision path returns to Reader. This is a design illustration, not live telemetry.</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0B1220"/>
+      <stop offset="1" stop-color="#101E35"/>
+    </linearGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1D304B"/>
+      <stop offset="1" stop-color="#17263E"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-40%" width="160%" height="190%">
+      <feDropShadow dx="0" dy="10" stdDeviation="13" flood-color="#030814" flood-opacity=".42"/>
+    </filter>
+    <pattern id="dots" width="32" height="32" patternUnits="userSpaceOnUse">
+      <circle cx="1" cy="1" r="1" fill="#7993BA" opacity=".12"/>
+    </pattern>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M1 1 9 5 1 9" fill="none" stroke="#8DA6C7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="arrow-amber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M1 1 9 5 1 9" fill="none" stroke="#F5B84B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <style>
+      text { font-family: Inter, "Segoe UI", Arial, sans-serif; }
+      .title { fill:#F3F7FF; font-size:34px; font-weight:760; letter-spacing:-.7px; }
+      .small { fill:#A9B9D1; font-size:17px; font-weight:540; }
+      .section { fill:#7190BB; font-size:17px; font-weight:720; letter-spacing:2.4px; }
+      .label { fill:#F6F9FF; font-size:22px; font-weight:740; }
+      .sub { fill:#B5C5DA; font-size:16px; font-weight:540; }
+      .pill { fill:#DCE8FA; font-size:16px; font-weight:690; }
+      .edge { fill:none; stroke:#8DA6C7; stroke-width:3; stroke-linecap:round; stroke-linejoin:round; marker-end:url(#arrow); opacity:.85; }
+      .node { fill:url(#card); stroke:#466080; stroke-width:1.6; filter:url(#shadow); }
+      .mini { fill:#233C5E; stroke:#6882AA; stroke-width:1.2; }
+      #node-intake .node, #node-dossier_gate .node, #node-bible_gate .node, #node-review .node { stroke:#F5B84B; }
+      #node-research .node, #node-reader .node, #node-consistency .node { stroke:#34D3D3; }
+      #node-bibles .node { stroke:#B693FF; }
+      #node-writers .node, #node-editors .node { stroke:#6EA8FF; }
+      #node-barrier .node { stroke:#91A5C1; }
+      #node-export .node { stroke:#A6E8C0; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="900" fill="url(#background)"/>
+  <rect width="1600" height="900" fill="url(#dots)"/>
+  <path d="M0 272 H1600 M0 554 H1600 M0 774 H1600" stroke="#28405E" stroke-width="1" opacity=".55"/>
+
+  <g id="header">
+    <rect x="80" y="35" width="9" height="54" rx="4.5" fill="#34D3D3"/>
+    <text x="106" y="66" class="title">From idea to an accepted three-chapter story</text>
+    <text x="107" y="89" class="small">PROPOSED V3 ARCHITECTURE  ·  12 INSTANCES  ·  THE WRITER HOLDS EACH APPROVAL</text>
+    <rect x="1270" y="48" width="248" height="36" rx="18" fill="#1D3C53" stroke="#37889B"/>
+    <circle cx="1291" cy="66" r="5" fill="#34D3D3"/>
+    <text x="1306" y="72" fill="#D2F8FB" font-size="16" font-weight="700">DESIGN · NOT LIVE</text>
+  </g>
+
+  <text x="80" y="256" class="section">01  BRIEF · EVIDENCE · PLAN</text>
+  <text x="150" y="305" class="section">02  DRAFT · CHECK</text>
+  <text x="150" y="591" class="section">03  WRITER DECISION</text>
+
+  <g id="coordinator-rail">
+    <rect x="1010" y="782" width="508" height="52" rx="18" fill="#17283F" stroke="#3B5678"/>
+    <circle cx="1038" cy="808" r="12" fill="none" stroke="#B9CBE1" stroke-width="2"/>
+    <path d="M1038 800 V808 L1044 813" fill="none" stroke="#B9CBE1" stroke-width="2" stroke-linecap="round"/>
+    <text x="1061" y="813" fill="#E5EDF9" font-size="18" font-weight="700">Coordinator / Showrunner</text>
+    <text x="1353" y="813" fill="#A9B9D1" font-size="16">one shared instance</text>
+  </g>
+
+  <g id="connections">
+    <path id="edge-intake-research" data-from="intake" data-to="research" class="edge" d="M260 154 H330"/>
+    <path id="edge-research-dossier_gate" data-from="research" data-to="dossier_gate" class="edge" d="M510 154 H580"/>
+    <path id="edge-dossier_gate-bibles" data-from="dossier_gate" data-to="bibles" class="edge" d="M760 154 H850"/>
+    <path id="edge-bibles-bible_gate" data-from="bibles" data-to="bible_gate" class="edge" d="M1110 154 H1230"/>
+    <path id="edge-bible_gate-writers" data-from="bible_gate" data-to="writers" class="edge" d="M1320 190 V328"/>
+    <path id="edge-writers-barrier" data-from="writers" data-to="barrier" class="edge" d="M1230 394 H1150"/>
+    <path id="edge-barrier-reader" data-from="barrier" data-to="reader" class="edge" d="M970 394 H890"/>
+    <path id="edge-reader-editors" data-from="reader" data-to="editors" class="edge" d="M710 394 H670"/>
+    <path id="edge-editors-consistency" data-from="editors" data-to="consistency" class="edge" d="M430 394 H380"/>
+    <path id="edge-consistency-review" data-from="consistency" data-to="review" class="edge" d="M265 460 V628"/>
+    <path id="edge-review-export" data-from="review" data-to="export" class="edge" d="M380 664 H710"/>
+    <path id="edge-review-reader" data-from="review" data-to="reader" d="M340 628 V536 H800 V430" fill="none" stroke="#F5B84B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="9 9" marker-end="url(#arrow-amber)"/>
+  </g>
+
+  <g id="node-intake" data-stage="intake">
+    <rect class="node" x="80" y="118" width="180" height="72" rx="18" stroke="#F5B84B"/>
+    <circle cx="105" cy="142" r="10" fill="#F5B84B" opacity=".22"/>
+    <path d="M101 142 L104 145 110 138" fill="none" stroke="#F5B84B" stroke-width="2" stroke-linecap="round"/>
+    <text x="121" y="151" class="label" style="font-size:20px">Confirm brief</text>
+    <text x="101" y="176" class="sub">Writer decides</text>
+  </g>
+  <g id="node-research" data-stage="research">
+    <rect class="node" x="330" y="118" width="180" height="72" rx="18" stroke="#34D3D3"/>
+    <circle cx="354" cy="143" r="10" fill="none" stroke="#34D3D3" stroke-width="2"/>
+    <path d="M361 151 L367 158" stroke="#34D3D3" stroke-width="2" stroke-linecap="round"/>
+    <text x="372" y="151" class="label">Research</text>
+    <text x="351" y="176" class="sub">NYT + Gutendex</text>
+  </g>
+  <g id="node-dossier_gate" data-stage="dossier_gate">
+    <rect class="node" x="580" y="118" width="180" height="72" rx="18" stroke="#F5B84B"/>
+    <circle cx="605" cy="142" r="10" fill="#F5B84B" opacity=".22"/>
+    <path d="M601 142 L604 145 610 138" fill="none" stroke="#F5B84B" stroke-width="2" stroke-linecap="round"/>
+    <text x="620" y="151" class="label" style="font-size:19px">Accept dossier</text>
+    <text x="601" y="176" class="sub">Both sources · scope</text>
+  </g>
+  <g id="node-bibles" data-stage="bibles">
+    <rect class="node" x="850" y="88" width="260" height="132" rx="22" stroke="#B693FF"/>
+    <circle cx="878" cy="119" r="10" fill="#B693FF" opacity=".26"/>
+    <path d="M874 114 V125 M879 114 V125 M884 114 V125" stroke="#B693FF" stroke-width="2"/>
+    <text x="898" y="126" class="label">Bible proposals</text>
+    <path d="M879 149 H1082" stroke="#5E537F" stroke-width="1"/>
+    <rect class="mini" x="876" y="165" width="62" height="34" rx="11"/>
+    <rect class="mini" x="948" y="165" width="62" height="34" rx="11"/>
+    <rect class="mini" x="1020" y="165" width="62" height="34" rx="11"/>
+    <text x="907" y="188" class="pill" text-anchor="middle">A</text>
+    <text x="979" y="188" class="pill" text-anchor="middle">B</text>
+    <text x="1051" y="188" class="pill" text-anchor="middle">C</text>
+  </g>
+  <g id="node-bible_gate" data-stage="bible_gate">
+    <rect class="node" x="1230" y="118" width="180" height="72" rx="18" stroke="#F5B84B"/>
+    <circle cx="1255" cy="142" r="10" fill="#F5B84B" opacity=".22"/>
+    <path d="M1251 142 L1254 145 1260 138" fill="none" stroke="#F5B84B" stroke-width="2" stroke-linecap="round"/>
+    <text x="1270" y="151" class="label" style="font-size:19px">Approve bible</text>
+    <text x="1251" y="176" class="sub">Exact version</text>
+  </g>
+  <g id="node-writers" data-stage="writers">
+    <rect class="node" x="1230" y="328" width="180" height="132" rx="22" stroke="#6EA8FF"/>
+    <circle cx="1257" cy="359" r="10" fill="#6EA8FF" opacity=".24"/>
+    <path d="M1253 355 L1260 362 M1260 355 L1253 362" stroke="#6EA8FF" stroke-width="2"/>
+    <text x="1275" y="367" class="label" font-size="20">Chapters</text>
+    <path d="M1253 386 H1386" stroke="#4D658A" stroke-width="1"/>
+    <rect class="mini" x="1251" y="405" width="42" height="34" rx="10"/>
+    <rect class="mini" x="1299" y="405" width="42" height="34" rx="10"/>
+    <rect class="mini" x="1347" y="405" width="42" height="34" rx="10"/>
+    <text x="1272" y="428" class="pill" text-anchor="middle">1</text>
+    <text x="1320" y="428" class="pill" text-anchor="middle">2</text>
+    <text x="1368" y="428" class="pill" text-anchor="middle">3</text>
+  </g>
+  <g id="node-barrier" data-stage="barrier">
+    <rect class="node" x="970" y="358" width="180" height="72" rx="18" stroke="#91A5C1"/>
+    <path d="M994 379 V404 M1001 379 V404" stroke="#BBC8D9" stroke-width="3" stroke-linecap="round"/>
+    <text x="1011" y="392" fill="#F6F9FF" font-size="18" font-weight="740">3-chapter gate</text>
+    <text x="991" y="416" class="sub">Validate + order</text>
+  </g>
+  <g id="node-reader" data-stage="reader">
+    <rect class="node" x="710" y="358" width="180" height="72" rx="18" stroke="#34D3D3"/>
+    <circle cx="736" cy="382" r="10" fill="none" stroke="#34D3D3" stroke-width="2"/>
+    <path d="M730 382 H742 M736 376 V388" stroke="#34D3D3" stroke-width="1.6"/>
+    <text x="755" y="391" class="label">Reader</text>
+    <text x="731" y="416" class="sub">5-field handoff</text>
+  </g>
+  <g id="node-editors" data-stage="editors">
+    <rect class="node" x="430" y="328" width="240" height="132" rx="22" stroke="#6EA8FF"/>
+    <circle cx="457" cy="359" r="10" fill="#6EA8FF" opacity=".24"/>
+    <path d="M453 363 L461 355 M453 355 L461 363" stroke="#6EA8FF" stroke-width="2"/>
+    <text x="476" y="367" class="label" font-size="21">Critic / Editors</text>
+    <path d="M454 386 H644" stroke="#4D658A" stroke-width="1"/>
+    <rect class="mini" x="455" y="405" width="85" height="34" rx="10"/>
+    <rect class="mini" x="558" y="405" width="85" height="34" rx="10"/>
+    <text x="497" y="428" class="pill" text-anchor="middle">A · edit</text>
+    <text x="600" y="428" class="pill" text-anchor="middle">B · edit</text>
+  </g>
+  <g id="node-consistency" data-stage="consistency">
+    <rect class="node" x="150" y="328" width="230" height="132" rx="22" stroke="#34D3D3"/>
+    <circle cx="177" cy="359" r="10" fill="none" stroke="#34D3D3" stroke-width="2"/>
+    <path d="M173 359 L176 362 182 355" fill="none" stroke="#34D3D3" stroke-width="2"/>
+    <text x="196" y="367" class="label" font-size="21">Consistency</text>
+    <path d="M174 386 H354" stroke="#4D658A" stroke-width="1"/>
+    <rect class="mini" x="175" y="405" width="83" height="34" rx="10"/>
+    <rect class="mini" x="272" y="405" width="83" height="34" rx="10"/>
+    <text x="216" y="428" class="pill" text-anchor="middle">A · exact</text>
+    <text x="313" y="428" class="pill" text-anchor="middle">B · exact</text>
+  </g>
+  <g id="node-review" data-stage="review">
+    <rect class="node" x="150" y="628" width="230" height="72" rx="18" stroke="#F5B84B"/>
+    <circle cx="177" cy="653" r="10" fill="#F5B84B" opacity=".22"/>
+    <path d="M173 653 L176 656 182 649" fill="none" stroke="#F5B84B" stroke-width="2"/>
+    <text x="196" y="661" class="label">Writer review</text>
+    <text x="172" y="686" class="sub">Accept or revise · max 2</text>
+  </g>
+  <g id="node-export" data-stage="export">
+    <rect class="node" x="710" y="628" width="230" height="72" rx="18" stroke="#A6E8C0"/>
+    <path d="M737 642 V666 M729 658 L737 666 745 658 M728 672 H746" fill="none" stroke="#A6E8C0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="758" y="661" class="label" style="font-size:19px">Markdown export</text>
+    <text x="732" y="686" class="sub">Accepted version</text>
+  </g>
+
+  <g id="annotations">
+    <rect x="413" y="498" width="182" height="30" rx="15" fill="#4F3B27" stroke="#C79443"/>
+    <text x="504" y="519" text-anchor="middle" fill="#F7D392" font-size="15" font-weight="700">REVISION · MAX 2</text>
+    <rect x="1020" y="631" width="498" height="85" rx="18" fill="#142840" stroke="#355778"/>
+    <circle cx="1050" cy="659" r="7" fill="#F5B84B"/>
+    <text x="1070" y="665" fill="#E5EFFB" font-size="17" font-weight="680">Exact writer approval at each gate</text>
+    <text x="1043" y="693" fill="#A9B9D1" font-size="15">Source text and model output cannot approve a version.</text>
+  </g>
+
+  <g id="legend">
+    <rect x="80" y="782" width="835" height="52" rx="18" fill="#17283F" stroke="#3B5678"/>
+    <circle cx="109" cy="808" r="6" fill="#34D3D3"/><text x="123" y="814" class="small">READ</text>
+    <circle cx="222" cy="808" r="6" fill="#B693FF"/><text x="236" y="814" class="small">PLAN</text>
+    <circle cx="339" cy="808" r="6" fill="#6EA8FF"/><text x="353" y="814" class="small">WRITE</text>
+    <circle cx="471" cy="808" r="6" fill="#F5B84B"/><text x="485" y="814" class="small">WRITER GATE</text>
+    <circle cx="672" cy="808" r="6" fill="#91A5C1"/><text x="686" y="814" class="small">SYSTEM CHECK</text>
+  </g>
+  <text x="80" y="866" fill="#748AA8" font-size="15">V3 working PRD · Proposed workflow · Animation illustrates order; it does not report execution state.</text>
+</svg>
