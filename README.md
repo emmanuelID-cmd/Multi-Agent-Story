@@ -11,9 +11,17 @@ is limited to Manny's [READ lane](docs/implementation/read-lane.md): owner-scope
 and gated book-metadata adapters. Existing WRITE and interface work is preserved
 for Justin; this READ pass does not claim that his lane is complete or reviewed.
 
+The separate [executable READ harness](docs/implementation/read-runtime.md) now
+connects real Research, Reader, and Consistency model runners. Run
+`npm run agents:read` for fixture evaluation or add `-- --live` to call Claude
+with the controlled synthetic inputs. The web workspace remains fixture-backed.
+The harness records tools, source versions, failure states, and handoffs; its
+WRITE connectors and default NYT/Gutendex responses are explicitly synthetic.
+
 ## Project references
 
-- [Active PRD v2 working draft](docs/prd/drafts/PRD-v2-draft.md) — intake-first research alignment; product choices remain under review
+- [Active PRD v3 working draft](docs/prd/drafts/PRD-v3-draft.md) — approved input-to-research behavior and contributor connection agreement; draft, not a release approval
+- [PRD v2 working draft](docs/prd/drafts/PRD-v2-draft.md) — prior revision retained for history
 - [Original submitted PRD](docs/prd/Multi-Agent-Story-Builder-PRD.md) — preserved historical baseline
 - [PRD PDF](docs/prd/Multi-Agent-Story-Builder-PRD.pdf)
 - [Documentation index](docs/README.md)
@@ -29,11 +37,21 @@ for Justin; this READ pass does not claim that his lane is complete or reviewed.
 | --- | --- | --- |
 | Manny | READ Agents | Research, Reader, and Consistency analysis; authorized retrieval, evidence attribution, and read contracts |
 | Justin | WRITE Agents | Chapter generation and revision proposals against approved state |
-| Both | Shared contract | Agree on schemas, version handling, fixtures, and integration boundaries before implementation |
+| Both | Shared contract | Preserve each other's agent behavior, interface design, and tests; agree on shared schemas, versions, fixtures, and connectors before integration |
 
 These are development ownership lanes. They are separate from the product's
 Showrunner, planners, writers, critics, and editor, and from external workflow
 roles such as PLANNER and REVIEWER. Ownership is not runtime authorization.
+
+The PRD v3 implementation agreement governs work in either lane. A contributor
+may connect to the other lane only through the smallest required adapter,
+contract mapping, dispatch, handoff, version, or trace integration. Preserve the
+other contributor's existing agent behavior, prompts, functionality, interface
+design, and tests. Do not make a merit or feature change inside teammate-owned
+work without that owner's explicit approval. Agree on shared contract changes
+before either lane depends on them. If a connection cannot be made without
+changing peer-owned behavior, stop and give the owner the exact proposed change
+for review. SQL and migration work stays on the separate SQL lane.
 
 ## Intended MVP
 
@@ -59,33 +77,63 @@ content is safe. The current workflow uses fixtures and has no live model. See
 [Input boundaries](docs/implementation/input-boundaries.md) for the implemented flow, server
 authorization boundary, detector contract, test coverage, and remaining limits.
 
-The following is the proposed v2 flow, not behavior already implemented by the
+The following is the proposed v3 flow, not behavior already implemented by the
 fixture workspace. The submitted PRD, architecture drafts, and guide snapshots
 remain historical references where they differ from this intake/research correction.
 
-1. Collect and save the writer's brief before research. Ask for premise, genre,
-   optional subgenre, audience, tone, desired ending, character names and roles,
-   settings, lore, time period, beginning/middle/end direction, apex, climax,
-   and falling action as known.
-2. Show missing or ambiguous details and offer suggestions grounded in the
-   writer's intent. Preserve valid input; confirm the genre and research scope.
-   Suggestions become constraints only when the writer accepts them.
-3. Run mandatory Research using both NYT Books and Gutendex. Save both provider
-   outcomes in a versioned dossier. Required evidence must be accepted before
-   any Bible planning; insufficient evidence pauses work for bounded recovery
-   or a visible scope decision, with no silent story-only fallback.
-4. Plan plot, character, and world against the accepted dossier. The v2 roster
+1. Collect and save the writer's free-form brief before research. At the top,
+   show an optional checklist of premise, genre, subgenre, audience, tone,
+   desired ending, character names and roles, setting, lore, time period,
+   beginning, rising action, stakes, climax, and falling action. Genre is
+   required to begin research; other absent details are gaps to review, not
+   reasons to reject a sparse brief.
+2. Identify what is supplied, ambiguous, or missing relative to the story the
+   writer wants. Offer intent-grounded recommendations in a grouped review:
+   one choice per independent gap, custom response, or defer; dependent gaps
+   wait on their parent choice. Keep the writer's text and show which choices
+   become part of the brief. Only explicit choices are accepted, with a final
+   confirmation before research; do not apply all suggestions by default.
+   Confirm genre, period/setting focus, and research scope.
+3. Research translates the confirmed brief into explicit search criteria and
+   runs both required NYT Books and Gutendex searches. Save each provider
+   outcome in a versioned dossier. Required evidence must be accepted before
+   Bible planning; insufficient evidence pauses work for bounded recovery or
+   a visible scope decision, with no silent story-only fallback. For example,
+   “horror, set in the 1920s” asks for horror-relevant writers and bestseller
+   context plus evidence about 1920s life that fits the named location. NYT
+   bestseller results show list membership and rank for the returned list/date;
+   they do not prove when an author wrote the work or supply historical facts
+   or writing-style evidence. Find publication/work dates and period context
+   from traceable, appropriate sources. Gutendex catalog details, download
+   counts, and rights metadata have their own limits; verify a work and its
+   text-use rights before analyzing text. Report which requested dimensions
+   each source supports, identity confidence, and gaps.
+4. Review what each source supports and any missing dimensions. Synthesize
+   original craft guidance from eligible evidence-backed traits, such as
+   combining theatrical dialogue with restrained narration. Do not imitate a
+   named writer's distinctive style or reproduce passages. Bestseller metadata
+   alone cannot support claims about dialogue, narration, vocabulary, or
+   typography. Let writers request broad craft and formatting traits. Assess
+   evidence sufficiency against the user's confirmed research questions: each
+   required dimension needs relevant, traceable support and a clear work or
+   source match. Label covered, partial, and unavailable dimensions; never
+   invent a universal source-count threshold or treat popularity as quality.
+   If a required dimension is unsupported, keep planning blocked and show the
+   gap with options to broaden scope or provide an eligible reference. Exact
+   numeric minimums are not set until evaluated against provider coverage and
+   rights limits.
+5. Plan plot, character, and world against the accepted dossier. The v2 roster
    includes three Bible roles; one merged bible versus three candidate bibles
    remains a product decision.
-5. Wait for the writer to approve the exact story-bible version and three beats.
-6. Dispatch three indexed chapter writers against the same approved version.
-7. Validate every chapter, assemble by index, and have Reader prepare the
+6. Wait for the writer to approve the exact story-bible version and three beats.
+7. Dispatch three indexed chapter writers against the same approved version.
+8. Validate every chapter, assemble by index, and have Reader prepare the
    required versioned handoff. Critic/Editors validate it before editing;
    Consistency checks the exact resulting versions. One revision proposal
    versus two complete editorial alternatives remains a product decision.
-8. Wait for human acceptance of changes, with at most two revision rounds and
+9. Wait for human acceptance of changes, with at most two revision rounds and
    a budget check before every dispatch. Limits never imply automatic success.
-9. Export ordered chapters, bible, unresolved issues, versions, and evidence
+10. Export ordered chapters, bible, unresolved issues, versions, and evidence
    as Markdown; label partial work explicitly.
 
 Group intake into story, cast, world, and plot questions, retaining answers
@@ -94,8 +142,9 @@ new mandatory fields. More information can improve specificity, without
 guaranteeing quality. Suggested optional details include point of view, tense,
 character goals, motivations, obstacles, stakes, relationships, and turning
 points. Positive, negative, and flat arcs are valid; ancillary characters need
-development only where relevant. The draft proposes apex as peak pressure and
-climax as the decisive confrontation, pending the writer's vocabulary choice.
+development only where relevant. Use rising action for escalating pressure,
+stakes for what can be lost, climax for the decisive confrontation, and falling
+action for its aftermath. These are distinct story elements.
 Use focused follow-ups, keyboard access, visible status, field guidance, and
 clear recovery actions. This is a design specification, not a new interface.
 
@@ -312,8 +361,10 @@ ignored `.tools/` directory. `.tools/runtime-path.txt` records its `bin` path;
 the machine's default Node 26 installation remains unchanged. Docker Compose
 provides the isolated PostgreSQL 17 service. The project `.env` contains local
 random database and session secrets; never read or include those values in
-documentation, logs, or review output. The model provider and deployment target
-remain undecided, and production privacy and retention gates remain unresolved.
+documentation, logs, or review output. Anthropic Claude Haiku 5.5
+(`claude-haiku-5-5`) is selected in PRD v3 for a future READ integration, but
+the application runtime is not configured or connected. Deployment target and
+production privacy and retention gates remain unresolved.
 
 The HTML guide and ZIP are earlier document snapshots. They are not regenerated
 as part of this foundation; their embedded text may predate the implementation.

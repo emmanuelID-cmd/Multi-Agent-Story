@@ -391,3 +391,31 @@ research coverage, and measured budgets remain visible product decisions.
 - Real Reader agent implementation producing the versioned 5-field handoff from live chapter state and research evidence.
 - Real Reader repair logic resolving specific validation rejections from source versions.
 - Connected Consistency agent providing located findings for exact manuscript versions.
+
+## 2026-10-26T02:24:59.6085387-04:00
+
+- Prepared for the authorized push of Manny's READ lane to emmanuelID-cmd/Multi-Agent-Story, branch manny/read-agents; PR target: developer.
+- Verified remote READ baseline: afcf240ffdce02ad216d5f78399db008a00cc670. Current shared foundation: 0ec86261ad173cc89f58403a75bab509bb56f013 (already on origin/developer, includes Justin's merged WRITE history).
+- Scope: PRD v3 and intake prototype, executable READ model runners and local verification harness, tests, and interactive team-alignment presentation. This is a scoped publication, not product completion.
+- Validation: 95/95 unit tests and TypeScript pass on October 26, 2026; presentation has 13 slides, 55 verified internal links, no text overflow, and an unchanged source template.
+- Prior live READ smoke: run 14b1dda7-4edc-45e1-a641-38db38a2e0f5 completed Research, Reader and two exact-proposal Consistency checks. Story, providers, coordinator approval and WRITE connectors were synthetic; this is not a reliability rate.
+- Local auth recovery: restarted Docker and the existing database; synthetic sign-up/sign-in/session/protected route checks passed HTTP 200. No auth code or SQL schema changed.
+
+### Done
+
+- [x] Record PRD v3's confirmed intake-first research behavior and minimal cross-lane connection agreement; retain earlier PRD history.
+- [x] Preserve the standalone expanded intake demonstration in docs/artifacts/story-intake-flow.html.
+- [x] Implement Manny's Research, Reader and Consistency runners with fixed tools, bounded model calls, schema/source/version checks, failure outcomes, cancellation, budgets and injection boundaries.
+- [x] Add fixture/live READ CLI execution, per-agent trace viewing and protected local output artifacts; document actual execution limits in docs/implementation/read-runtime.md.
+- [x] Verify the runtime with 95/95 unit tests and a prior live Claude smoke scenario.
+- [x] Add the interactive PPTX/PPSX handoff and revision-loop presentation plus its native PowerPoint authoring script.
+- [x] Preserve Justin's existing WRITE functions, web interface, worker behavior, SQL lane, main and external AGENTS files.
+
+### Not completed
+
+- [ ] Connect the approved expanded free-form intake, top helper, missing-detail analysis, follow-up recommendations and individually accepted suggestions to the actual web home page. It still uses the older five-field form.
+- [ ] Connect the live READ runtime to authenticated web project state and the worker; current web execution still uses synthetic shells and fixtures.
+- [ ] Live story drafting and editing: Justin's existing writers/editors return synthetic fixture prose, not live model-generated stories.
+- [ ] Live NYT/Gutendex research and production acceptance/persistence/recovery remain gated or separate integration work; the local READ harness is not the full product loop.
+
+Next integration work must address the intake mismatch before presenting the web app as PRD-complete. Keep Justin's behavior preserved unless a required connector is explicitly scoped. This entry is prepared before publication and does not claim a verified push or merge.
