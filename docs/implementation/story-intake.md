@@ -114,8 +114,24 @@ unconfirmed rejection. Neither test calls Claude or external book providers.
 
 Analysis ID, source hash, usage, model and prompt revision are retained in the
 owner's saved analysis. This request does not join the separate CLI READ trace
-viewer and does not expose model private reasoning. No live intake run or
-statistical quality/reliability result is claimed by the deterministic tests.
+viewer and does not expose model private reasoning. No statistical
+quality/reliability result is claimed by the deterministic tests.
+
+On 26 October 2026, a controlled synthetic story submitted through authenticated
+web intake returned HTTP 200 with status `analyzed`, ten extracted observations
+and five suggestions. One ungrounded result was rejected before the bounded
+repair succeeded. This verifies one live intake example, not general reliability
+or a live research/drafting loop. The initial local failure was outbound network
+access blocked in the restricted server process; a non-secret HTTPS probe failed
+with `EACCES` there and connected successfully in the elevated environment.
+The verified project server was restarted with authorized network access.
+
+Connection, credential/access, configuration, rate-limit, provider availability,
+timeout and invalid-result errors now give distinct recovery guidance and retain
+the original idea. Provider error bodies are discarded; diagnostic logs contain
+only fixed validation codes or allowlisted network codes. If a restricted launch
+blocks outbound HTTPS, run the dev server from an authorized local terminal with
+network access. Do not disable TLS verification or place keys in the browser.
 
 To test manually: start Docker/PostgreSQL and `npm run dev`, sign in at
 `http://127.0.0.1:3000/`, select New project, save an idea and select **Analyze

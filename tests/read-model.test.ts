@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
-import { AnthropicReadModel } from "../src/agents/read/model";
+import { AnthropicReadModel, ModelHttpError } from "../src/agents/read/model";
 
 const schema = z.strictObject({ summary: z.string().min(1) });
 const call = () => ({ agent: "reader" as const, system: "Read assigned sources only.",
@@ -42,7 +42,9 @@ describe("READ Anthropic boundary", () => {
 
   it.each([429, 500, 401])("does not expose HTTP %i response text", async status => {
     const model = new AnthropicReadModel("synthetic-test-key", async () => new Response("secret reflected in provider body", { status }));
-    await expect(model.complete(call())).rejects.toThrow(status === 429 ? "MODEL_RATE_LIMITED" : "MODEL_UNAVAILABLE");
+    const error = await model.complete(call()).catch(error => error);
+    expect(error).toBeInstanceOf(ModelHttpError);
+    expect(error).toMatchObject({ status, message: status === 429 ? "MODEL_RATE_LIMITED" : "MODEL_UNAVAILABLE" });
   });
 
   it("rejects malformed and oversized response envelopes", async () => {

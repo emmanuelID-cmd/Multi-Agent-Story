@@ -9,6 +9,13 @@ export type ModelCall = {
 export type ModelResponse = { value: unknown; usage: { inputTokens: number; outputTokens: number } };
 export interface ReadModel { readonly modelId: string; complete(call: ModelCall): Promise<ModelResponse> }
 
+/** Retain only the HTTP status, never the provider's potentially sensitive error body. */
+export class ModelHttpError extends Error {
+  constructor(readonly status: number) {
+    super(status === 429 ? "MODEL_RATE_LIMITED" : "MODEL_UNAVAILABLE");
+  }
+}
+
 const MAX_RESPONSE_BYTES = 1_048_576;
 const envelope = z.object({
   content: z.array(z.object({ type: z.string(), text: z.string().optional() })).max(16),
@@ -87,7 +94,10 @@ export class AnthropicReadModel implements ReadModel {
         output_config: { effort: "medium", format: { type: "json_schema", schema: modelWireSchema(call.schema) } },
       }),
     });
-    if (!response.ok) throw new Error(response.status === 429 ? "MODEL_RATE_LIMITED" : "MODEL_UNAVAILABLE");
+    if (!response.ok) {
+      await response.body?.cancel().catch(() => undefined);
+      throw new ModelHttpError(response.status);
+    }
     const parsed = envelope.safeParse(await boundedJson(response, call.signal));
     if (!parsed.success) throw new Error("MODEL_RESPONSE_INVALID");
     if (parsed.data.content.some(part => !["text", "thinking", "redacted_thinking"].includes(part.type))) throw new Error("MODEL_RESPONSE_INVALID");

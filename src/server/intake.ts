@@ -7,7 +7,7 @@ import { briefSchema, type Brief } from "../contracts";
 import { assertIntakeDecisionsReviewed, intakeRecordSchema, resolveIntake, scopeFromIntake, type IntakeRecord, type IntakeRequest } from "../contracts/intake";
 import { inspectText } from "../contracts/input-policy";
 import { analyzeIntake, intakeHash } from "../agents/intake";
-import { modelFromEnvironment, type ReadModel } from "../agents/read/model";
+import { ModelHttpError, modelFromEnvironment, type ReadModel } from "../agents/read/model";
 
 type RecordWithBrief = { brief: Brief };
 export type IntakeRepository = {
@@ -127,6 +127,26 @@ export async function updateProjectIntake(ownerId: string, projectId: string, re
       const message = "Review role markers or directional formatting in your saved idea before analysis. Edit and save the text, then try again; the original is preserved.";
       throw new AppError(400, message, { rawText: [message] });
     }
-    throw new AppError(503, "Analysis is unavailable. Your saved idea is still here; retry when ready.");
+    const preserved = " Your saved idea is preserved.";
+    if (error instanceof ModelHttpError) {
+      if ([401, 403].includes(error.status))
+        throw new AppError(503, "Claude could not authorize analysis. The project maintainer needs to check the server API credentials and access." + preserved);
+      if ([400, 404].includes(error.status))
+        throw new AppError(503, "Claude rejected the analysis configuration. The project maintainer needs to check the model and response schema." + preserved);
+      if (error.status === 429)
+        throw new AppError(503, "Claude is limiting requests. Wait before trying analysis again." + preserved);
+      throw new AppError(503, "Claude is temporarily unavailable. Try analysis again later." + preserved);
+    }
+    if (error instanceof Error && error.message === "MODEL_CREDENTIAL_UNAVAILABLE")
+      throw new AppError(503, "Analysis has no server API credential. The project maintainer needs to configure it and restart the server." + preserved);
+    if (error instanceof TypeError && error.message === "fetch failed") {
+      const code = (error.cause as { code?: unknown } | undefined)?.code;
+      const known = ["EACCES", "EPERM", "ECONNREFUSED", "ENOTFOUND", "ETIMEDOUT", "ECONNRESET", "UNABLE_TO_VERIFY_LEAF_SIGNATURE", "CERT_HAS_EXPIRED", "DEPTH_ZERO_SELF_SIGNED_CERT", "UND_ERR_CONNECT_TIMEOUT"];
+      console.warn("Intake connection unavailable:", typeof code === "string" && known.includes(code) ? code : "NETWORK_ERROR");
+      throw new AppError(503, "The server could not connect securely to Claude. The project maintainer needs to check its network and certificate setup." + preserved);
+    }
+    if (error instanceof Error && error.message === "INTAKE_CANCELED")
+      throw new AppError(503, "Analysis timed out or was canceled. Try again when ready." + preserved);
+    throw new AppError(503, "Analysis could not return a validated result. Try again when ready." + preserved);
   }
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { briefSchema } from "../src/contracts";
 import { updateProjectIntake, type IntakeRepository } from "../src/server/intake";
-import type { ReadModel } from "../src/agents/read/model";
+import { ModelHttpError, type ReadModel } from "../src/agents/read/model";
 import { getProjectBenchmarks } from "../src/server/research/benchmark-http";
 import type { readBookBenchmarks } from "../src/server/research/book-metadata";
 
@@ -58,6 +58,38 @@ describe("stored story intake", () => {
     await expect(updateProjectIntake("owner", "project", { action: "analyze", expectedRevision: 0 }, { repository: f.repository, model: unavailable }))
       .rejects.toMatchObject({ status: 503 });
     expect(f.brief.intake).toMatchObject({ rawText: raw, status: "draft" });
+  });
+
+  it.each([
+    [new ModelHttpError(401), "credentials and access"],
+    [new ModelHttpError(403), "credentials and access"],
+    [new ModelHttpError(400), "model and response schema"],
+    [new ModelHttpError(404), "model and response schema"],
+    [new ModelHttpError(429), "Wait before trying"],
+    [new ModelHttpError(500), "temporarily unavailable"],
+    [Error("MODEL_CREDENTIAL_UNAVAILABLE"), "configure it and restart"],
+    [Error("INTAKE_CANCELED"), "timed out or was canceled"],
+    [Error("private reflected provider detail"), "validated result"],
+  ])("explains recovery without exposing provider bodies: %s", async (failure, expected) => {
+    const f = setup();
+    f.model.complete = vi.fn(async () => { throw failure; });
+    await expect(updateProjectIntake("owner", "project", { action: "analyze", expectedRevision: 0 }, f))
+      .rejects.toMatchObject({ status: 503, message: expect.stringContaining(expected) });
+    expect(f.brief.intake).toMatchObject({ rawText: raw, status: "draft", revision: 2 });
+  });
+
+  it("logs only allowlisted network codes and preserves the idea on connection failures", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      for (const code of ["EACCES", "private credential-like cause"]) {
+        const f = setup();
+        f.model.complete = vi.fn(async () => { throw new TypeError("fetch failed", { cause: { code, privateBody: "private text" } }); });
+        await expect(updateProjectIntake("owner", "project", { action: "analyze", expectedRevision: 0 }, f))
+          .rejects.toMatchObject({ status: 503, message: expect.stringContaining("connect securely") });
+        expect(warn).toHaveBeenLastCalledWith("Intake connection unavailable:", code === "EACCES" ? "EACCES" : "NETWORK_ERROR");
+        expect(f.brief.intake).toMatchObject({ rawText: raw, status: "draft" });
+      }
+    } finally { warn.mockRestore(); }
   });
 
   it("saves partial review decisions without accepting research scope and rejects stale progress", async () => {
