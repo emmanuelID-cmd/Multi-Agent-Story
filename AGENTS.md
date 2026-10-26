@@ -46,6 +46,7 @@ TEST MODE is explicitly requested and read-only; it never authorizes edits.
   story state, and the shared contract; validate Reader inputs before editing.
 - **Shared:** versioned schemas, task envelopes, fixtures, integration boundaries,
   and schema changes require coordination before either lane depends on them.
+  SQL is shared ownership: either contributor may perform approved SQL work.
 
 Manny's approved implementation lane is [READ](docs/implementation/read-lane.md).
 The [web intake implementation](docs/implementation/story-intake.md) connects
@@ -61,7 +62,7 @@ this does not authorize enabling other model paths or live research providers.
 
 Use `developer` as the integration and starting base: create all contributor,
 task, and SQL work branches from it, and target `developer` with pull requests
-from `manny/read-agents` and the separate persistent `manny/sql-foundation`
+from `manny/read-agents` and the separate persistent `sql-foundation`
 lane. Only pull requests from `developer` target `main`. Do routine work on lane
 or task branches, not directly on `developer` or `main`. This describes branch
 ancestry and pull-request targets; each persistent lane keeps tracking its own
@@ -202,6 +203,17 @@ and research fixtures first. Keep proposal acceptance, ownership checks,
 idempotency, budget limits, and cancellation enforcement in application code;
 neither the orchestrator nor the queue grants approval or replaces those controls.
 
+## Phase accountability
+
+Use the approved [owner phase system](docs/phase/README.md) and its
+[commit groups](docs/phase/COMMIT-GROUPS.md). Keep the 26-item checklist canonical.
+After an assignment is verified complete, check it off and explain the completed
+work, acceptance evidence, actual tests X/Y, date and reviewer. Planning files do
+not complete implementation items. Preserve the approved Manny/Shared order;
+Justin may adjust his own plan under his rules. Deferred decisions remain gates.
+The canonical SQL lane is shared `sql-foundation`; its legacy local/remote name
+transition is tracked in Shared 1.2 and is not performed by documentation edits.
+
 ## Files, recovery, and Git
 
 Keep entry points at the root, current PRD artifacts under `docs/prd/`, PRD
@@ -216,7 +228,7 @@ directory alone is not evidence of backup; report unverified restores honestly.
 Verify the exact repository root, branch, status, and remote before Git actions.
 Preserve pre-existing untracked and modified files. If no remote exists, do not
 invent one or attempt synchronization. The persistent `manny/read-agents` lane
-owns READ work; the separate persistent `manny/sql-foundation` lane owns schema
+owns READ work; the separate persistent `sql-foundation` lane owns schema
 and migration work. Use `developer` as their integration and starting base: all
 contributor, task, and SQL work branches originate from `developer`, and both
 persistent lanes send reviewed pull requests to `developer`. Only `developer`

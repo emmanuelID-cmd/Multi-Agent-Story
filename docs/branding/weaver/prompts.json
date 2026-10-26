@@ -1,0 +1,108 @@
+{
+  "brand": "Weaver",
+  "method": "Built-in image_gen",
+  "status": "Merged Threadkeeper approved by Manny and Justin",
+  "concepts": [
+    {
+      "id": "01-story-loom",
+      "name": "Story Loom",
+      "file": "01-story-loom.png",
+      "direction": "Retained direction",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "dfce637f6930c73cea83d7d34aae3a1ec9a7b604e05dcae0c7e6f486a8210337",
+      "prompt": "Use case: logo-brand. Asset type: standalone original concept logo for Weaver, a 12-role multi-agent storyteller. Create ONE polished distinctive emblem and its custom wordmark, not a sheet of variants. Exact text: \"Weaver\" (W-e-a-v-e-r), perfectly legible below the emblem, no other text. Style: premium vector-friendly graphic identity, bold clean silhouettes, controlled organic curves, inventive negative space, expressive editorial personality. Palette: blue and purple dominate with the specified restrained complementary accents; wordmark deep midnight blue. Composition: centered emblem above custom crafted wordmark, ample clear space, plain warm ivory background, square image. Must work as a recognizable brand at smaller sizes. No mockups, no photography, no 3D product lighting, no watermarks, no generic AI neural nodes, no circuit brains, no sparkle-only symbol, no existing brand imitation. Make it alive and distinctive while keeping logo-level simplicity. Concept: A vivid sculptural loom emblem: two interlacing blue and purple ribbons weave an unmistakable W, with one end unfolding into three crisp story pages. A bright cyan shuttle-thread swoops through like a lively pen flourish. Strong ingenious negative space, memorable asymmetric silhouette, elegant editorial energy. No literal rectangular weaving machine."
+    },
+    {
+      "id": "02-ink-phoenix",
+      "name": "Ink Phoenix",
+      "file": "02-ink-phoenix.png",
+      "direction": "Retained direction",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "255e5ff5f14026af3693eaf749fcf1ba74346580092eb36c7a1a80c493348a02",
+      "prompt": "Use case: logo-brand. Asset type: standalone original concept logo for Weaver, a 12-role multi-agent storyteller. Create ONE polished distinctive emblem and its custom wordmark, not a sheet of variants. Exact text: \"Weaver\" (W-e-a-v-e-r), perfectly legible below the emblem, no other text. Style: premium vector-friendly graphic identity, bold clean silhouettes, controlled organic curves, inventive negative space, expressive editorial personality. Palette: blue and purple dominate with the specified restrained complementary accents; wordmark deep midnight blue. Composition: centered emblem above custom crafted wordmark, ample clear space, plain warm ivory background, square image. Must work as a recognizable brand at smaller sizes. No mockups, no photography, no 3D product lighting, no watermarks, no generic AI neural nodes, no circuit brains, no sparkle-only symbol, no existing brand imitation. Make it alive and distinctive while keeping logo-level simplicity. Concept: An original rising phoenix whose broad stylized wings are folded story pages and whose tail becomes a fluid ink ribbon. Royal blue body, violet and amethyst page-feathers, controlled warm gold ember accent at the heart. Bold sweeping upward movement, sophisticated mythical publishing identity, strong compact silhouette; not a detailed bird illustration."
+    },
+    {
+      "id": "03-narrative-fox",
+      "name": "Narrative Fox",
+      "file": "03-narrative-fox.png",
+      "direction": "Retained direction",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "abe8d459b9a72e85eab1b537cc2ea01230a5b173d34b4a87b129d21baf16e9d1",
+      "prompt": "Use case: logo-brand. Asset type: standalone original concept logo for Weaver, a 12-role multi-agent storyteller. Create ONE polished distinctive emblem and its custom wordmark, not a sheet of variants. Exact text: \"Weaver\" (W-e-a-v-e-r), perfectly legible below the emblem, no other text. Style: premium vector-friendly graphic identity, bold clean silhouettes, controlled organic curves, inventive negative space, expressive editorial personality. Palette: blue and purple dominate with the specified restrained complementary accents; wordmark deep midnight blue. Composition: centered emblem above custom crafted wordmark, ample clear space, plain warm ivory background, square image. Must work as a recognizable brand at smaller sizes. No mockups, no photography, no 3D product lighting, no watermarks, no generic AI neural nodes, no circuit brains, no sparkle-only symbol, no existing brand imitation. Make it alive and distinctive while keeping logo-level simplicity. Concept: A clever expressive fox seen in an iconic three-quarter curl, one oversized sweeping tail transforming into an ink thread and a folded page. Sapphire and vivid purple fur planes, pale cyan muzzle, tiny warm peach inner-ear accent. Alert inquisitive expression, graceful original silhouette, lively premium storytelling mascot; mature and artful rather than childish clipart."
+    },
+    {
+      "id": "04-tale-dragon",
+      "name": "Tale Dragon",
+      "file": "04-tale-dragon.png",
+      "direction": "Retained direction",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "79e8cd9392b434fa80cff576d0e3e461d8676e6dabd8b3706d6a1bc2615f0cff",
+      "prompt": "Use case: logo-brand. Asset type: standalone original concept logo for Weaver, a 12-role multi-agent storyteller. Create ONE polished distinctive emblem and its custom wordmark, not a sheet of variants. Exact text: \"Weaver\" (W-e-a-v-e-r), perfectly legible below the emblem, no other text. Style: premium vector-friendly graphic identity, bold clean silhouettes, controlled organic curves, inventive negative space, expressive editorial personality. Palette: blue and purple dominate with the specified restrained complementary accents; wordmark deep midnight blue. Composition: centered emblem above custom crafted wordmark, ample clear space, plain warm ivory background, square image. Must work as a recognizable brand at smaller sizes. No mockups, no photography, no 3D product lighting, no watermarks, no generic AI neural nodes, no circuit brains, no sparkle-only symbol, no existing brand imitation. Make it alive and distinctive while keeping logo-level simplicity. Concept: A small charismatic serpentine story dragon curled into a compact crest, its wing one folded parchment-like story page and its tail an energetic calligraphic ink flourish. Cobalt blue and rich violet, luminous mint-cyan crest, restrained coral accent. Mischievous wise expression, simplified bold shapes, distinctive horn and snout silhouette; no stock medieval shield or generic gaming dragon."
+    },
+    {
+      "id": "05-story-lantern",
+      "name": "Story Lantern",
+      "file": "05-story-lantern.png",
+      "direction": "Retained direction",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "a923afab923829e87e26df96550e39d097e1db28c6b09c7a944851de904e07a1",
+      "prompt": "Use case: logo-brand. Asset type: standalone original concept logo for Weaver, a 12-role multi-agent storyteller. Create ONE polished distinctive emblem and its custom wordmark, not a sheet of variants. Exact text: \"Weaver\" (W-e-a-v-e-r), perfectly legible below the emblem, no other text. Style: premium vector-friendly graphic identity, bold clean silhouettes, controlled organic curves, inventive negative space, expressive editorial personality. Palette: blue and purple dominate with the specified restrained complementary accents; wordmark deep midnight blue. Composition: centered emblem above custom crafted wordmark, ample clear space, plain warm ivory background, square image. Must work as a recognizable brand at smaller sizes. No mockups, no photography, no 3D product lighting, no watermarks, no generic AI neural nodes, no circuit brains, no sparkle-only symbol, no existing brand imitation. Make it alive and distinctive while keeping logo-level simplicity. Concept: An enchanted asymmetric lantern emblem, its glass chamber formed by interwoven sapphire and violet ribbon bands. Inside, a warm gold living flame shaped like a tiny folded story page; three flowing cyan-purple narrative trails curl out above into a compact magical silhouette. Intriguing handmade story-world feeling, strong readable emblem, not a realistic object rendering."
+    },
+    {
+      "id": "06-threadkeeper",
+      "name": "Threadkeeper",
+      "file": "06-threadkeeper.png",
+      "direction": "Retained direction",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "46e4150d053f55f5a0b9a5a7ecd1061c9c54a61afe3ceb08e8ca616f32d237de",
+      "prompt": "Use case: logo-brand. Asset type: standalone original concept logo for Weaver, a 12-role multi-agent storyteller. Create ONE polished distinctive emblem and its custom wordmark, not a sheet of variants. Exact text: \"Weaver\" (W-e-a-v-e-r), perfectly legible below the emblem, no other text. Style: premium vector-friendly graphic identity, bold clean silhouettes, controlled organic curves, inventive negative space, expressive editorial personality. Palette: blue and purple dominate with the specified restrained complementary accents; wordmark deep midnight blue. Composition: centered emblem above custom crafted wordmark, ample clear space, plain warm ivory background, square image. Must work as a recognizable brand at smaller sizes. No mockups, no photography, no 3D product lighting, no watermarks, no generic AI neural nodes, no circuit brains, no sparkle-only symbol, no existing brand imitation. Make it alive and distinctive while keeping logo-level simplicity. Concept: An original charismatic storyteller mascot: a small hooded threadkeeper with an expressive curious face, holding a floating spool whose luminous ribbon curves around the figure into a story-page silhouette. Deep blue cloak, saturated purple hood, cyan ribbon and warm apricot face accent. Clean bold character icon with lively posture and a clever memorable outline, tasteful and literary rather than generic wizard clipart."
+    },
+    {
+      "id": "07-moonlit-moth",
+      "name": "Moonlit Moth",
+      "file": "07-moonlit-moth.png",
+      "direction": "New direction",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "3daa950e2ee74653cabdb612f725a138b986edc88c2b303ef498379cac5482db",
+      "prompt": "Use case: logo-brand. Asset type: standalone original concept logo for Weaver, a 12-role multi-agent storyteller. Create ONE polished distinctive emblem and its custom wordmark, not a sheet of variants. Exact text: \"Weaver\" (W-e-a-v-e-r), perfectly legible below the emblem, no other text. Style: premium vector-friendly graphic identity, bold clean silhouettes, controlled organic curves, inventive negative space, expressive editorial personality. Palette: blue and purple dominate with the specified restrained complementary accents; wordmark deep midnight blue. Composition: centered emblem above custom crafted wordmark, ample clear space, plain warm ivory background, square image. Must work as a recognizable brand at smaller sizes. No mockups, no photography, no 3D product lighting, no watermarks, no generic AI neural nodes, no circuit brains, no sparkle-only symbol, no existing brand imitation. Make it alive and distinctive while keeping logo-level simplicity. Concept: A remarkable night-moth emblem with two sweeping angular wings built from layered folded story pages, indigo outer wings and radiant purple inner panels. A tiny cyan crescent between its antennae and restrained peach-gold wing eyespots. The inner wing veins suggest woven narrative paths, but remain simplified. Majestic magical literary identity with an immediately recognizable unusual silhouette."
+    },
+    {
+      "id": "08-ink-theatre",
+      "name": "Ink Theatre",
+      "file": "08-ink-theatre.png",
+      "direction": "New direction",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "b901aa5548c1d5fc3c7cffa8fa237d1ccc580026c98a26bf6773f0719c5fe8a3",
+      "prompt": "Use case: logo-brand. Asset type: standalone original concept logo for Weaver, a 12-role multi-agent storyteller. Create ONE polished distinctive emblem and its custom wordmark, not a sheet of variants. Exact text: \"Weaver\" (W-e-a-v-e-r), perfectly legible below the emblem, no other text. Style: premium vector-friendly graphic identity, bold clean silhouettes, controlled organic curves, inventive negative space, expressive editorial personality. Palette: blue and purple dominate with the specified restrained complementary accents; wordmark deep midnight blue. Composition: centered emblem above custom crafted wordmark, ample clear space, plain warm ivory background, square image. Must work as a recognizable brand at smaller sizes. No mockups, no photography, no 3D product lighting, no watermarks, no generic AI neural nodes, no circuit brains, no sparkle-only symbol, no existing brand imitation. Make it alive and distinctive while keeping logo-level simplicity. Concept: A sophisticated original theatrical storyteller emblem: one expressive mask sculpted from two sweeping interwoven ribbons, one sapphire blue and one vivid violet, with a clever smiling profile inside its negative space. A tiny coral-gold expressive cheek accent and cyan ribbon tip. Dynamic playful stagecraft, dramatic asymmetric movement, restrained shapes; avoid the stock paired comedy/tragedy masks."
+    },
+    {
+      "id": "09-story-nautilus",
+      "name": "Story Nautilus",
+      "file": "09-story-nautilus.png",
+      "direction": "New direction",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "4fb3489dc9d5b082ca134b5e6895a92d62e59f84c8cf2b829e44ba895b7f5928",
+      "prompt": "Use case: logo-brand. Asset type: standalone original concept logo for Weaver, a 12-role multi-agent storyteller. Create ONE polished distinctive emblem and its custom wordmark, not a sheet of variants. Exact text: \"Weaver\" (W-e-a-v-e-r), perfectly legible below the emblem, no other text. Style: premium vector-friendly graphic identity, bold clean silhouettes, controlled organic curves, inventive negative space, expressive editorial personality. Palette: blue and purple dominate with the specified restrained complementary accents; wordmark deep midnight blue. Composition: centered emblem above custom crafted wordmark, ample clear space, plain warm ivory background, square image. Must work as a recognizable brand at smaller sizes. No mockups, no photography, no 3D product lighting, no watermarks, no generic AI neural nodes, no circuit brains, no sparkle-only symbol, no existing brand imitation. Make it alive and distinctive while keeping logo-level simplicity. Concept: A whimsical elegant nautilus storytelling emblem: an expressive small creature peeks from a spiral shell made from layered folded paper bands, cobalt blue flowing into amethyst purple. One cyan ink-tentacle extends in a fluid storyteller's flourish with a small warm gold tip. Clever spiral narrative metaphor, strong bold silhouette, artful playful publishing mascot, no photoreal underwater scene."
+    },
+    {
+      "id": "10-paper-airship",
+      "name": "Paper Airship",
+      "file": "10-paper-airship.png",
+      "direction": "New direction",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "8825b4573591dbca82cedfb480a494456cbbb2e10c745dbb9d1f794dc376d2ad",
+      "prompt": "Use case: logo-brand. Asset type: standalone original concept logo for Weaver, a 12-role multi-agent storyteller. Create ONE polished distinctive emblem and its custom wordmark, not a sheet of variants. Exact text: \"Weaver\" (W-e-a-v-e-r), perfectly legible below the emblem, no other text. Style: premium vector-friendly graphic identity, bold clean silhouettes, controlled organic curves, inventive negative space, expressive editorial personality. Palette: blue and purple dominate with the specified restrained complementary accents; wordmark deep midnight blue. Composition: centered emblem above custom crafted wordmark, ample clear space, plain warm ivory background, square image. Must work as a recognizable brand at smaller sizes. No mockups, no photography, no 3D product lighting, no watermarks, no generic AI neural nodes, no circuit brains, no sparkle-only symbol, no existing brand imitation. Make it alive and distinctive while keeping logo-level simplicity. Concept: An imaginative compact paper airship emblem: a small storytelling vessel with a cobalt hull and violet balloon formed from interwoven folded page panels, a cyan flowing ribbon wake and tiny warm gold cabin light. Tilting upward with adventurous life and motion. Clever original simplified silhouette suggesting stories carrying the imagination, no scenery, no stock hot-air-balloon icon."
+    }
+  ],
+  "selectedLogo": "weaver-logo.png"
+}

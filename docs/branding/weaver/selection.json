@@ -1,0 +1,13 @@
+{
+  "brand": "Weaver",
+  "direction": "Threadkeeper",
+  "approvedBy": [
+    "Manny",
+    "Justin"
+  ],
+  "approvedDate": "2026-10-26",
+  "file": "weaver-logo.png",
+  "source": "threadkeeper/06-merged-candidate.png",
+  "sha256": "79cb489c9a568fc0b246ad494c9d9a55ac1fbe6ff8e7c8e1c82969d351c53719",
+  "description": "Editorial Minimal structure with selective Art Nouveau gold ornament; both contributors approved the merge."
+}

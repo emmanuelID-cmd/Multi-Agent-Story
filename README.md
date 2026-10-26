@@ -1,7 +1,19 @@
-# Multi-Agent Story Builder
+# Weaver — Multi-Agent Storyteller
 
-A collaboration assignment to turn a fiction premise into an ordered, editable
-three-chapter draft, with writer-approved planning and bounded critique.
+<img src="docs/branding/weaver/weaver-logo.png" alt="Weaver Threadkeeper logo" width="280">
+
+Weaver is a collaborative storyteller designed around 12 coordinated agent
+roles, weaving a fiction premise into an ordered, editable three-chapter draft
+with writer-approved planning and bounded critique. The repository remains
+`Multi-Agent-Story`; the implementation status below distinguishes working
+capabilities from the proposed full agent workflow.
+
+Explore the ten [Weaver logo concepts](docs/branding/weaver/index.html), including
+the six selected creative directions and four new alternatives.
+**Approved logo: the merged Threadkeeper**, selected by Manny and Justin.
+It combines the clean Editorial Minimal silhouette with selective Art Nouveau
+gold details. The [five style explorations](docs/branding/weaver/threadkeeper/index.html)
+remain available for reference.
 
 **Status:** the local synthetic foundation is implemented. It includes
 authentication, project ownership, a minimal story workspace, fixture-backed
@@ -32,7 +44,9 @@ is connected. The metadata button alone does not create or accept that dossier.
 
 ## Project references
 
-- [Active PRD v3 working draft](docs/prd/drafts/PRD-v3-draft.md) — approved input-to-research behavior and contributor connection agreement; draft, not a release approval
+- [Active PRD v4 working draft](docs/prd/drafts/PRD-v4-draft.md) — approved reliability-first MVP amendments and contributor boundaries; not a release approval
+- [Remaining MVP build checklist](docs/implementation/weaver-mvp-build-checklist.md) — owner-labeled inventory, including Justin's lane; no implementation authorization
+- [PRD v3 working draft](docs/prd/drafts/PRD-v3-draft.md) — prior intake/research revision retained for history
 - [PRD v2 working draft](docs/prd/drafts/PRD-v2-draft.md) — prior revision retained for history
 - [Original submitted PRD](docs/prd/Multi-Agent-Story-Builder-PRD.md) — preserved historical baseline
 - [PRD PDF](docs/prd/Multi-Agent-Story-Builder-PRD.pdf)
@@ -446,7 +460,8 @@ Multi-Agent-Story/
 The committed synthetic foundation is the shared starting point. Use `developer`
 as the integration and starting base for all contributor, task, and SQL work
 branches. Schema and migration changes belong on the separate persistent
-`manny/sql-foundation` lane; Manny's READ work belongs on `manny/read-agents`.
+`sql-foundation` lane, shared by either contributor; Manny's READ work belongs
+on `manny/read-agents`. The legacy ref transition is tracked in Shared Phase 1.2.
 Both lanes send reviewed pull requests to `developer`; only pull requests from
 `developer` target `main`. Do routine work on lane or task branches rather than
 directly on `developer` or `main`. These rules describe branch ancestry and PR
@@ -469,3 +484,12 @@ evidence for a human decision. Never force, reset, discard, or delete work to
 force alignment. Preserve existing PRD content and do not infer cloud backup
 from its OneDrive path. Branching, staging, committing, pushing, merging, and
 branch deletion remain subject to the approved plan and external AGENTS gates.
+
+## Phase accountability
+
+Follow the [owner phase plans](docs/phase/README.md),
+[26-item checklist](docs/implementation/weaver-mvp-build-checklist.md) and
+[phase commit groups](docs/phase/COMMIT-GROUPS.md). Check off each assignment
+only after verified completion, then record what changed and the acceptance/test
+evidence (actual X/Y). Phase-document creation completes none of the 26 items.
+Justin controls his WRITE phase organization; Manny owns READ; SQL is shared.

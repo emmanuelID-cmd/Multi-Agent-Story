@@ -1,0 +1,12 @@
+{
+  "concept": "Threadkeeper merged candidate",
+  "status": "Merged Threadkeeper approved by Manny and Justin",
+  "method": "Built-in image_gen reference-image edit",
+  "references": [
+    "01-art-nouveau.png",
+    "02-editorial-minimal.png"
+  ],
+  "file": "06-merged-candidate.png",
+  "prompt": "Use case: logo-brand, reference-image editing. Create ONE NEW merged Weaver Threadkeeper logo, combining the two supplied references deliberately. Image 2 (Editorial Minimal) is the PRIMARY structural base: retain its clean bold silhouette, simplified flat blue-purple cloak planes, adult storyteller face, generous negative space, clearly lifted hand and floating spool, cyan story-thread loop, open-book cloak base, and exact legible navy wordmark \"Weaver\" underneath. Image 1 (Art Nouveau) supplies ONLY selective literary richness: a fine warm-gold hood edge, one graceful gold leaf sprig along the upper-left hood and a small matching ornamental detail at the shoulder or clasp. Make the face a tasteful midpoint: mature, warm, thoughtful, gently modeled with a few clean shapes, neither a child cartoon nor highly rendered portrait. Keep the logo roughly 80% of image 2's visual simplicity and 20% of image 1's ornament. Preserve original composition, recognizable concept and wordmark. Avoid dense embroidery all over the cloak, hairline hatching, decorative confetti, extra stars, excessive gradients or a busy illustration. Cyan ribbon remains a strong clean curve; gold accents restrained. One isolated polished emblem above \"Weaver\", square warm ivory background with ample clear margins. No headings, annotations, side-by-side variants, mockup or watermark. This is a candidate visual for teammates to evaluate, not a final chosen identity.",
+  "selectedLogo": "../weaver-logo.png"
+}
