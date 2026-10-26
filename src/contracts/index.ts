@@ -1,14 +1,22 @@
 import { z } from "zod";
 import {inspectText} from "./input-policy";
+import {intakeRecordSchema} from "./intake";
 
 export const briefSchema = z.object({
-  premise: z.string().trim().min(10, "Use at least 10 characters for the premise.").max(2000),
-  genre: z.string().trim().min(1, "Enter a genre.").max(80),
-  audience: z.string().trim().min(1, "Enter the audience.").max(100),
-  tone: z.string().trim().min(1, "Enter a tone.").max(100),
-  desiredEnding: z.string().trim().min(1, "Describe the desired ending.").max(500),
+  premise: z.string().trim().min(1).max(2000),
+  genre: z.string().trim().max(80),
+  audience: z.string().trim().max(100),
+  tone: z.string().trim().max(100),
+  desiredEnding: z.string().trim().max(500),
+  intake: intakeRecordSchema.optional(),
 }).superRefine((brief,ctx)=>{
+  if(!brief.intake){
+    if(brief.premise.length<10)ctx.addIssue({code:"custom",path:["premise"],message:"Use at least 10 characters for the premise."});
+    for(const field of ["genre","audience","tone","desiredEnding"] as const)
+      if(!brief[field])ctx.addIssue({code:"custom",path:[field],message:`Enter ${field === "desiredEnding" ? "the desired ending" : field}.`});
+  }
   for(const [field,value] of Object.entries(brief)){
+    if(typeof value!=="string")continue;
     const finding=inspectText(value,field==="premise"||field==="desiredEnding"?"creative":"label",field,"project-brief");
     if(finding.verdict==="REJECT")ctx.addIssue({code:"custom",path:[field],message:"Remove unexpected hidden/control characters; keep labels on one line."});
   }

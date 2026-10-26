@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { AnthropicReadModel } from "../src/agents/read/model";
 
@@ -58,6 +58,19 @@ describe("READ Anthropic boundary", () => {
       reply().content[0],
     ] })));
     await expect(model.complete(call())).rejects.toThrow();
+  });
+
+  it("cancels oversized response streams instead of leaving the provider read open", async () => {
+    for (const declared of [true, false]) {
+      const cancel = vi.fn();
+      const stream = new ReadableStream<Uint8Array>({
+        start(controller) { controller.enqueue(new Uint8Array(1_048_577)); }, cancel,
+      });
+      const model = new AnthropicReadModel("synthetic-test-key", async () => new Response(stream,
+        declared ? { headers: { "content-length": "1048577" } } : undefined));
+      await expect(model.complete(call())).rejects.toThrow();
+      expect(cancel).toHaveBeenCalledOnce();
+    }
   });
 
   it("rejects duplicate final results and truncated completions", async () => {

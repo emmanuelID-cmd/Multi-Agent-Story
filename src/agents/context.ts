@@ -8,12 +8,14 @@ export function buildWriterContext(input:unknown,index:number,version:number){
   const brief=briefSchema.parse(value.brief);const bible=bibleSchema.parse(value.bible);
   const assigned=chapterIndex.parse(index);
   if(!Number.isSafeInteger(version)||version<1)throw Error("Invalid approved version.");
-  const findings=Object.entries(brief).map(([field,text])=>inspectText(text,field==="premise"||field==="desiredEnding"?"creative":"label",field,"project-brief"));
-  const acceptedBrief=Object.fromEntries(Object.entries(brief).filter(([field])=>findings.find(f=>f.fieldRef===field)?.verdict!=="REJECT"));
+  // Intake review metadata is not a Writer instruction. Pass only confirmed values.
+  const {intake,...legacyBrief}=brief;
+  const findings=Object.entries(legacyBrief).map(([field,text])=>inspectText(text,field==="premise"||field==="desiredEnding"?"creative":"label",field,"project-brief"));
+  const acceptedBrief=Object.fromEntries(Object.entries(legacyBrief).filter(([field])=>findings.find(f=>f.fieldRef===field)?.verdict!=="REJECT"));
   return {
     trustedInstructions:WRITER_POLICY,
     // JSON escaping prevents data from breaking out into a trusted instruction section.
-    dataJson:JSON.stringify({brief:acceptedBrief,approvedFacts:bible.facts,chapterBeat:bible.beats.find(b=>b.chapterIndex===assigned),chapterIndex:assigned,bibleVersion:version}),
+    dataJson:JSON.stringify({brief:acceptedBrief,...(intake?.status==="confirmed"?{confirmedStoryDetails:intake.confirmed?.scope.dimensions}:{}),approvedFacts:bible.facts,chapterBeat:bible.beats.find(b=>b.chapterIndex===assigned),chapterIndex:assigned,bibleVersion:version}),
     findings,bibleVersion:version,canDispatch:findings.every(f=>f.verdict!=="REJECT"),
   };
 }

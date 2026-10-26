@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { ReadVersions } from "./contracts";
 
 export type ModelCall = {
-  agent: "research" | "reader" | "consistency";
+  agent: "research" | "reader" | "consistency" | "coordinator";
   system: string; data: unknown; schema: z.ZodType;
   maxOutputTokens: number; signal: AbortSignal;
 };
@@ -39,22 +39,30 @@ export function modelWireSchema(schema: z.ZodType): Record<string, unknown> {
 }
 
 async function boundedJson(response: Response, signal: AbortSignal): Promise<unknown> {
-  if (Number(response.headers.get("content-length") || 0) > MAX_RESPONSE_BYTES || !response.body) throw new Error("MODEL_RESPONSE_INVALID");
+  if (Number(response.headers.get("content-length") || 0) > MAX_RESPONSE_BYTES || !response.body) {
+    await response.body?.cancel().catch(() => undefined);
+    throw new Error("MODEL_RESPONSE_INVALID");
+  }
   const reader = response.body.getReader();
   const chunks: Uint8Array[] = [];
   let size = 0;
+  let complete = false;
   const abort = () => { void reader.cancel().catch(() => undefined); };
   signal.addEventListener("abort", abort, { once: true });
   try {
     while (true) {
       if (signal.aborted) throw new Error("CANCELED");
       const next = await reader.read();
-      if (next.done) break;
+      if (next.done) { complete = true; break; }
       size += next.value.byteLength;
       if (size > MAX_RESPONSE_BYTES) throw new Error("MODEL_RESPONSE_TOO_LARGE");
       chunks.push(next.value);
     }
-  } finally { signal.removeEventListener("abort", abort); reader.releaseLock(); }
+  } finally {
+    signal.removeEventListener("abort", abort);
+    if (!complete) await reader.cancel().catch(() => undefined);
+    reader.releaseLock();
+  }
   const bytes = new Uint8Array(size);
   let offset = 0;
   for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; }

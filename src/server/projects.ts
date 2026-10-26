@@ -3,10 +3,11 @@ import { and, asc, desc, eq, like } from "drizzle-orm";
 import { db } from "./db";
 import { projects, bibles, proposals, runs, tasks, chapters, critiques, evidence, memories } from "./db/schema";
 import { briefSchema, bibleSchema, runInput, limits } from "../contracts";
+import { newIntakeRequestSchema } from "../contracts/intake";
 import { enqueue } from "../worker/queue";
 import type { RevisedManuscript } from "../agents/editors";
 
-export class AppError extends Error { constructor(public status: number, message: string) { super(message); } }
+export class AppError extends Error { constructor(public status: number, message: string, public fields?: Record<string,string[]>) { super(message); } }
 export async function ownedProject(ownerId: string, id: string) {
   const [project] = await db.select().from(projects).where(and(eq(projects.id,id),eq(projects.ownerId,ownerId)));
   if (!project) throw new AppError(404,"Project unavailable.");
@@ -14,7 +15,14 @@ export async function ownedProject(ownerId: string, id: string) {
 }
 export async function listProjects(ownerId: string) { return db.select().from(projects).where(eq(projects.ownerId,ownerId)).orderBy(desc(projects.createdAt)); }
 export async function createProject(ownerId: string, input: unknown) {
-  const brief = briefSchema.parse(input);
+  if (input && typeof input === "object" && "intake" in input) throw new AppError(400, "Intake state is managed by the server.");
+  const isIntake = input && typeof input === "object" && "rawText" in input;
+  const brief = isIntake
+    ? (() => { const { rawText } = newIntakeRequestSchema.parse(input); return briefSchema.parse({
+      premise: rawText.slice(0, 2000), genre: "", audience: "", tone: "", desiredEnding: "",
+      intake: { version: 1, revision: 0, rawText, status: "draft", decisions: [] },
+    }); })()
+    : briefSchema.parse(input);
   const [project] = await db.insert(projects).values({ id:randomUUID(), ownerId, brief }).returning();
   return project;
 }
@@ -41,7 +49,14 @@ export async function projectState(ownerId: string, id: string) {
   };
 }
 export async function proposePlan(ownerId: string, id: string) {
-  const project = await ownedProject(ownerId, id);
+  return db.transaction(async tx => {
+  // Serialize this boundary with intake edits; a stale confirmed scope cannot open planning.
+  const [project] = await tx.select().from(projects).where(and(eq(projects.id,id),eq(projects.ownerId,ownerId))).for("update");
+  if (!project) throw new AppError(404,"Project unavailable.");
+  if (project.brief.intake?.status !== undefined && project.brief.intake.status !== "confirmed")
+    throw new AppError(409, "Confirm the story scope before proposing a plan.");
+  if (project.brief.intake)
+    throw new AppError(409, "Your confirmed brief is saved. Planning waits for an accepted research dossier; that connection is not available yet.");
   const bibleA = bibleSchema.parse({
     facts: [
       { id: "F1", text: "Mara, a lighthouse keeper, cannot swim." },
@@ -78,12 +93,13 @@ export async function proposePlan(ownerId: string, id: string) {
       { chapterIndex: 3, text: "Haul the soaked survivor aboard as storm waves crest against the breakwater." },
     ],
   });
-  const inserted = await db.insert(proposals).values([
+  const inserted = await tx.insert(proposals).values([
     { id: randomUUID(), projectId: id, baseVersion: project.version, kind: "bible_a", data: bibleA },
     { id: randomUUID(), projectId: id, baseVersion: project.version, kind: "bible_b", data: bibleB },
     { id: randomUUID(), projectId: id, baseVersion: project.version, kind: "bible_c", data: bibleC },
   ]).returning();
   return inserted[0];
+  });
 }
 export async function approveProposal(ownerId: string, id: string, proposalId: string) {
   await ownedProject(ownerId, id);

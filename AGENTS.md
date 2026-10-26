@@ -48,9 +48,16 @@ TEST MODE is explicitly requested and read-only; it never authorizes edits.
   and schema changes require coordination before either lane depends on them.
 
 Manny's approved implementation lane is [READ](docs/implementation/read-lane.md).
+The [web intake implementation](docs/implementation/story-intake.md) connects
+Coordinator's read-only preparation task to the existing Claude adapter. It
+saves sparse ideas and versioned human decisions in the existing brief JSON,
+without SQL migrations. Intake does not add a roster instance or change
+Reader's chapter-review task. New intake projects remain blocked from planning
+until accepted research is connected; existing legacy fixture workflows remain.
 Preserve existing Justin WRITE, worker, and interface work without extending or
-deleting it. The existing metadata adapters remain disabled by default; do not
-enable live providers or connect a model as part of a READ-only change.
+deleting it. Metadata adapters remain gated off by default. The approved opt-in
+web intake task and separate READ CLI harness use the existing model adapter;
+this does not authorize enabling other model paths or live research providers.
 
 Use `developer` as the integration and starting base: create all contributor,
 task, and SQL work branches from it, and target `developer` with pull requests
@@ -168,7 +175,7 @@ The [README implementation guide](README.md#local-setup-and-implementation)
 documents the implemented foundation: Node 24/npm, Next.js/React/TypeScript,
 LangGraph.js, Zod, PostgreSQL/Drizzle, a separate Node worker with pg-boss,
 Better Auth, Vitest, and Playwright. It supports synthetic fixture workflows;
-live model and research providers, deployment, and production privacy/retention
+live story generation and research providers, deployment, and production privacy/retention
 controls remain deferred. `package.json` and `package-lock.json` are the source
 of truth for dependency versions and commands. Keep `.env` ignored, and never
 read or print its local secret values.
@@ -244,3 +251,13 @@ change. Before approval, scan every changed file, report exact changed lines,
 check Markdown fences and whitespace, and preview documentation through links.
 For future application changes, use the PRD eval fixtures and applicable security,
 API, input validation, accessibility, and frontend checks. Never claim unrun tests pass.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+## This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
