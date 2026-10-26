@@ -11,6 +11,13 @@ is limited to Manny's [READ lane](docs/implementation/read-lane.md): owner-scope
 and gated book-metadata adapters. Existing WRITE and interface work is preserved
 for Justin; this READ pass does not claim that his lane is complete or reviewed.
 
+The separate [executable READ harness](docs/implementation/read-runtime.md) now
+connects real Research, Reader, and Consistency model runners. Run
+`npm run agents:read` for fixture evaluation or add `-- --live` to call Claude
+with the controlled synthetic inputs. The web workspace remains fixture-backed.
+The harness records tools, source versions, failure states, and handoffs; its
+WRITE connectors and default NYT/Gutendex responses are explicitly synthetic.
+
 ## Project references
 
 - [Active PRD v3 working draft](docs/prd/drafts/PRD-v3-draft.md) — approved input-to-research behavior and contributor connection agreement; draft, not a release approval
