@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { inReadSnapshot, ReadError } from "../read-state";
 import { benchmarkRequest, readBookBenchmarks } from "./book-metadata";
+import { intakeRecordSchema, type IntakeScope } from "../../contracts/intake";
+import { briefSchema } from "../../contracts";
 
 const MAX_REQUEST_BYTES = 4_096;
 const BODY_DEADLINE_MS = 5_000;
@@ -69,16 +71,32 @@ export async function parseBenchmarkBody(request: Request) {
 type BenchmarkInput = z.infer<typeof requestSchema>;
 type Dependencies = {
   ownsProject: (ownerId: string, projectId: string) => Promise<boolean>;
+  confirmedScope?: (ownerId: string, projectId: string) => Promise<IntakeScope | null | undefined>;
   read: typeof readBookBenchmarks;
 };
 
 const defaults: Dependencies = {
   ownsProject: async (ownerId, projectId) => Boolean(await inReadSnapshot(repo => repo.project(ownerId, projectId))),
+  confirmedScope: async (ownerId, projectId) => inReadSnapshot(async repo => {
+    const project = await repo.project(ownerId, projectId);
+    if (!project) throw new ReadError(404, "Project unavailable.");
+    const brief = briefSchema.safeParse(project?.brief);
+    if (!brief.success) return null;
+    if (!brief.data.intake) return undefined;
+    const intake = intakeRecordSchema.parse(brief.data.intake);
+    return intake.status === "confirmed" ? intake.confirmed?.scope ?? null : null;
+  }),
   read: readBookBenchmarks,
 };
 
 export async function getProjectBenchmarks(ownerId: string, input: BenchmarkInput, dependencies: Dependencies = defaults) {
   const { projectId, ...query } = input;
   if (!await dependencies.ownsProject(ownerId, projectId)) throw new ReadError(404, "Project unavailable.");
-  return { projectId, evidence: await dependencies.read(query) };
+  const scope = await dependencies.confirmedScope?.(ownerId, projectId);
+  if (scope === null) throw new ReadError(400, "Confirm the story scope before requesting book metadata.");
+  if (scope && (query.genre !== scope.genre || query.providers.length !== scope.providers.length ||
+    query.providers.some(provider => !scope.providers.includes(provider))))
+    throw new ReadError(400, "The metadata request must match the confirmed story scope.");
+  const evidence = await dependencies.read(query);
+  return scope ? { projectId, scope, evidence } : { projectId, evidence };
 }

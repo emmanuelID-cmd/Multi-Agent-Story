@@ -6,6 +6,6 @@ export async function requireUser(){const session=await auth.api.getSession({hea
 export function sameOrigin(request:Request){const origin=request.headers.get("origin");if(!origin||!["http://localhost:3000","http://127.0.0.1:3000"].includes(origin))throw new AppError(403,"Request unavailable.");}
 export function failure(error:unknown){
   if(error instanceof ZodError)return Response.json({error:"Check the highlighted fields.",fields:error.flatten().fieldErrors},{status:400});
-  if(error instanceof AppError)return Response.json({error:error.message},{status:error.status});
+  if(error instanceof AppError)return Response.json({error:error.message,...(error.fields?{fields:error.fields}:{})},{status:error.status});
   console.error("Project request failed; private inputs omitted.");return Response.json({error:"Temporarily unavailable. Your saved work is preserved."},{status:503});
 }

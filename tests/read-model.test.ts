@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
-import { AnthropicReadModel } from "../src/agents/read/model";
+import { AnthropicReadModel, ModelHttpError } from "../src/agents/read/model";
 
 const schema = z.strictObject({ summary: z.string().min(1) });
 const call = () => ({ agent: "reader" as const, system: "Read assigned sources only.",
@@ -42,7 +42,9 @@ describe("READ Anthropic boundary", () => {
 
   it.each([429, 500, 401])("does not expose HTTP %i response text", async status => {
     const model = new AnthropicReadModel("synthetic-test-key", async () => new Response("secret reflected in provider body", { status }));
-    await expect(model.complete(call())).rejects.toThrow(status === 429 ? "MODEL_RATE_LIMITED" : "MODEL_UNAVAILABLE");
+    const error = await model.complete(call()).catch(error => error);
+    expect(error).toBeInstanceOf(ModelHttpError);
+    expect(error).toMatchObject({ status, message: status === 429 ? "MODEL_RATE_LIMITED" : "MODEL_UNAVAILABLE" });
   });
 
   it("rejects malformed and oversized response envelopes", async () => {
@@ -58,6 +60,19 @@ describe("READ Anthropic boundary", () => {
       reply().content[0],
     ] })));
     await expect(model.complete(call())).rejects.toThrow();
+  });
+
+  it("cancels oversized response streams instead of leaving the provider read open", async () => {
+    for (const declared of [true, false]) {
+      const cancel = vi.fn();
+      const stream = new ReadableStream<Uint8Array>({
+        start(controller) { controller.enqueue(new Uint8Array(1_048_577)); }, cancel,
+      });
+      const model = new AnthropicReadModel("synthetic-test-key", async () => new Response(stream,
+        declared ? { headers: { "content-length": "1048577" } } : undefined));
+      await expect(model.complete(call())).rejects.toThrow();
+      expect(cancel).toHaveBeenCalledOnce();
+    }
   });
 
   it("rejects duplicate final results and truncated completions", async () => {
