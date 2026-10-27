@@ -55,7 +55,14 @@ export async function finishRun(runId: string) {
     const all=await tx.select().from(tasks).where(eq(tasks.runId,runId));
     if(all.length!==3||all.some(t=>t.status!=="completed")){await tx.update(runs).set({status:"failed"}).where(eq(runs.id,runId));return {};}
     const [bible]=await tx.select().from(bibles).where(eq(bibles.id,run.bibleId));
-    const outputs=orderedChapters(await tx.select().from(chapters).where(eq(chapters.runId,runId)),bible.version);
+    if(!bible){await tx.update(runs).set({status:"failed"}).where(eq(runs.id,runId));return {};}
+    let outputs: ReturnType<typeof orderedChapters>;
+    try {
+      outputs=orderedChapters(await tx.select().from(chapters).where(eq(chapters.runId,runId)),bible.version);
+    } catch {
+      await tx.update(runs).set({status:"failed"}).where(eq(runs.id,runId));
+      return {};
+    }
 
     const [firstTask]=await tx.select().from(tasks).where(eq(tasks.runId,runId)).limit(1);
     const recordedRequest=firstTask?.savedInput?.brief?.desiredEnding ?? "A safe rescue by boat.";
