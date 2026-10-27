@@ -18,7 +18,7 @@ Every numbered phase has its own folder named `Phase-<integer>-<phase-title>`, i
 
 Preserve each approved owner's phase order. Justin may adjust his own reference plan under his own rules; those rules override this organization for him, while shared contracts and product gates remain binding. Shared execution ownership must be assigned before implementation.
 
-Resolve each applicable S01-S04 decision before its dependent wiring. S01's product decisions were approved October 26, 2026 (decision register and PRD Section 7g); S02-S04 remain unresolved. Agreed fixture adapters allow component development before full web integration; they never authorize production dispatch on fixture evidence. Tests accompany each component phase. Later reliability phases close remaining gaps.
+Resolve each applicable S01-S04 decision before its dependent wiring. S01, S03 and S04 product decisions were approved October 26, 2026 (decision register and PRD Sections 7g/7j); S02 remains unresolved. Agreed fixture adapters allow component development before full web integration; they never authorize production dispatch on fixture evidence. Tests accompany each component phase. Later reliability phases close remaining gaps.
 
 Shared 3.1 reviews existing storage first; SQL is conditional. Shared 3.2 closes I03 only after that review and durable atomic state work are complete. Shared 3.3 recovery coverage must be rechecked for every later connector. Shared 4.1 waits for accepted Research and a planning-owner decision. Shared 4.2 establishes graph boundaries; I02 remains open until Shared 5.2 supplies and verifies its export connector. Shared 5.1/5.2 may use the established graph foundation without waiting for I02 final check-off. This separates development dependencies from final acceptance and avoids a circular prerequisite.
 
@@ -33,6 +33,33 @@ No step may invent an unresolved contract. Deferred decisions remain gates for t
 5. Shared 1.1 documentation completion is a supporting milestone, not a completed item among the 26. No product work begins from this document alone.
 
 ## Phase branch lifecycle
+
+Current user override, October 27, 2026: finish Manny Phase 2 and its reviewed
+PR/merge to `developer`, verify safe non-main alignment, and delete the verified
+merged temporary branch. Then stop. Automatic continuation into Phase 3 or 4
+is deferred until the user reinstates that rule; the approved branch names
+remain recorded without authorizing their creation during this pause.
+
+For Manny Phase 2, the October 26, 2026 user update requires one PR for the whole
+phase: retain `manny/phase-2-1-provider-retrieval` through 2.1 and 2.2, verify
+each sub-phase in order, and publish only after both are complete. Do not open
+a 2.1-only PR. Merge to `developer` when safe, then align eligible persistent
+non-main branches and clean up the merged temporary branch under the checks below.
+
+Continue approved sub-phases sequentially without a routine stop between them.
+Use the parent phase as the PR, integration and cleanup boundary. The required
+order is complete/review, commit/push, PR to `developer`, safe merge, verify the
+tree and remote refs, safe non-main alignment, then deletion of the verified
+merged temporary branch. Recheck the tree after pushing; preserve unique or
+dirty work. Subject to the current user override above, continue to the next
+approved Manny phase after cleanup, pausing for an unresolved decision, required
+exact branch-name approval or unsafe Git condition. This does not authorize
+Justin implementation or advancing `main`.
+
+Exact remaining parent-phase branch names approved October 26, 2026:
+`manny/phase-3-reader-consistency` and `manny/phase-4-read-reliability`. Create
+each only when its prior parent phase has completed integration/cleanup and
+fresh tree, remote-tip and prerequisite checks pass.
 
 For Manny's authorized builds, create one temporary branch for the active phase
 from the latest fetched, verified `developer`. Obtain approval of the exact

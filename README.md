@@ -42,6 +42,18 @@ server network access; this is a functional check, not a reliability benchmark.
 New intake projects keep planning blocked until an accepted research dossier
 is connected. The metadata button alone does not create or accept that dossier.
 
+The [confirmed Research acquisition boundary](docs/implementation/research-acquisition.md)
+now connects both provider outcomes and a trusted reviewed-source reader to
+Research. Phase 2.1 passed 32/32 targeted and 155/155 full synthetic tests,
+security and independent review. A production source approval catalog and
+permitted text reader remain unconfigured. Phase 2.2 adds
+[versioned dossier storage and authenticated exact-version acceptance](docs/implementation/research-dossier.md)
+using existing PostgreSQL JSON, including query/exclusion provenance and owned
+history/detail. The final suite passed 174/174 tests and 41/41 affected targeted
+checks, with typecheck, security and independent review. Fresh production
+acceptance remains unavailable without the approved source catalog/text reader;
+the fixture planner stays blocked. This is not a completed web story loop.
+
 ## Project references
 
 - [Active PRD v4 working draft](docs/prd/drafts/PRD-v4-draft.md) — approved reliability-first MVP amendments and contributor boundaries; not a release approval
@@ -487,6 +499,11 @@ branch deletion remain subject to the approved plan and external AGENTS gates.
 
 ## Phase accountability
 
+Current stopping boundary (October 27, 2026): complete Manny Phase 2, PR and
+safely merge to `developer`, verify eligible non-main branch alignment and
+delete the merged temporary branch, then stop. Further phase execution awaits
+the user's reinstatement of automatic continuation.
+
 Follow the [owner phase plans](docs/phase/README.md),
 [26-item checklist](docs/implementation/weaver-mvp-build-checklist.md) and
 [phase commit groups](docs/phase/COMMIT-GROUPS.md). Check off each assignment
@@ -503,3 +520,10 @@ through a PR into `developer` when safe. Fast-forward eligible branches except
 fully merged temporary phase branch and return to the persistent READ lane.
 The [phase lifecycle](docs/phase/README.md#phase-branch-lifecycle) records the
 required evidence and stop conditions. Phase order and Justin's autonomy remain.
+
+Continue approved sub-phases sequentially and publish at the parent-phase
+boundary. For Phase 2, keep `manny/phase-2-1-provider-retrieval` through both
+2.1 and 2.2; open no 2.1-only PR. Finish and review both, commit/push, PR and
+merge to `developer`, verify the tree and safely align non-main branches, then
+delete the merged temporary branch. Recheck after pushing and preserve all
+unique or dirty work before proceeding to the next authorized Manny phase.
