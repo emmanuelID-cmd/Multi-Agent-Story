@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { ProviderEvidence } from "../../server/research/book-metadata";
+import { intakeAnalysisSchema, intakeDecisionSchema, intakeScopeSchema, intakeText } from "../../contracts/intake";
 
 const id = z.string().min(1).max(128).regex(/^[\p{L}\p{N}._:-]+$/u);
 const digest = z.string().regex(/^[a-f0-9]{64}$/);
@@ -12,6 +13,8 @@ export const authoritySchema = z.strictObject({
   prdVersion: z.string().min(1).max(80),
 });
 export type ReadAuthority = z.infer<typeof authoritySchema>;
+export const researchAuthoritySchema = authoritySchema.extend({ stateVersion: z.number().int().nonnegative().max(1_000_000) });
+export type ResearchAuthority = z.infer<typeof researchAuthoritySchema>;
 
 export const readVersionsSchema = z.strictObject({
   contract: z.literal("read-v1"), prompt: z.literal("read-v1"),
@@ -35,10 +38,18 @@ export const eligibleSourceSchema = z.strictObject({
   rightsVerified: z.literal(true), locator: z.string().min(1).max(200),
   text: z.string().min(1).max(10_000), sha256: digest,
 });
+export const confirmedIntakeSchema = z.strictObject({
+  revision: z.number().int().nonnegative().max(1_000_000),
+  rawText: intakeText, sourceHash: digest, analysisHash: digest,
+  analysis: intakeAnalysisSchema,
+  decisions: z.array(intakeDecisionSchema).max(18),
+  scope: intakeScopeSchema,
+});
 export const researchInputSchema = z.strictObject({
-  authority: authoritySchema, versions: readVersionsSchema,
+  authority: researchAuthoritySchema, versions: readVersionsSchema,
   briefVersion: version, scopeVersion: version, criteriaVersion: version,
   scopeConfirmed: z.boolean(), brief: briefSchema,
+  confirmedIntake: confirmedIntakeSchema.optional(),
   dimensions: z.array(researchDimensionSchema).min(1).max(24),
   eligibleSources: z.array(eligibleSourceSchema).max(24),
   benchmarkRequest: z.strictObject({ genre: z.string().min(1).max(80), providers: z.tuple([z.literal("nyt"), z.literal("gutendex")]), nytList: z.enum(["hardcover-fiction", "trade-fiction-paperback"]).default("hardcover-fiction"), limit: z.number().int().min(1).max(10).default(5) }),

@@ -83,6 +83,35 @@ Verified move hashes:
 
 # Handoffs prepared for push
 
+## 2026-10-26T20:06:26.3111256-04:00
+
+- Preparation time: America/New_York; not a verified push timestamp.
+- Initial publication: emmanuelID-cmd/Multi-Agent-Story, manny/phase-1-intake-to-research; PR target developer. No destination ref existed at the fresh remote check. Verified branch point and developer tip: 8645568fa37ea2e3588851f48a20b8b8c9e28aba.
+- Commit author: Emmanuel De Jesus <emmanuel.dejesus@pursuit.org>, verified from Git configuration and project history (Manny). Justin has no new authored implementation in this phase.
+- Author activity: record the user's S01 product decisions and phase lifecycle; build the full-input confirmed-intake Research connection; verify ownership/freshness; correct bounded database-read waiting and failure-code routing through two FIXER cycles; record M01 completion.
+- Work groups: S01/workflow documentation, then completed Manny Phase 1 implementation/harness/completion evidence. Commit identifiers do not yet exist at preparation time; this handoff is included in the final work commit before the empty review-summary.
+- Affected areas: READ contracts/runtime, src/server/research/confirmed-intake.ts, tests/confirmed-intake.test.ts, PRD v4 Section 7g, phase/checklist records, root README/AGENTS and connector notes. External AGENTS, Justin implementation, SQL and main are unchanged.
+- Validation: 13/13 targeted, 144/144 full tests across 16 files; typecheck and diff checks passed; two SECURITY rounds plus targeted remediation checks and independent REVIEWER approval. The full original tail reaches synthetic Research model context; stale/wrong-owner/canceled/timed-out/forged work cannot expose a current candidate. No live providers/models or user trace commands were run.
+- Integration plan under user authorization: push initial phase ref, PR and safely merge to developer; inspect and fast-forward eligible non-main branches, then delete only the merged temporary phase branch. This entry does not claim those operations already happened.
+
+### Done
+
+- [x] S01: record authoritative full-input preservation, confirmed-only research, automatic freshness/restore design, source/rejection handling, connection-only peer boundaries and trace/test rules. Decision completion does not imply all connectors are built.
+- [x] M01 / Manny Phase 1: implement owned versioned intake preparation and Research execution carrying the full original and exact choices; no 2,000-character replacement/truncation.
+- [x] Bound repository and model work under one 120-second deadline, cancellation and truthful safe failures; validate stale input before model attempts and suppress obsolete results.
+- [x] Verify synthetic behavior and complete security/review; check off M01 with explanation and preserve initial findings in local review evidence.
+- [x] Document the approved temporary phase PR/merge/non-main fast-forward/cleanup lifecycle and remove the PRD's fixed 3,000-word requirement without changing Justin behavior.
+
+### Not completed
+
+- [ ] M02-M08 and later READ connections; source acquisition/rights provenance and dossier acceptance are not part of M01.
+- [ ] S02-S04 and required evidence-acceptance decisions before dependent work; no unilateral planning, round or Editor-schema decision.
+- [ ] Live DB/worker/web/provider/model verification, durable snapshot history/restore UI and atomic dossier acceptance.
+- [ ] Actual SQL legacy-name transition (Shared 1.2); the existing persistent SQL branch is retained, not deleted with phase branches.
+- [ ] Justin WRITE implementation remains his lane; listing it or accepting connection-only adapters does not authorize behavioral changes.
+
+
+
 ## 2026-10-26T18:28:36.4316057-04:00
 
 - Preparation time: America/New_York; not a verified push timestamp.

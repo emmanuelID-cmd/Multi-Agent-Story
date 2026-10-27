@@ -15,7 +15,8 @@ path rather than triggering an automatic success or fixture fallback.
 
 Follow the [owner phase plans](../phase/README.md) and their primary 26-item map.
 These are the canonical item checkboxes; phase files reference them instead of
-duplicating their completion state. All 26 remain pending after phase planning.
+duplicating their completion state. Phase planning alone completed none of the 26;
+S01's product decisions were subsequently approved October 26, 2026.
 
 After each assignment actually passes its acceptance criteria and review, check
 that item and append a dated record below explaining what was completed, why
@@ -25,10 +26,13 @@ Never check a partial assignment merely because a plan or fixture exists.
 
 ### Verified completion log
 
-No implementation item has been completed by preparing this phase system.
+Preparing this phase system completed no implementation item. The later S01
+decision record reflects explicit user approvals, not a live agent result.
 
 | Item | Date / reviewer | Completed work and acceptance explanation | Evidence / actual tests X/Y | Limitations |
 | --- | --- | --- | --- | --- |
+| S01 | October 26, 2026 / user approval recorded by PLANNER | Approved full-input preservation, confirmed-only scope, freshness checks, future restore semantics, missing-source handling, component-specific rejection routing and connection-only adapters. | Explicit S01 conversation approvals; PRD Section 7g and decision register checked against them. Tests: N/A for the decision itself. | Does not complete M01, resolve S02-S04 or implement history, live providers or peer behavior changes. |
+| M01 | October 26, 2026 / independent REVIEWER approved after SECURITY and two bounded FIXER cycles | Added owner-scoped confirmed-intake preparation and Research execution; the complete 12,000-character original, exact choices and named confirmed dimensions reach actual model context. Revision/source/analysis checks reject wrong-owner, unconfirmed, forged and stale input; asynchronous freshness, one shared deadline and cancellation suppress obsolete or late results. | `tests/confirmed-intake.test.ts`: 13/13 targeted; full suite 144/144 across 16 files; typecheck and diff check passed. Connector and phase record link the exact source paths. | Synthetic model/provider/repository evidence only. No live DB/worker/web dispatch, source acquisition, dossier acceptance, durable history, WRITE or SQL changes. |
 
 ## Existing foundation to preserve
 
@@ -51,14 +55,14 @@ No implementation item has been completed by preparing this phase system.
 
 ## Shared decisions before dependent wiring
 
-- [ ] **S01 — Manny + Justin / shared:** Agree the versioned connector contract: authoritative user request (separate from `desiredEnding`), scope/dossier/bible/draft/proposal references, source accessibility, required fields, recipient rejection and trace correlation. Preserve both owners' existing behavior until an agreed adapter maps it.
+- [x] **S01 — Manny + Justin / shared:** Product connection decisions approved by the user October 26, 2026; see PRD Section 7g and the decision register. Preserve both owners' behavior and validate each implemented adapter in its own phase. User approval is not a claim of separate Justin code review.
 - [ ] **S02 — Shared / planning owner unassigned:** Assign ownership of Bible A/B/C and decide whether their proposals are merged or presented as alternatives. Keep the twelve-role roster and exact-version human bible gate; do not assign these three roles to Justin or Manny by assumption.
 - [ ] **S03 — Manny + Justin / shared:** Confirm revision counting: initial draft round 0, stable round identity, increment point, rejected/failed proposal treatment and retry/Reader-repair accounting. Reconcile the existing `rewriteRun` counter without resetting the two-round cap.
 - [ ] **S04 — Manny + Justin / shared:** Agree the live Editor proposal schema using existing full three-chapter manuscripts plus rationale/change summaries as the compatibility baseline. Specify exact base/proposal identity and validation; a new patch-only or passage-acceptance interface is not required.
 
 ## Manny — READ lane remaining work
 
-- [ ] **M01 — Intake-to-Research mapping:** Map the confirmed saved intake and all retained research dimensions into an authenticated, versioned `ResearchInput`; bind it to the exact confirmed original/decisions. Do not rerun intake or invent missing optional values.
+- [x] **M01 — Intake-to-Research mapping:** Complete October 26, 2026; `prepareConfirmedResearchInput` and `runConfirmedResearch` preserve the full confirmed original/decisions, map supplied dimensions and enforce owned/current input with bounded failure states. See the completion log and [connector notes](confirmed-intake-research.md). No intake rerun or invented optional defaults.
 - [ ] **M02 — Eligible source acquisition:** Connect both existing NYT/Gutendex adapters under their access/terms gates and resolve the permitted sources needed by the confirmed dimensions. Record queries, empty/partial/unavailable outcomes, identity/date/rights gaps and provenance. Metadata alone cannot become prose/style evidence.
 - [ ] **M03 — Dossier acceptance connection:** Persist the actual Research candidate and per-dimension coverage, expose exact-version acceptance through the shared application boundary, and reject stale/unreadable/insufficient evidence. Reuse existing storage where suitable; any necessary migration is a separate SQL-lane decision.
 - [ ] **M04 — Reader snapshot connection:** Replace the web fixture Reader connector with `runReader` using actual owner-scoped indexed chapters, approved facts, current source hashes/versions and the recorded editorial request. Keep Reader's preparation task distinct from editing and initial intake.
