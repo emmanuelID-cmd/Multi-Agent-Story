@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, asc, desc, eq, like } from "drizzle-orm";
+import { and, asc, desc, eq, like, notLike } from "drizzle-orm";
 import { db } from "./db";
 import { projects, bibles, proposals, runs, tasks, chapters, critiques, evidence, memories } from "./db/schema";
 import { briefSchema, bibleSchema, runInput, limits } from "../contracts";
@@ -30,7 +30,7 @@ export async function projectState(ownerId: string, id: string) {
   const project = await ownedProject(ownerId, id);
   const [bible] = await db.select().from(bibles).where(eq(bibles.projectId, id)).orderBy(desc(bibles.version)).limit(1);
   const [run] = await db.select().from(runs).where(eq(runs.projectId, id)).orderBy(desc(runs.createdAt)).limit(1);
-  const pending = await db.select().from(proposals).where(and(eq(proposals.projectId, id), eq(proposals.status, "pending"))).orderBy(desc(proposals.createdAt));
+  const pending = await db.select().from(proposals).where(and(eq(proposals.projectId, id), eq(proposals.status, "pending"), notLike(proposals.kind,"research_%"))).orderBy(desc(proposals.createdAt));
   const [acceptedManuscript] = await db.select().from(proposals).where(and(
     eq(proposals.projectId, id),
     eq(proposals.status, "accepted"),

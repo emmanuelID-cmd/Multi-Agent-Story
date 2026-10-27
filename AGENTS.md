@@ -223,6 +223,14 @@ For Manny's authorized phase builds, use one temporary phase branch created
 from the latest fetched and verified `developer`; obtain approval of its exact
 name before creation. The approved first branch is
 `manny/phase-1-intake-to-research`. Keep numbered phase scope and ownership intact.
+For Phase 2, retain the approved `manny/phase-2-1-provider-retrieval` branch
+through both 2.1 and 2.2. The October 26, 2026 user update prohibits a separate
+2.1 PR: complete and review both sub-phases before one Phase 2 PR to `developer`.
+Keep prerequisite decisions and sequential verification intact.
+October 27, 2026 user override: after Phase 2 is reviewed, merged into
+`developer`, safely aligned across non-main lanes and its merged temporary
+branch deleted, stop. Do not begin Phase 3/4 until the user reinstates automatic
+continuation. Prior exact branch-name approvals remain recorded for later use.
 After a phase is complete, verify its acceptance criteria, run unit tests and
 report actual X/Y, update its checklist explanation, then inspect all relevant
 working trees, incoming changes, open PRs, exact tips and unique commits.

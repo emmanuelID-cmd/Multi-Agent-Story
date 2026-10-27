@@ -439,16 +439,17 @@ When the gate is closed, present the unsupported dimension and an actionable cor
 
 The current READ adapter in `src/agents/read/model.ts` uses `claude-haiku-5-5`. Coordinator's opt-in intake task uses that adapter. This is an observed local configuration, not a new claim about provider availability, terms, suitability or release readiness. Credentials remain server-side. Any further live enablement still requires the existing access, terms, input-permission and execution checks. WRITE model configuration is not established by the READ model choice.
 
-| Surface | Observed status on October 26, 2026 | Remaining boundary |
+| Surface | Observed status on October 27, 2026 | Remaining boundary |
 | --- | --- | --- |
 | Home-page intake | Expanded helper, sparse original persistence, Coordinator model analysis, independent suggestion review and exact scope confirmation are implemented. The documented controlled synthetic web example returned HTTP 200/analyzed, ten observations and five suggestions after one bounded grounding repair. | One example is not a reliability benchmark; confirmation is not research acceptance. |
 | READ runtime and harness | Research, Reader and Consistency model runners, fixed prompts, bounded tools, source/version checks and synthetic harness connectors exist. Prior recorded model-backed verification used synthetic provider/source/WRITE inputs. | These runners are not the full authenticated web orchestration; that run does not prove live book research or live WRITE generation. |
-| Research-to-planning web boundary | Metadata adapters exist behind live-read and terms gates. New intake planning is deliberately blocked without an accepted dossier connection. | Connect real eligible evidence, exact dossier acceptance and authenticated dispatch; never remove the gate as a substitute. |
+| Research evidence/dossiers | Phase 2 connects confirmed Research to reviewed-source acquisition and immutable PostgreSQL dossiers, including query/exclusion provenance and exact authenticated acceptance. Final verification: 174/174 unit tests and 41/41 affected targeted tests, typecheck, SECURITY and independent review. | Synthetic repository/source/model verification only. Production source approval catalog and permitted text reader remain unconfigured; live PostgreSQL/provider/deployment behavior is untested. |
+| Research-to-planning web boundary | Owned Research history/detail and a strict authenticated acceptance route exist. Metadata adapters retain access/terms gates; new intake planning remains deliberately blocked. | Candidate generation is an internal service; full frontend/worker/planner dispatch is separate. Do not remove the fixture planner guard as a substitute for the agreed connector. |
 | Planning and WRITE | Three candidate bibles, chapter functions, two combined editor functions, proposal acceptance/export and revision plumbing exist as fixture-backed foundation behavior. | Replace fixture content with authorized model work in the appropriate owner lane and validate it through shared connectors; do not claim it is already live. |
 | Web Reader and Consistency | The current graph invokes a fixture Reader handoff/repair and an unavailable Consistency shell. The real READ runtime is separate. | Wire the actual owner/version-scoped readers and exact-proposal checks; an unavailable check cannot certify success. |
 | Whole workflow | Authentication, persistence, queue/worker and recovery primitives exist. | The full live chain from confirmed intake through accepted evidence, approved planning, writing, editorial checks and accepted export has not been demonstrated. |
 
-Evidence: [story intake](../../implementation/story-intake.md), [READ runtime](../../implementation/read-runtime.md), [WRITE lane](../../implementation/write-lane.md), `src/agents/graph.ts`, `src/agents/handoff.ts`, `src/agents/editors.ts`, `src/worker/index.ts`, and `src/server/projects.ts`. Historical source documents remain unchanged. A fixture-backed run labeled completed is not evidence that every v4 gate was connected or passed.
+Evidence: [story intake](../../implementation/story-intake.md), [READ runtime](../../implementation/read-runtime.md), [Research acquisition](../../implementation/research-acquisition.md), [dossier acceptance](../../implementation/research-dossier.md), [WRITE lane](../../implementation/write-lane.md), `src/agents/graph.ts`, `src/agents/handoff.ts`, `src/agents/editors.ts`, `src/worker/index.ts`, and `src/server/projects.ts`. Historical source documents remain unchanged. A fixture-backed run labeled completed is not evidence that every v4 gate was connected or passed.
 
 ## 5k. V3 journey requirements and full-circle acceptance
 
@@ -583,3 +584,78 @@ These decisions were explicitly approved by the project user during the S01 disc
 **Trace and test boundary:** Use the trace skill for actual agent trace audits and its independent reviewers/reconciliation. Phase tests use synthetic fixtures and report actual X/Y, separating unit, integration and failure-state checks from live evidence. This instruction does not authorize live model/provider calls or running traces on the user's behalf; supply the existing trace CLI on request. Logs expose safe identifiers and codes, never keys, manuscript prose or private reasoning. Do not label an ordinary unit test run a completed trace audit.
 
 S01 records the agreement; M01's connector and later phases still require implementation, security/review and behavioral tests. Research acceptance thresholds, planning ownership/format, round-counting and the live Editor proposal contract remain separate decisions. The three-chapter MVP remains, while the fixed approximately 3,000-word requirement is removed by the user's clarification; bounded execution remains mandatory.
+
+## 7h. Approved Phase 2.1 source boundary
+
+The user approved text-source rules for Manny Phase 2.1: use only sources explicitly verified as public domain in the United States or covered by a suitable user-provided license. NYT Books remains metadata evidence. Unknown, conflicting, missing or out-of-scope rights do not authorize text retrieval. A catalog copyright flag alone is not a reviewed permission record, and permission to use text is separate from permission to automate access to its host. Keep verified work/author identity, source and passage references, applicable jurisdiction, permission/review evidence, retrieval time and content digest bound together; do not infer these from popularity, a matching title or model assertions.
+
+Gutendex author-year filters describe authors alive during a period, not book-publication dates or story settings ([official API documentation](https://github.com/garethbjohnson/gutendex/blob/master/readme.md)). NYT list-publication dates are list metadata, not book-publication or historical-setting evidence. Preserve those distinctions and explicit unknown dates. Missing genre/period/setting support remains a gap, rather than an invented match.
+
+Follow approved source-access methods; ordinary website scraping or arbitrary links from a returned record are not authorized. Project Gutenberg documents specific [automated-access methods and restrictions](https://www.gutenberg.org/policy/robot_access.html) and [US-focused permissions guidance](https://www.gutenberg.org/policy/permission.html). These references establish implementation boundaries, not a claim that every catalog work is eligible or that a live account/provider has been verified.
+
+Build against injected synthetic responses and source records first. Do not enable live providers, add private persistence or claim an accepted dossier from this approval. Approved source review records and acquisition results must be validated before their text enters Research context. Missing approval, unavailable source infrastructure, partial providers and failed retrieval produce explicit safe outcomes. Dossier persistence/acceptance remains Phase 2.2; unresolved quantitative evidence criteria and S02-S04 are separate decisions.
+
+## 7i. Approved Phase 2.2 Research storage boundary
+
+On October 26, 2026, the user approved reuse of the existing Docker/PostgreSQL
+storage for separately typed, immutable Research dossier versions in the
+`proposals` JSON column. Use a Research-only kind and dedicated authenticated
+human-acceptance boundary, bound to owner/project, exact candidate identity/hash,
+confirmed intake dependencies and criteria version. This is an additive Research
+storage contract, not completion of Shared Phase 2 or a change to Justin's
+Writer/Editor behavior. Existing PostgreSQL 17 configuration is in `compose.yaml`;
+reuse needs no SQL migration.
+
+Apply the existing per-dimension coverage gate in Section 5i. Numeric sample,
+recency and diversity targets remain pilot calibration; no new numeric threshold
+is implied. Persist source/permission references, content digests, findings and
+bounded evidence quotations, not full retrieved prose. Required sources must
+remain readable, unchanged and currently permitted at acceptance. A changed
+confirmed input or insufficient evidence invalidates readiness; prior versions
+remain available without inheriting approval.
+
+Research records cannot enter legacy pending-proposal controls, lock intake
+editing or pass bible/manuscript approval routes. Acceptance records readiness
+for the future agreed planner connector; it cannot start the fixture planner or
+silently generate a story. Synthetic repository/source tests are authorized;
+missing production source-review/reader configuration remains unavailable. The
+whole of Manny Phase 2 receives one PR to `developer` after both sub-phases are
+complete; no separate 2.1 PR is created.
+
+## 7j. Approved S03/S04 and remaining Manny phase workflow
+
+The project user approved these product decisions on October 26, 2026. They
+supersede earlier pending S03/S04 labels; S02 planning ownership/output remains
+unresolved. Recording decisions does not complete their implementation or claim
+Justin separately reviewed code.
+
+Initial drafting is round 0, followed by at most two explicitly requested
+editorial revision rounds. Reserve a stable round identity when the
+authenticated revision is dispatched. Retries and the one Reader content
+repair keep that identity; failed/rejected outputs cannot reset the limit and
+duplicate delivery cannot allocate another round. Reader content repair is
+separate from the two editorial rounds. Shared execution-counter changes remain
+a separate integration dependency; do not silently alter Justin's workflow.
+
+Preserve Justin's complete three-chapter proposal, rationale and change
+summaries. Validate Reader inputs and each exact returned proposal through a
+separate application envelope containing source/base/proposal identities,
+versions and hashes. Store the authenticated editorial request separately from
+desired ending, with an explicit no-additional-instructions state. Neither
+Reader findings nor Consistency approval can replace the user's acceptance.
+Keep Justin's functions, prompts, tools, permissions and design intact.
+
+Continue approved Manny sub-phases sequentially, publishing each complete
+parent phase through one PR to `developer`. Verify the merge and tree, safely
+fast-forward eligible non-main branches, and only then delete the merged
+temporary branch. Recheck after pushes and preserve unique/dirty work. Exact
+next branch names approved: `manny/phase-3-reader-consistency` and
+`manny/phase-4-read-reliability`, each based on freshly verified `developer`
+after the preceding phase lifecycle is complete. Required unresolved decisions
+or unsafe Git conditions stop their dependent actions.
+
+**October 27, 2026 execution override:** complete and review Manny Phase 2,
+publish its PR and safely merge to `developer`, verify eligible non-main branch
+alignment, then delete the verified merged temporary branch and stop. Automatic
+Phase 3/4 continuation is deferred until the user reinstates the rule; their
+previously approved names and product decisions remain recorded for later use.

@@ -1,6 +1,6 @@
 # Deferred unassigned phase: decisions before dependent connections
 
-Status: S01's product decisions approved October 26, 2026; S02-S04 remain unresolved. Execution ownership is not assigned by placing decisions here.
+Status: S01, S03 and S04 product decisions approved October 26, 2026; S02 remains unresolved. Execution ownership is not assigned by placing decisions here.
 
 Do not implement dependent wiring until its decision is agreed and recorded. Discovery and independent fixture work may proceed within authorized scope. Keep unresolved decision checkboxes open; approving a decision does not complete its implementation assignments.
 
@@ -23,7 +23,7 @@ Resolution: approved by the project user in the October 26, 2026 S01 discussion,
 - Minimal versioned adapters may touch peer files only to connect existing components; preserve Justin's functions, functionality, permissions, prompts, tools and design. Behavioral changes still need owner approval.
 - Apply the trace skill for actual audits; use synthetic unit/integration/failure-state tests with X/Y. No live agents/providers or trace execution under this test authorization; provide the user's CLI on request. Ordinary logs omit prose, secrets and private reasoning.
 
-S01 completes a product decision only; M01 and later assignments need their own implementation evidence. S02-S04 and Research acceptance thresholds remain unresolved.
+S01 completes a product decision only; M01 and later assignments need their own implementation evidence. S02 and numeric pilot evidence calibration remain unresolved. S03/S04 resolutions below authorize their bounded connections, not silent changes to shared execution behavior.
 
 ## S02: Planning ownership and merged versus alternative bibles
 
@@ -43,7 +43,15 @@ Required decision: Agree round 0, stable round identity, increment point, reject
 
 Dependent work: Shared Phase 2; Manny 3.2 and Justin 4.1.
 
-Resolution record: pending; record agreed contract/version, rationale, participating owners, approval evidence/date and affected phase links. Documentation of a question is not its resolution.
+Resolution: project user approved October 26, 2026. Initial drafting is round 0;
+at most two explicitly requested editorial revision rounds follow. Reserve a
+stable round identity at authenticated revision dispatch. Retries and the one
+Reader content repair retain that identity; failed or rejected output cannot
+reset the limit, and duplicate delivery cannot allocate a second round. Reader
+content repair is separate from the two editorial rounds. Reconcile shared
+execution counters in their authorized integration work rather than changing
+Justin's existing workflow silently. This completes the product decision, not
+its implementation or a claim of separate Justin code review.
 
 ## S04: Live Editor proposal contract
 
@@ -53,6 +61,15 @@ Required decision: Use complete three-chapter manuscript proposals plus rational
 
 Dependent work: Shared Phase 2; Manny 3.1/3.3 and Justin Phase 3.
 
-Resolution record: pending; record agreed contract/version, rationale, participating owners, approval evidence/date and affected phase links. Documentation of a question is not its resolution.
+Resolution: project user approved October 26, 2026. Preserve Justin's complete
+three-chapter proposal, rationale and change summaries. Add source/base/proposal
+identity, version and hash checks in a separate application envelope, validate
+each receiving handoff and check each exact proposal independently. Preserve
+Justin's Writer/Editor functions, prompts, tools, permissions and design. Store
+the authenticated editorial request separately from desired ending, including
+an explicit no-additional-instructions choice; never infer it from story text.
+Consistency evidence cannot accept a proposal for the user. Changes to shared
+execution behavior remain a separate integration dependency. This completes the
+product decision, not its implementation or separate Justin code review.
 
 [Canonical checklist](../../implementation/weaver-mvp-build-checklist.md) | [Master index](../README.md)
