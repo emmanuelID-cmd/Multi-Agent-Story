@@ -15,18 +15,23 @@ import {
 import { assertModelVersion, type ReadModel } from "./model";
 
 type BenchmarkRequest = z.output<typeof researchInputSchema>["benchmarkRequest"];
-const providerSchema = z.object({
+export const providerSchema = z.object({
   provider: z.enum(["nyt", "gutendex"]),
-  status: z.enum(["available", "empty", "unavailable", "not_requested", "rate_limited"]),
+  status: z.enum(["available", "partial", "empty", "unavailable", "not_requested", "rate_limited"]),
   reasonCode: z.string().min(1).max(100), sourceUrl: z.url().max(2_000),
   checkedAt: z.iso.datetime(), fetchedAt: z.iso.datetime().nullable(),
-  limitation: z.string().max(1_000), quarantinedCount: z.number().int().nonnegative(),
-  findings: z.array(z.unknown()).max(100),
+  limitation: z.string().max(1_000), quarantinedCount: z.number().int().nonnegative(), findingsOmittedCount: z.number().int().nonnegative().optional(),
+  findings: z.array(z.strictObject({fieldRef:z.string(),source:z.string(),verdict:z.enum(["ACCEPT","FLAG","REJECT"]),
+    reasonCode:z.string(),requiredEvidenceImpact:z.enum(["none","review","unavailable"]),humanCorrectionNeeded:z.boolean()})).max(100),
   records: z.array(z.object({
     providerRecordId: z.string().min(1).max(200), title: z.string().min(1).max(500),
     authors: z.array(z.string().max(300)).max(20), isbns: z.array(z.string().max(20)).max(4),
     sourceUrl: z.url().max(2_000), fetchedAt: z.iso.datetime(),
     publishedDate: z.string().max(40).nullable(),
+    listPublishedDate: z.string().max(40).nullable().optional(),
+    subjects: z.array(z.string().max(300)).max(40).optional(), bookshelves: z.array(z.string().max(300)).max(40).optional(),
+    languages: z.array(z.string().max(20)).max(20).optional(), copyright: z.boolean().nullable().optional(),
+    textCandidates: z.array(z.object({format:z.string(),url:z.string()})).max(4).optional(),
     signals: z.object({ rank: z.number().int().positive().nullable(), weeksOnList: z.number().int().nonnegative().nullable(), downloadCount: z.number().int().nonnegative().nullable() }),
     missingFields: z.array(z.string().max(80)).max(20), matchConfidence: z.literal("unmatched"),
   })).max(20),
@@ -244,9 +249,9 @@ export async function runResearch(input: ResearchInput, deps: ReadDependencies):
     const gutendex = outcomes.find(o => o.provider === "gutendex");
     if (outcomes.length !== 2 || !nyt || !gutendex || nyt === gutendex) throw new Error("PROVIDER_OUTCOMES_INVALID");
     if (outcomes.some(o => !cleanUrl(o.sourceUrl) || o.records.some(r => !cleanUrl(r.sourceUrl) || inspectText(r.title, "metadata", "title", o.provider).verdict !== "ACCEPT" || r.authors.some(a => inspectText(a, "metadata", "author", o.provider).verdict !== "ACCEPT")))) throw new Error("PROVIDER_OUTCOMES_INVALID");
-    if (outcomes.some(o => (o.status === "available" && (o.records.length === 0 || o.fetchedAt === null)) || (o.status === "not_requested" && o.records.length > 0) || new Set(o.records.map(r => r.providerRecordId)).size !== o.records.length)) throw new Error("PROVIDER_OUTCOMES_INVALID");
+    if (outcomes.some(o => ((o.status === "available" || o.status === "partial") && (o.records.length === 0 || o.fetchedAt === null)) || (o.status === "not_requested" && o.records.length > 0) || new Set(o.records.map(r => r.providerRecordId)).size !== o.records.length)) throw new Error("PROVIDER_OUTCOMES_INVALID");
     const sources = parsed.eligibleSources.map(({ text: _text, ...source }) => source);
-    if (nyt.status !== "available" || gutendex.status !== "available") {
+    if (!["available","partial"].includes(nyt.status) || !["available","partial"].includes(gutendex.status) || !nyt.records.length || !gutendex.records.length) {
       const dossier: ResearchDossier = {
         dossierVersion: 1, briefVersion: parsed.briefVersion, scopeVersion: parsed.scopeVersion,
         criteriaVersion: parsed.criteriaVersion, providerOutcomes: { nyt, gutendex }, sources,
@@ -267,13 +272,14 @@ export async function runResearch(input: ResearchInput, deps: ReadDependencies):
     for (let attempt = 0; attempt <= limits.retries; attempt++) {
       if (deps.beforeResearchModel) await bounded(ctx, () => deps.beforeResearchModel!());
       try {
-        analysis = await modelCall(ctx, { brief: parsed.brief, confirmedIntake: parsed.confirmedIntake && { revision: parsed.confirmedIntake.revision, rawText: parsed.confirmedIntake.rawText, sourceHash: parsed.confirmedIntake.sourceHash, analysisId: parsed.confirmedIntake.analysis.id, analysisHash: parsed.confirmedIntake.analysisHash, decisions: parsed.confirmedIntake.decisions, scope: parsed.confirmedIntake.scope }, dimensions: parsed.dimensions, eligibleSources: parsed.eligibleSources, providerOutcomes: { nyt: { provider: nyt.provider, status: nyt.status, reasonCode: nyt.reasonCode, checkedAt: nyt.checkedAt, records: nyt.records }, gutendex: { provider: gutendex.provider, status: gutendex.status, reasonCode: gutendex.reasonCode, checkedAt: gutendex.checkedAt, records: gutendex.records } }, correction: attempt ? "Previous output failed structural or evidence checks. Cite only exact supplied source IDs, passage quotes and dimension IDs." : undefined }, researchAnalysisSchema);
+        analysis = await modelCall(ctx, { brief: parsed.brief, confirmedIntake: parsed.confirmedIntake && { revision: parsed.confirmedIntake.revision, rawText: parsed.confirmedIntake.rawText, sourceHash: parsed.confirmedIntake.sourceHash, analysisId: parsed.confirmedIntake.analysis.id, analysisHash: parsed.confirmedIntake.analysisHash, decisions: parsed.confirmedIntake.decisions, scope: parsed.confirmedIntake.scope }, dimensions: parsed.dimensions, eligibleSources: parsed.eligibleSources, providerOutcomes: { nyt: { provider: nyt.provider, status: nyt.status, reasonCode: nyt.reasonCode, checkedAt: nyt.checkedAt, records: nyt.records.map(({textCandidates:_links,...record})=>record) }, gutendex: { provider: gutendex.provider, status: gutendex.status, reasonCode: gutendex.reasonCode, checkedAt: gutendex.checkedAt, records: gutendex.records.map(({textCandidates:_links,...record})=>record) } }, correction: attempt ? "Previous output failed structural or evidence checks. Cite only exact supplied source IDs, passage quotes and dimension IDs." : undefined }, researchAnalysisSchema);
         const dimensions = new Map(parsed.dimensions.map(d => [d.id, d]));
         const itemIds = new Set<string>();
         for (const item of analysis.items) {
           if (itemIds.has(item.itemId) || !sourceIds.has(item.sourceId) || !dimensions.has(item.dimensionId)) throw new Error("UNSUPPORTED_RESEARCH_ITEM");
           itemIds.add(item.itemId);
           const textSource = parsed.eligibleSources.find(s => s.sourceId === item.sourceId);
+          if (textSource?.approvedDimensionIds && !textSource.approvedDimensionIds.includes(item.dimensionId)) throw new Error("UNSUPPORTED_RESEARCH_ITEM");
           if (item.kind === "metadata_fact") {
             const provider = outcomes.find(o => item.sourceId.startsWith(`${o.provider}:`));
             const record = provider?.records.find(r => `${provider.provider}:${r.providerRecordId}` === item.sourceId);
@@ -281,7 +287,8 @@ export async function runResearch(input: ResearchInput, deps: ReadDependencies):
             const allowedFacts = [record.title, ...record.authors,
               ...(provider.provider === "nyt" && record.signals.rank !== null ? [`NYT list rank: ${record.signals.rank}`] : []),
               ...(provider.provider === "gutendex" && record.signals.downloadCount !== null ? [`Gutendex download count: ${record.signals.downloadCount}`] : []),
-              ...(record.publishedDate !== null ? [`${provider.provider === "nyt" ? "NYT list date" : "Catalog publication date"}: ${record.publishedDate}`] : []),
+              ...(provider.provider === "nyt" && record.listPublishedDate ? [`NYT list date: ${record.listPublishedDate}`] : []),
+              ...(record.publishedDate !== null ? [`Catalog publication date: ${record.publishedDate}`] : []),
             ];
             if (!item.quote || ![record.title, ...record.authors].includes(item.quote) || !allowedFacts.includes(item.claim)) throw new Error("UNSUPPORTED_RESEARCH_ITEM");
           } else if (item.kind === "located_text_observation" || item.kind === "historical_fact") {

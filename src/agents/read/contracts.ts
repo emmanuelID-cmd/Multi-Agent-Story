@@ -36,6 +36,7 @@ export const eligibleSourceSchema = z.strictObject({
   publicationDate: z.string().max(40).nullable(), sourceUrl: z.url().max(2_000),
   fetchedAt: z.iso.datetime(), rightsBasis: prose, jurisdiction: z.string().min(1).max(80),
   rightsVerified: z.literal(true), locator: z.string().min(1).max(200),
+  approvedDimensionIds: z.array(id).min(1).max(24).optional(),
   text: z.string().min(1).max(10_000), sha256: digest,
 });
 export const confirmedIntakeSchema = z.strictObject({

@@ -9,6 +9,8 @@ import { createHash, randomUUID } from "node:crypto";
 import { runResearch, type ReadDependencies } from "../../agents/read/runtime";
 import { limits } from "../../contracts";
 import type { ReadResult, ResearchDossier } from "../../agents/read/contracts";
+import type { ProviderEvidence } from "./book-metadata";
+import type { AcquisitionReport } from "./research-acquisition";
 
 type ProjectRecord = { id: string; ownerId: string; version: number; brief: { intake?: unknown } };
 export type ConfirmedIntakeRepository = {
@@ -48,12 +50,20 @@ function boundedProject(repository: ConfirmedIntakeRepository, ownerId: string, 
       value => finish(value), error => finish(undefined, error));
   });
 }
+function boundedAcquisition<T>(action: () => Promise<T>, signal: AbortSignal): Promise<T> {
+  if (signal.aborted) return Promise.reject(new Error(abortCode(signal)));
+  return new Promise((resolve, reject) => {
+    const abort = () => reject(new Error(abortCode(signal)));
+    signal.addEventListener("abort", abort, { once: true });
+    Promise.resolve().then(action).then(resolve, reject).finally(() => signal.removeEventListener("abort", abort));
+  });
+}
 
 export type ConfirmedResearchRequest = {
   authority: ResearchAuthority; versions: ReadVersions;
   expectedRevision: number; expectedAnalysisId: string; expectedAnalysisHash: string; expectedSourceHash: string;
   criteriaVersion: number;
-  eligibleSources: ResearchInput["eligibleSources"];
+  eligibleSources: ResearchInput["eligibleSources"]; // Legacy caller field; never grants source approval.
   benchmarkRequest?: ResearchInput["benchmarkRequest"];
 };
 
@@ -102,7 +112,7 @@ export async function prepareConfirmedResearchInput(request: ConfirmedResearchRe
       analysis: intake.analysis, decisions: intake.decisions, scope },
     dimensions: scope.dimensions.map(d => ({ id: d.field, label: `Research confirmed ${fieldLabels.get(d.field)} only.`,
       claimType: d.field === "timePeriod" || d.field === "setting" ? "historical" as const : "craft" as const })),
-    eligibleSources: request.eligibleSources,
+    eligibleSources: [],
     benchmarkRequest: request.benchmarkRequest ?? { genre: scope.genre, providers: ["nyt", "gutendex"] },
   };
   return researchInputSchema.parse(input);
@@ -110,7 +120,9 @@ export async function prepareConfirmedResearchInput(request: ConfirmedResearchRe
 
 /** Recheck the same owned snapshot after asynchronous provider/model work before exposing a candidate. */
 export async function runConfirmedResearch(request: ConfirmedResearchRequest, dependencies: ReadDependencies,
-  repository: ConfirmedIntakeRepository = dbRepository): Promise<ReadResult<ResearchDossier>> {
+  repository: ConfirmedIntakeRepository = dbRepository,
+  acquire?: (input: ResearchInput, signal: AbortSignal) => Promise<{ input: ResearchInput; providerOutcomes: ProviderEvidence[]; report: AcquisitionReport }>
+): Promise<ReadResult<ResearchDossier> & { acquisition?: AcquisitionReport }> {
   const deadlineAt = Date.now() + limits.timeoutMs;
   const attempt = new AbortController();
   const timeout = setTimeout(() => attempt.abort("TIMEOUT"), limits.timeoutMs);
@@ -120,19 +132,26 @@ export async function runConfirmedResearch(request: ConfirmedResearchRequest, de
   const boundary = { deadlineAt, signal: attempt.signal };
   let result: ReadResult<ResearchDossier> | undefined;
   let stage: "initial" | "runtime" | "recheck" = "initial";
+  let acquisition: AcquisitionReport | undefined;
   try {
-    const input = await prepareConfirmedResearchInput(request, repository, boundary);
+    let input = await prepareConfirmedResearchInput(request, repository, boundary);
+    // Request-supplied text is never an approval, including at the legacy entry point.
+    input = { ...input, eligibleSources: [] };
     stage = "runtime";
-    result = await runResearch(input, { ...dependencies, signal: attempt.signal, beforeResearchModel: async () => {
+    const acquired = acquire ? await boundedAcquisition(() => acquire(input, attempt.signal), attempt.signal) : undefined;
+    if (acquired) { input = acquired.input; acquisition = acquired.report; }
+    result = await runResearch(input, { ...dependencies,
+      readBenchmarks: acquired ? async () => acquired.providerOutcomes : dependencies.readBenchmarks,
+      signal: attempt.signal, beforeResearchModel: async () => {
       await prepareConfirmedResearchInput(request, repository, boundary);
       await dependencies.beforeResearchModel?.();
     } });
     if (attempt.signal.aborted) throw new Error(abortCode(attempt.signal));
-    if (result.status === "canceled") return result;
+    if (result.status === "canceled") return { ...result, acquisition };
     stage = "recheck";
     await prepareConfirmedResearchInput(request, repository, boundary);
     if (attempt.signal.aborted) throw new Error(abortCode(attempt.signal));
-    return result;
+    return { ...result, acquisition };
   } catch (error) {
     const reasonCode = attempt.signal.aborted ? abortCode(attempt.signal) :
       error instanceof AppError ? error.status === 404 ? "PROJECT_UNAVAILABLE" : "STALE_CONFIRMED_INTAKE" :
@@ -140,14 +159,14 @@ export async function runConfirmedResearch(request: ConfirmedResearchRequest, de
       stage === "recheck" ? "CONFIRMATION_RECHECK_UNAVAILABLE" : "DEPENDENCY_UNAVAILABLE";
     const status = reasonCode === "CANCELED" ? "canceled" : reasonCode === "TIMEOUT" ? "partial" :
       reasonCode === "STALE_CONFIRMED_INTAKE" || reasonCode === "PROJECT_UNAVAILABLE" ? "blocked" : "failed";
-    if (result?.status === "canceled" && reasonCode === "CANCELED") return result;
+    if (result?.status === "canceled" && reasonCode === "CANCELED") return { ...result, acquisition };
     try { dependencies.onTrace?.({ runId: request.authority.runId, taskId: request.authority.taskId,
       operationId: request.authority.operationId, agentId: "research", eventId: randomUUID(),
       at: new Date().toISOString(), event: status === "partial" || status === "blocked" ? "blocked" : status,
       attempt: result?.attempts ?? 0, code: reasonCode,
       versions: request.versions, stateVersion: request.authority.stateVersion }); } catch { /* telemetry cannot alter outcome */ }
     return { status, reasonCode, output: undefined, usage: result?.usage ?? { inputTokens: 0, outputTokens: 0 },
-      attempts: result?.attempts ?? 0, traceId: result?.traceId ?? randomUUID() };
+      attempts: result?.attempts ?? 0, traceId: result?.traceId ?? randomUUID(), acquisition };
   } finally {
     clearTimeout(timeout);
     dependencies.signal?.removeEventListener("abort", cancel);
