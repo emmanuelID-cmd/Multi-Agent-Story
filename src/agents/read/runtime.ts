@@ -251,12 +251,12 @@ export async function runResearch(input: ResearchInput, deps: ReadDependencies):
     if (outcomes.some(o => !cleanUrl(o.sourceUrl) || o.records.some(r => !cleanUrl(r.sourceUrl) || inspectText(r.title, "metadata", "title", o.provider).verdict !== "ACCEPT" || r.authors.some(a => inspectText(a, "metadata", "author", o.provider).verdict !== "ACCEPT")))) throw new Error("PROVIDER_OUTCOMES_INVALID");
     if (outcomes.some(o => ((o.status === "available" || o.status === "partial") && (o.records.length === 0 || o.fetchedAt === null)) || (o.status === "not_requested" && o.records.length > 0) || new Set(o.records.map(r => r.providerRecordId)).size !== o.records.length)) throw new Error("PROVIDER_OUTCOMES_INVALID");
     const sources = parsed.eligibleSources.map(({ text: _text, ...source }) => source);
-    if (!["available","partial"].includes(nyt.status) || !["available","partial"].includes(gutendex.status) || !nyt.records.length || !gutendex.records.length) {
+    if (nyt.status === "not_requested" || gutendex.status === "not_requested") {
       const dossier: ResearchDossier = {
         dossierVersion: 1, briefVersion: parsed.briefVersion, scopeVersion: parsed.scopeVersion,
         criteriaVersion: parsed.criteriaVersion, providerOutcomes: { nyt, gutendex }, sources,
         items: [], synthesis: [], limitations: [],
-        gaps: parsed.dimensions.map(d => ({ dimensionId: d.id, reason: "A required research provider has no usable records.", correction: "Retry the provider or confirm a revised research scope for fresh evaluation." })),
+        gaps: parsed.dimensions.map(d => ({ dimensionId: d.id, reason: "A required research provider was not requested.", correction: "Configure approved provider access and retry research before acceptance." })),
         coverage: parsed.dimensions.map(d => ({ dimensionId: d.id, status: "missing", itemIds: [] })),
         gateRecommendation: "BLOCKED_REQUIRED_EVIDENCE", accepted: false,
       };

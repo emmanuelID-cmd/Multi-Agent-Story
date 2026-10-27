@@ -96,13 +96,14 @@ describe("live READ runtime with injected synthetic dependencies", () => {
     expect(result.output?.providerOutcomes.nyt.reasonCode).toBe("LIVE_READS_DISABLED");
   });
 
-  it.each(["unavailable", "rate_limited", "empty"] as const)("blocks a %s provider outcome even with eligible craft and context text", async status => {
+  it.each(["unavailable", "rate_limited", "empty"] as const)("records a %s provider outcome while independent text covers every dimension", async status => {
     const model = new FixtureReadModel();
     const result = await runResearch(fixtureResearchInput(authority, model.modelId), {
       ...deps(model), readBenchmarks: async () => fixtureProviders().map(item => item.provider === "gutendex" ? { ...item, status, reasonCode: "FIXTURE_PROVIDER_GAP", records: [], fetchedAt: status === "empty" ? item.fetchedAt : null } : item),
     });
-    expect(result.status).toBe("blocked");
-    expect(result.output?.gateRecommendation).toBe("BLOCKED_REQUIRED_EVIDENCE");
+    expect(result.status).toBe("ready_for_review");
+    expect(result.output?.gateRecommendation).toBe("ACCEPT_CANDIDATE");
+    expect(result.output?.providerOutcomes.gutendex.status).toBe(status);
     expect(result.output?.accepted).toBe(false);
   });
 
@@ -210,7 +211,7 @@ describe("live READ runtime with injected synthetic dependencies", () => {
     const controller = new AbortController();
     const result = await runResearch(fixtureResearchInput(authority, "fixture-read-v1"), {
       ...deps(), signal: controller.signal,
-      readBenchmarks: async () => fixtureProviders().map(item => item.provider === "nyt" ? { ...item, status: "unavailable" as const, reasonCode: "OUTAGE", fetchedAt: null, records: [] } : item),
+      readBenchmarks: async () => fixtureProviders().map(item => item.provider === "nyt" ? { ...item, status: "not_requested" as const, reasonCode: "LIVE_READS_DISABLED", fetchedAt: null, records: [] } : item),
       onTrace: event => { if (event.event === "blocked") controller.abort(); },
     });
     expect(result.status).toBe("canceled");
