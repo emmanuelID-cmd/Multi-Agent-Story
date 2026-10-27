@@ -1,6 +1,6 @@
 # Phase commit groups
 
-Proposed groups only; no staging, commits or push are authorized by this document. Follow the external git.md Solo Phase Commit and Commit Collaboration sections. Subjects and bodies describe completed milestones, never planned work as completed.
+This catalogue does not independently authorize Git operations. The user's approved phase lifecycle authorizes publication, safe developer integration and temporary phase cleanup after verified completion. Follow the external git.md Solo Phase Commit and Commit Collaboration sections. Subjects and bodies describe completed milestones, never planned work as completed.
 
 ## Commit-ready rules
 
@@ -9,8 +9,21 @@ Proposed groups only; no staging, commits or push are authorized by this documen
 - Shared work names the actual implementer and coordinated owners. Justin may adapt his WRITE group organization under his own rules.
 - Use developer as the integration/base; contributor/SQL PRs target developer; only developer PRs target main. Main remains unchanged during lane alignment.
 - Before each authorized commit, inspect the current diff, line-scan every selected file and approve the exact staging set. Before an authorized push, update TEAM-REFERENCE.md under its skill; include the required final empty review-summary commit only at that publication stage under external git.md. Never report unpublished work as pushed.
-- Existing pending branding, PRD-v4 and original checklist creation need separate scoped groups; do not sweep them into the phase-system commit. README contains pre-existing changes: select only approved phase/SQL-reference hunks for this group. The untracked checklist baseline also cannot be staged by hunk; obtain its scoped publication authorization before including it.
+- Branding, initial PRD v4 and phase-system preparation were published separately in PR #13. Future phase commits include only their approved work and related completion records; inspect current staged/unstaged changes and preserve unrelated work.
 - Corrections follow external error-control rules and do not imply a partially built phase is complete.
+
+## Phase branch publication and cleanup
+
+Manny's active phase uses its own temporary branch from verified `developer`.
+The exact approved Phase 1 name is `manny/phase-1-intake-to-research`.
+After verified phase completion, inspect trees, remote changes and open PRs,
+publish its scoped phase commit(s), team handoff and empty review-summary,
+then PR to `developer` and merge only when safe. Fast-forward eligible branches
+except `main`, preserving owner permissions and unique work. Verify both local
+and remote temporary phase tips are integrated before deleting that phase branch
+under the user's cleanup authorization; retain persistent lanes. See the
+[complete lifecycle](README.md#phase-branch-lifecycle). No partial implementation
+may be labeled a completed phase, and unresolved prerequisites remain gates.
 
 ## Proposed groups in approved owner order
 

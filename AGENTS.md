@@ -2,10 +2,10 @@
 
 ## Required instruction sources
 
-Read [README.md](README.md), the [active PRD v2 draft](docs/prd/drafts/PRD-v2-draft.md),
+Read [README.md](README.md), the [active PRD v4 draft](docs/prd/drafts/PRD-v4-draft.md),
 and the [submitted PRD](docs/prd/Multi-Agent-Story-Builder-PRD.md) before planning.
 The submitted PRD is preserved history; current user corrections govern the
-intake/research alignment in the working draft. Unresolved v2 architecture
+intake/research alignment in the working draft. Unresolved architecture
 choices remain proposals, not implementation approval.
 Current user instructions take precedence, then
 README, relevant external AGENTS documents, then existing project documentation
@@ -213,6 +213,29 @@ not complete implementation items. Preserve the approved Manny/Shared order;
 Justin may adjust his own plan under his rules. Deferred decisions remain gates.
 The canonical SQL lane is shared `sql-foundation`; its legacy local/remote name
 transition is tracked in Shared 1.2 and is not performed by documentation edits.
+S01's approved connection decisions are in PRD v4 Section 7g and the decision
+register. Research receives the full saved original and confirmed decisions;
+the short premise cannot replace it. Coordinator routes rejections to the actual
+defect owner. Connection-only peer edits never authorize changes to Justin's
+functions, functionality, permissions, prompts, tools or design.
+
+For Manny's authorized phase builds, use one temporary phase branch created
+from the latest fetched and verified `developer`; obtain approval of its exact
+name before creation. The approved first branch is
+`manny/phase-1-intake-to-research`. Keep numbered phase scope and ownership intact.
+After a phase is complete, verify its acceptance criteria, run unit tests and
+report actual X/Y, update its checklist explanation, then inspect all relevant
+working trees, incoming changes, open PRs, exact tips and unique commits.
+Publish the reviewed phase with the required team handoff and empty review
+summary, and merge its PR into `developer` only when required checks/review and
+ancestry allow. Fast-forward eligible non-main branches from the verified merged
+`developer` under ownership and no-overwrite checks; never fast-forward `main`.
+The user's phase workflow authorizes deletion of the corresponding temporary
+phase branch after verified integration and safe alignment. Check both local
+and remote tips for unmerged work before deleting it, return to the persistent
+READ lane, and preserve all persistent branches. A dirty tree, divergent history,
+unique unmerged commit or missing owner approval stops that affected operation
+for human guidance; never force, reset, rebase or discard work to align branches.
 
 ## Files, recovery, and Git
 

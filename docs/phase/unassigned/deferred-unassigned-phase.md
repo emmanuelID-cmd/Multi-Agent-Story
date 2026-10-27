@@ -1,8 +1,8 @@
 # Deferred unassigned phase: decisions before dependent connections
 
-Status: unresolved. Execution ownership is not assigned by placing decisions here.
+Status: S01's product decisions approved October 26, 2026; S02-S04 remain unresolved. Execution ownership is not assigned by placing decisions here.
 
-Do not implement dependent wiring until its decision is agreed and recorded. Discovery and independent fixture work may proceed within authorized scope. Keep the canonical S01-S04 checkboxes open until actual agreement is verified.
+Do not implement dependent wiring until its decision is agreed and recorded. Discovery and independent fixture work may proceed within authorized scope. Keep unresolved decision checkboxes open; approving a decision does not complete its implementation assignments.
 
 ## S01: Authoritative instructions and connector contract
 
@@ -12,7 +12,18 @@ Required decision: Agree original user request separately from desiredEnding; sc
 
 Dependent work: Shared Phase 2; Manny Phase 1 and dependent cross-lane connections.
 
-Resolution record: pending; record agreed contract/version, rationale, participating owners, approval evidence/date and affected phase links. Documentation of a question is not its resolution.
+Resolution: approved by the project user in the October 26, 2026 S01 discussion, ending with explicit connection-only cross-lane approval. See [PRD Section 7g](../../prd/drafts/PRD-v4-draft.md#7g-approved-s01-connection-decisions-october-26-2026). This records user authorization, not a claim that Justin separately reviewed new code.
+
+- Preserve the full saved original (up to 12,000 characters), exact accept/custom/reject/defer decisions and confirmed dimensions. Research's short premise cannot truncate or replace the original.
+- Research follows confirmed supplied material only. Rejected, deferred and unrelated details are not inferred requirements.
+- Bind authenticated owner/project, intake revision, analysis identity/source hash, exact scope, task/operation and relevant artifact versions. Automatic checks add no human checkpoint and never treat newest as approved. Intake edits remain before planning; later changes follow existing plan/proposal review gates.
+- Future restore saves prior contents as a new version, preserves history and revalidates affected dependencies without automatically restoring approval. Durable history and restore UI remain Shared work, outside Manny Phase 1.
+- Missing/unreadable required evidence blocks its dependent path with an honest missing/partial/unavailable state. Optional omissions and ordinary literary defects are not handoff failures.
+- Coordinator routes specific receiving rejections to the actual defect owner: Writer recovery for missing chapters, retrieval/storage recovery for unreadable sources, Reader repair for stale/incomplete Reader evidence. Distinguish rejection, timeout and editing failure; enforce existing bounded limits. Coordinator neither rewrites nor approves a repair.
+- Minimal versioned adapters may touch peer files only to connect existing components; preserve Justin's functions, functionality, permissions, prompts, tools and design. Behavioral changes still need owner approval.
+- Apply the trace skill for actual audits; use synthetic unit/integration/failure-state tests with X/Y. No live agents/providers or trace execution under this test authorization; provide the user's CLI on request. Ordinary logs omit prose, secrets and private reasoning.
+
+S01 completes a product decision only; M01 and later assignments need their own implementation evidence. S02-S04 and Research acceptance thresholds remain unresolved.
 
 ## S02: Planning ownership and merged versus alternative bibles
 
