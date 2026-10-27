@@ -83,6 +83,31 @@ Verified move hashes:
 
 # Handoffs prepared for push
 
+## 2026-10-27T10:19:38.0861268-04:00
+
+- Preparation time: America/New_York, not a verified push time.
+- Initial publication: emmanuelID-cmd/Multi-Agent-Story, manny/phase-2-1-provider-retrieval; one PR targets developer for all of Manny Phase 2. The destination phase ref was absent at the fresh remote check. Verified branch point/developer baseline: 2e15de0156f263dff190aa8261dafe6540e5295c.
+- Commit author: Emmanuel De Jesus <emmanuel.dejesus@pursuit.org> (Manny), verified from Git author identity, configuration and project history. Justin has no new authored implementation in this phase.
+- Manny activity: connect reviewed permitted-source retrieval to confirmed Research; preserve provider/query/exclusion outcomes; store immutable dossiers and provenance; add owned history/detail and authenticated exact acceptance; verify source freshness, bounded failures, cancellation/commit reconciliation and replay; record M02/M03 completion.
+- Approved decision updates: S03 round counting and S04 connection-only proposal envelopes/editorial request separation are recorded, without implementing later phases or claiming separate Justin review. The current instruction stops after Phase 2 integration and temporary-branch cleanup.
+- Work groups: requirements/workflow documentation, completed Phase 2.1 acquisition, focused provider-gate correction, completed Phase 2.2 persistence/acceptance and this handoff. Commit IDs do not yet exist at preparation; the work commits and final metadata-only review range identify the exact publication.
+- Validation: 174/174 unit tests across 19 files; 41/41 affected targeted tests; typecheck and diff checks passed. Phase 2.1 previously passed 32/32 targeted and 155/155 full tests. Each sub-phase completed two SECURITY rounds, a bounded FIXER cycle, affected security recheck and independent REVIEWER approval. No live DB/provider/model or user trace execution occurred.
+- Integration next: push the reviewed phase branch, create one PR to developer, merge only when safe, verify all relevant trees/refs, fast-forward eligible persistent non-main branches, delete only the verified merged temporary branch, then stop. Main and the external AGENTS repository are excluded.
+
+### Done
+
+- [x] M02: confirmed-dimension source acquisition with reviewed rights/identity/hash controls and honest provider/source outcomes.
+- [x] M03: sealed PostgreSQL dossier versions, bounded acquisition provenance, owned summaries/detail and exact authenticated acceptance.
+- [x] Required coverage, stale-input/source rejection, expiry checks, strict request fields and transaction/replay/cancellation regressions verified. Empty provider outcomes do not fabricate support; not-requested providers remain blocked.
+- [x] Completion explanations, PRD/README/local AGENTS boundaries and approved stopping/decision records updated.
+
+### Not completed
+
+- [ ] Production approved-source catalog/permitted text reader and live PostgreSQL/provider/model/deployment verification; fresh production acceptance remains unavailable without that integration.
+- [ ] Full frontend, worker and accepted-dossier planning dispatch; the fixture planner guard is preserved. No new WRITE behavior, SQL migration or interface redesign is included.
+- [ ] Manny Phase 3/4 execution and project-completion audits are deferred under the current instruction; no further phase branch is created.
+
+
 ## 2026-10-26T20:06:26.3111256-04:00
 
 - Preparation time: America/New_York; not a verified push timestamp.
