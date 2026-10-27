@@ -493,3 +493,13 @@ Follow the [owner phase plans](docs/phase/README.md),
 only after verified completion, then record what changed and the acceptance/test
 evidence (actual X/Y). Phase-document creation completes none of the 26 items.
 Justin controls his WRITE phase organization; Manny owns READ; SQL is shared.
+
+Manny builds each authorized phase on a temporary branch from the latest
+verified `developer`; the first approved branch is
+`manny/phase-1-intake-to-research`. Once the phase is complete and verified,
+check dirty trees, incoming changes and open PRs; publish the phase and merge
+through a PR into `developer` when safe. Fast-forward eligible branches except
+`main`, respecting ownership and preserving unique work, then delete only the
+fully merged temporary phase branch and return to the persistent READ lane.
+The [phase lifecycle](docs/phase/README.md#phase-branch-lifecycle) records the
+required evidence and stop conditions. Phase order and Justin's autonomy remain.

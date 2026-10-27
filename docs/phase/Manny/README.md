@@ -4,6 +4,13 @@ Keep this approved phase order and folder setup. Changes to scope/order need an 
 
 Status: planning documentation; implementation tasks are not completed by creating these files.
 
+Phase 1 (M01) completed October 26, 2026 on the approved temporary
+`manny/phase-1-intake-to-research` branch. S01's decisions are recorded; full
+confirmed input and freshness checks are verified with 13/13 targeted and
+144/144 total tests, typecheck, SECURITY and independent REVIEWER approval.
+No WRITE behavior, SQL, live-provider enablement or full web wiring is included.
+Phase 2 remains planned with its source-access and evidence prerequisites.
+
 [Master phase index](../README.md) | [Commit groups](../COMMIT-GROUPS.md)
 
 - [Phase 1: Confirmed intake-to-Research contract](Phase-1-Confirmed-intake-to-Research-contract/1.md)

@@ -18,7 +18,7 @@ Every numbered phase has its own folder named `Phase-<integer>-<phase-title>`, i
 
 Preserve each approved owner's phase order. Justin may adjust his own reference plan under his own rules; those rules override this organization for him, while shared contracts and product gates remain binding. Shared execution ownership must be assigned before implementation.
 
-Resolve S01-S04 before dependent contract wiring. Agreed fixture adapters allow component development before full web integration; they never authorize production dispatch on fixture evidence. Tests accompany each component phase. Later reliability phases close remaining gaps.
+Resolve each applicable S01-S04 decision before its dependent wiring. S01's product decisions were approved October 26, 2026 (decision register and PRD Section 7g); S02-S04 remain unresolved. Agreed fixture adapters allow component development before full web integration; they never authorize production dispatch on fixture evidence. Tests accompany each component phase. Later reliability phases close remaining gaps.
 
 Shared 3.1 reviews existing storage first; SQL is conditional. Shared 3.2 closes I03 only after that review and durable atomic state work are complete. Shared 3.3 recovery coverage must be rechecked for every later connector. Shared 4.1 waits for accepted Research and a planning-owner decision. Shared 4.2 establishes graph boundaries; I02 remains open until Shared 5.2 supplies and verifies its export connector. Shared 5.1/5.2 may use the established graph foundation without waiting for I02 final check-off. This separates development dependencies from final acceptance and avoids a circular prerequisite.
 
@@ -31,6 +31,39 @@ No step may invent an unresolved contract. Deferred decisions remain gates for t
 3. Update the relevant phase completion record and owner index in the same authorized change. A parent phase completes only when all required children do; task IDs spanning children remain open until all required work passes.
 4. Failed or blocked checks remain visible and unchecked. Conditional SQL reuse is recorded as N/A with evidence; it does not skip required persistence behavior.
 5. Shared 1.1 documentation completion is a supporting milestone, not a completed item among the 26. No product work begins from this document alone.
+
+## Phase branch lifecycle
+
+For Manny's authorized builds, create one temporary branch for the active phase
+from the latest fetched, verified `developer`. Obtain approval of the exact
+branch name first. Phase 1's approved branch is
+`manny/phase-1-intake-to-research`. Do not begin a dependent phase while its
+required decisions or prior acceptance criteria remain unresolved.
+
+1. Build the approved phase, preserving owner boundaries; run tests during the
+   work and record actual X/Y. Complete required SECURITY and REVIEWER checks.
+2. Check off the assignment only when all criteria pass, with the completed-work
+   explanation and evidence. Do not publish partial phase work as complete.
+3. Inspect every relevant worktree, fetch remote updates, check incoming/outgoing
+   commits and open PRs, and verify exact tips, ancestry and unique work before
+   committing, pushing, switching or merging.
+4. Follow the phase commit body, revised team-reference skill and final empty
+   review-summary requirement. Push the temporary branch to its own remote ref;
+   its PR targets `developer`, never `main` or the persistent READ branch.
+5. Merge only after the required checks/reviews pass and the PR remains safe.
+   Fetch the resulting `developer` tip. Fast-forward eligible non-main branches
+   only when clean, authorized by ownership, and ancestors of that tip. Main is
+   excluded. Synchronization publishes existing reviewed commits only; if new
+   commits are required, follow the ordinary review-summary publication rules.
+6. Under the user's phase-cleanup authorization, delete only this completed
+   temporary branch after verifying both its local and remote tips are integrated
+   and contain no unique work. Return to `manny/read-agents`. Keep persistent
+   READ, SQL, teammate, integration and release branches.
+
+Dirty trees, unexpected remote advancement, divergence, unmerged unique work or
+missing teammate-owner authorization stop the affected operation. Report exact
+evidence and safe options to the human; do not force, reset, rebase or discard
+work. Justin controls his own WRITE phase organization and implementation.
 
 ## SQL ownership and lane identity
 
@@ -73,4 +106,4 @@ Each ID appears once below at its primary completion location; supporting phases
 
 ## Current boundary
 
-This build creates phase documentation, completion rules and proposed commit groups. It does not implement the listed agents/connectors, mutate SQL, enable providers, run live agents/traces, or stage/commit/push/merge. Existing pending branding and PRD-v4 work remain separate.
+The initial documentation system, branding and PRD v4 were integrated in PR #13. The user subsequently approved Manny phase execution and the temporary phase lifecycle. S01's product decisions are approved; consult the canonical checklist and each phase record for actual implementation status. SQL, live provider enablement, durable history, WRITE behavior and unresolved S02-S04 decisions are not silently included in Manny Phase 1.
