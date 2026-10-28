@@ -96,6 +96,28 @@ export const manuscriptEnvelopeSchema = z.object({
       })
     )
     .length(3),
+  // The chapters the editor actually read. Round 2 can differ from the one draft stored on the run.
+  sourceChapters: z
+    .array(
+      z.object({
+        chapterIndex: z.number().int().min(1).max(3),
+        bibleVersion: z.number().int().positive(),
+        text: z.string().min(1),
+      })
+    )
+    .length(3)
+    .optional(),
+  // Hashes of the single chapter copy saved on the run, when that copy is not the editor's source.
+  draftChapterHashes: z
+    .array(
+      z.object({
+        chapterIndex: z.number().int().min(1).max(3),
+        bibleVersion: z.number().int().positive(),
+        sha256: z.string().regex(SHA256_HEX_REGEX),
+      })
+    )
+    .length(3)
+    .optional(),
 });
 
 export type ManuscriptEnvelope = z.infer<typeof manuscriptEnvelopeSchema>;
@@ -122,6 +144,8 @@ export function buildManuscriptEnvelope(params: {
   baseVersion: number;
   baseChapters: Chapter[];
   manuscript: RevisedManuscript;
+  /** The one chapter copy stored on the run, when it is not the text the editor revised. */
+  draftChapters?: Chapter[];
 }): ManuscriptEnvelope {
   const sortedBase = params.baseChapters.slice().sort((a, b) => a.chapterIndex - b.chapterIndex);
   const sourceChapterHashes = sortedBase.map((c) => ({
@@ -129,8 +153,23 @@ export function buildManuscriptEnvelope(params: {
     bibleVersion: c.bibleVersion,
     sha256: hashChapterText(c.text),
   }));
+  const sourceChapters = sortedBase.map((c) => ({
+    chapterIndex: c.chapterIndex,
+    bibleVersion: c.bibleVersion,
+    text: c.text,
+  }));
 
   const proposalHash = hashManuscriptContent(params.manuscript);
+  const draftChapterHashes = params.draftChapters
+    ? params.draftChapters
+        .slice()
+        .sort((a, b) => a.chapterIndex - b.chapterIndex)
+        .map((c) => ({
+          chapterIndex: c.chapterIndex,
+          bibleVersion: c.bibleVersion,
+          sha256: hashChapterText(c.text),
+        }))
+    : undefined;
 
   return {
     envelopeVersion: 1,
@@ -138,6 +177,8 @@ export function buildManuscriptEnvelope(params: {
     baseVersion: params.baseVersion,
     proposalHash,
     sourceChapterHashes,
+    sourceChapters,
+    ...(draftChapterHashes ? { draftChapterHashes } : {}),
   };
 }
 
@@ -171,9 +212,27 @@ export function verifyManuscriptEnvelope(params: {
   const sourceHashes = Array.isArray(params.envelope.sourceChapterHashes)
     ? params.envelope.sourceChapterHashes
     : [];
+  const recordedSource = params.envelope.sourceChapters;
+  if (recordedSource?.length) {
+    for (const source of recordedSource) {
+      const sourceRef = sourceHashes.find((entry) => entry?.chapterIndex === source.chapterIndex);
+      if (!sourceRef) {
+        return { valid: false, error: `Source hash entry missing for chapter ${source.chapterIndex}.` };
+      }
+      if (hashChapterText(source.text) !== sourceRef.sha256) {
+        return { valid: false, error: `Recorded source chapter ${source.chapterIndex} does not match its hash.` };
+      }
+    }
+  }
+
+  // When the editor read a different copy than the one row stored for this run,
+  // the draft hashes are the rows. Otherwise the stored rows are the source.
+  const rowHashes = params.envelope.draftChapterHashes?.length
+    ? params.envelope.draftChapterHashes
+    : sourceHashes;
   for (let i = 0; i < sortedStored.length; i++) {
     const stored = sortedStored[i];
-    const sourceRef = sourceHashes.find((entry) => entry?.chapterIndex === stored.chapterIndex);
+    const sourceRef = rowHashes.find((entry) => entry?.chapterIndex === stored.chapterIndex);
     // A missing hash entry fails the check. It must not throw and accidentally look valid.
     if (!sourceRef) {
       return { valid: false, error: `Source hash entry missing for chapter ${stored.chapterIndex}.` };

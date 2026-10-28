@@ -566,7 +566,7 @@ describe("J06 — Connected Revision Cycle Integration", () => {
     expect(complete).not.toHaveBeenCalled();
   });
 
-  it("keeps clockwork stories complete when the swim rule does not apply", async () => {
+  it("returns unavailable when the swim rule does not apply", async () => {
     const manuscript: RevisedManuscript = {
       kind: "manuscript_a",
       editorialLens: "continuity_and_pacing",
@@ -600,7 +600,7 @@ describe("J06 — Connected Revision Cycle Integration", () => {
       ],
       bibleVersion: 1,
     });
-    expect(result.status).toBe("complete");
+    expect(result.status).toBe("unavailable");
     expect(result.proposalVersion).toBe(2);
     expect(result.bibleVersion).toBe(1);
     expect(result.checkedFactIds).toEqual([]);

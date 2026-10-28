@@ -665,8 +665,8 @@ previously approved names and product decisions remain recorded for later use.
 On October 28, 2026, the project user explicitly directed that **Justin will take over making the agents that will create the story bibles** (`bible_a`, `bible_b`, `bible_c` / Bible Planning roles).
 
 ### Key Decisions and Architectural Implications:
-1. **Ownership Assignment (Resolves S02 planning ownership):**
-   - The previously unassigned planning ownership for Story Bible creation (`bible_a`, `bible_b`, `bible_c`) is now formally assigned to **Justin**.
+1. **Ownership direction (S02 stays open on the phase checklist):**
+   - The October 28 direction assigns Story Bible creation (`bible_a`, `bible_b`, `bible_c`) to **Justin**. The phase checklist still lists S02 as unresolved, so this addendum does not mark that gate complete.
    - Justin's implementation domain expands from the 5 WRITE instances (Chapter Writers 1/2/3 and Critic/Editors A/B) to include the 3 Story Bible creation agents (totaling 8 agent instances).
    - Manny retains ownership of the 3 READ instances (`research`, `reader`, `consistency`). Coordinator / Showrunner remains shared.
 

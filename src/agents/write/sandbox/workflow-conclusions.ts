@@ -33,11 +33,14 @@ export function generateWorkflowConclusionsReport(
 
   md += `| Metric | Count | Status |\n`;
   md += `| :--- | :--- | :--- |\n`;
-  md += `| Execution Steps Passed | ${passingSteps} / ${trace.steps.length} | ${failedSteps === 0 ? "No failed steps. Other statuses are printed as stored." : "⚠️ Warnings/Failures"} |\n`;
+  const consistencyStep = trace.steps.find((step) => step.stepId === "step-consistency");
+  const revisionSteps = trace.steps.filter((step) => step.stepId.startsWith("step-revision-round"));
+  const capStep = trace.steps.find((step) => step.stepId === "step-cap-exhaustion");
+  md += `| Execution Steps Passed | ${passingSteps} / ${trace.steps.length} | ${failedSteps === 0 ? "No failed steps. Other statuses are printed as stored." : "Warnings or failures are in the step table."} |\n`;
   md += `| Hand-Off Seams | ${validHandOffs} valid, ${simulatedHandOffs} simulated, ${invalidHandOffs} invalid | Printed from the trace |\n`;
-  md += `| S04 Proposal Envelopes Verified | 2 (Per Round) | ✅ Verified SHA-256 Hashes |\n`;
-  md += `| S03 Revision Cap Enforcement | Round 0, 1, 2 permitted; Round 3 rejected | ✅ 409 Bounded Rejection |\n`;
-  md += `| Editorial Instructions Decoupling | Pristine brief.desiredEnding | ✅ Decoupled First-Class |\n\n`;
+  md += `| Consistency step | ${consistencyStep?.status ?? "not recorded"} | Swim-rule heuristic status from the trace |\n`;
+  md += `| Revision steps | ${revisionSteps.map((step) => `${step.stepId}=${step.status}`).join(", ") || "none"} | Printed from the trace |\n`;
+  md += `| S03 revision cap step | ${capStep?.status ?? "not recorded"} | Printed from the trace |\n\n`;
 
   md += `## 2. Multi-Agent Hand-Off Seam Audits\n\n`;
   md += `Every transition between autonomous agents was validated for schema conformance, authority boundary, and version binding:\n\n`;
@@ -59,15 +62,20 @@ export function generateWorkflowConclusionsReport(
   }
   md += `\n`;
 
-  md += `## 4. Typography & Narrative Prose Purity Audit\n\n`;
-  md += `All generated narrative prose was evaluated against the Invariant 7 (Grammatical & Typographical Hygiene) and Invariant 8 (Pure Prose Output) standards:\n\n`;
-  md += `- **Punctuation Collision Scan**: Zero duplicate periods ('..'), misplaced spaces before punctuation, or comma-period collisions detected.\n`;
-  md += `- **Meta-Tag / Editorial Bracket Scan**: Zero bracketed chapter or version tags (e.g. '[Revised Version A]' or '[Chapter 1]') retained in final stored chapters.\n`;
-  md += `- **Sanitization Hook**: \`cleanProseTypography\` successfully normalized prose before write barrier and S04 envelope hashing.\n\n`;
+  md += `## 4. Typography notes from this trace\n\n`;
+  const typographyNotes = trace.weakPoints.filter((point) => point.category === "TYPOGRAPHY");
+  if (typographyNotes.length === 0) {
+    md += `No typography finding was recorded on this trace. That is not a claim that every chapter was scanned.\n\n`;
+  } else {
+    for (const point of typographyNotes) {
+      md += `- **${point.severity}**: ${point.description}\n`;
+    }
+    md += `\n`;
+  }
 
   md += `## 5. Weak Points & Failure Mode Analysis\n\n`;
   if (trace.weakPoints.length === 0) {
-    md += `> [!NOTE]\n> No critical weaknesses or unhandled failure modes were identified during this execution run.\n\n`;
+    md += `> [!NOTE]\n> This run did not record a weak point. Steps above still show their own status.\n\n`;
   } else {
     for (const wp of trace.weakPoints) {
       const alertType = wp.severity === "HIGH" ? "WARNING" : "NOTE";

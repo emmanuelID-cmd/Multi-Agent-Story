@@ -71,8 +71,7 @@ describe("Weaver Multi-Agent Workflow Sandbox Harness & Conclusions", () => {
 
       expect(result.trace).toBeDefined();
       const consistencyStep = result.trace.steps.find((step) => step.stepId === "step-consistency");
-      expect(["complete", "partial", "blocked"]).toContain(consistencyStep?.status);
-      expect(consistencyStep?.status).not.toBe("PASS");
+      expect(consistencyStep?.status).toBe("partial");
     } finally {
       rmSync(baseDir, { recursive: true, force: true });
     }
@@ -86,18 +85,28 @@ describe("Weaver Multi-Agent Workflow Sandbox Harness & Conclusions", () => {
         humanFeedback: "Keep the midnight deadline.",
       });
       expect(resClockwork.trace.steps.length).toBeGreaterThanOrEqual(13);
-      expectRecordedSeams(resClockwork.trace.handOffAudits);
+      for (const seam of resClockwork.trace.handOffAudits) {
+        if (seam.seam.includes("Seam 6")) expect(seam.status).toBe("INVALID");
+        else if (seam.seam.includes("Seam 7")) expect(seam.status).toBe("SIMULATED");
+        else expect(seam.status).toBe("VALID");
+      }
       const clockworkConsistency = resClockwork.trace.steps.find((step) => step.stepId === "step-consistency");
-      expect(clockworkConsistency?.status).toBe("complete");
+      expect(clockworkConsistency?.status).toBe("unavailable");
+      expect(resClockwork.trace.handOffAudits.find((seam) => seam.seam.includes("Seam 6"))?.status).toBe("INVALID");
 
       const resOrbital = await executeWorkflowInSandbox(orbitalSciFiCase, {
         baseDir,
         humanFeedback: "Keep the reflector aligned.",
       });
       expect(resOrbital.trace.steps.length).toBeGreaterThanOrEqual(13);
-      expectRecordedSeams(resOrbital.trace.handOffAudits);
+      for (const seam of resOrbital.trace.handOffAudits) {
+        if (seam.seam.includes("Seam 6")) expect(seam.status).toBe("INVALID");
+        else if (seam.seam.includes("Seam 7")) expect(seam.status).toBe("SIMULATED");
+        else expect(seam.status).toBe("VALID");
+      }
       const orbitalConsistency = resOrbital.trace.steps.find((step) => step.stepId === "step-consistency");
-      expect(orbitalConsistency?.status).toBe("complete");
+      expect(orbitalConsistency?.status).toBe("unavailable");
+      expect(resOrbital.trace.handOffAudits.find((seam) => seam.seam.includes("Seam 6"))?.status).toBe("INVALID");
     } finally {
       rmSync(baseDir, { recursive: true, force: true });
     }

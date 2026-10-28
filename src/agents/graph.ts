@@ -167,6 +167,10 @@ export async function finishRun(runId: string) {
 function fixtureEditorialModel(): WriteModel {
   return {
     async complete(call: WriteModelCall) {
+      if (call.signal.aborted) {
+        const reason = call.signal.reason;
+        throw reason instanceof Error ? reason : new DOMException("Operation canceled.", "AbortError");
+      }
       const data = call.data as {
         bibleVersion?: number;
         approvedFacts?: Bible["facts"];
@@ -220,6 +224,41 @@ async function markRevisionFailed(runId: string) {
 }
 
 /**
+ * Stop the editors if the writer cancels the run, or if this revision runs past the same
+ * time limit as a chapter task. Call stop() when the revision finishes so the check ends.
+ */
+function watchRevisionCancel(runId: string): { signal: AbortSignal; stop: () => void } {
+  const controller = new AbortController();
+  const timeout = AbortSignal.timeout(limits.timeoutMs);
+  const abortFromTimeout = () => {
+    const reason = timeout.reason instanceof Error
+      ? timeout.reason
+      : new DOMException("The revision timed out.", "TimeoutError");
+    controller.abort(reason);
+  };
+  if (timeout.aborted) abortFromTimeout();
+  else timeout.addEventListener("abort", abortFromTimeout, { once: true });
+
+  const timer = setInterval(() => {
+    void db.select().from(runs).where(eq(runs.id, runId)).then(([row]) => {
+      if (!row || row.canceledAt || row.status === "canceled") {
+        controller.abort(new DOMException("Operation canceled.", "AbortError"));
+      }
+    }).catch(() => {
+      controller.abort(new DOMException("Operation canceled.", "AbortError"));
+    });
+  }, 250);
+
+  return {
+    signal: controller.signal,
+    stop() {
+      clearInterval(timer);
+      timeout.removeEventListener("abort", abortFromTimeout);
+    },
+  };
+}
+
+/**
  * Rounds 1 and 2 skip the three writers. The editors run outside a database transaction,
  * then one short save stores the source chapters, both pending proposals, the finished tasks,
  * and the swim-rule critique together. The previous proposals are rejected only in that save.
@@ -238,9 +277,23 @@ async function executeRequestedRevision(
   revisionRound: number
 ) {
   const saved = runTasks[0]?.savedInput;
+  const cancelWatch = watchRevisionCancel(run.id);
+  try {
+  // Count this attempt before the editors run, so a failed revision uses the one-retry limit.
+  for (const task of runTasks) {
+    const [row] = await db.select().from(tasks).where(eq(tasks.id, task.id));
+    if (!row || row.attempts >= 2) {
+      throw new Error("The one-retry limit has been reached for this revision.");
+    }
+    await db.update(tasks).set({
+      status: "running",
+      attempts: row.attempts + 1,
+      updatedAt: new Date(),
+    }).where(eq(tasks.id, task.id));
+  }
+
   const [bible] = await db.select().from(bibles).where(eq(bibles.id, run.bibleId));
   if (!bible) {
-    await markRevisionFailed(run.id);
     throw new Error("Approved bible is missing, so this revision was not saved.");
   }
 
@@ -251,7 +304,6 @@ async function executeRequestedRevision(
     .orderBy(desc(runs.createdAt));
   const previous = completed.find((item) => item.id !== run.id);
   if (!previous) {
-    await markRevisionFailed(run.id);
     throw new Error("A completed draft is required before a revision can start.");
   }
 
@@ -280,17 +332,19 @@ async function executeRequestedRevision(
     const manuscriptA = pending.find((item) => item.kind === "manuscript_a");
     const manuscriptB = pending.find((item) => item.kind === "manuscript_b");
     if (!manuscriptA || !manuscriptB) {
-      await markRevisionFailed(run.id);
       throw new Error("Round 2 needs each editor's previous proposal.");
     }
     readingA = chaptersFromManuscript(manuscriptA.data, bible.version);
     readingB = chaptersFromManuscript(manuscriptB.data, bible.version);
   }
 
+  const [fresh] = await db.select().from(runs).where(eq(runs.id, run.id));
+  if (!fresh || fresh.canceledAt || fresh.status === "canceled") {
+    throw new Error("This revision was canceled before the editors ran.");
+  }
+
   const fixtureModel = fixtureEditorialModel();
-  let cycle: Awaited<ReturnType<typeof executeRevisionCycle>>;
-  try {
-    cycle = await executeRevisionCycle({
+  const cycle = await executeRevisionCycle({
       runId: run.id,
       projectId: run.projectId,
       bibleVersion: bible.version,
@@ -298,22 +352,20 @@ async function executeRequestedRevision(
       baseChapters: draftChapters,
       baseChaptersA: readingA,
       baseChaptersB: readingB,
-      // The run can store one copy of chapters 1–3. Both envelopes lock to the
-      // previous draft so acceptance can re-hash that copy. Round 2 editors still
-      // read their own previous proposals above.
-      envelopeBaseChapters: draftChapters,
+      // Each envelope records the chapters that editor read. The run still stores
+      // one draft copy, and draftChapterHashes are what acceptance checks on the rows.
       revisionRound,
       editorialInstructions: saved?.editorialInstructions ?? "",
       hasAdditionalInstructions: Boolean(saved?.hasAdditionalInstructions),
       modelA: fixtureModel,
       modelB: fixtureModel,
+      signal: cancelWatch.signal,
     });
-  } catch (error) {
-    await markRevisionFailed(run.id);
-    throw error;
-  }
+    if (cancelWatch.signal.aborted) {
+      const reason = cancelWatch.signal.reason;
+      throw reason instanceof Error ? reason : new DOMException("Operation canceled.", "AbortError");
+    }
 
-  try {
     await db.transaction(async (tx) => {
       const [locked] = await tx.select().from(runs).where(eq(runs.id, run.id)).for("update");
       if (!locked || locked.canceledAt || !["running", "pending"].includes(locked.status)) return;
@@ -384,9 +436,15 @@ async function executeRequestedRevision(
 
       await tx.update(runs).set({ status: "completed" }).where(eq(runs.id, run.id));
     });
+    const [savedRun] = await db.select().from(runs).where(eq(runs.id, run.id));
+    if (savedRun?.status === "running") {
+      throw new Error("This revision stopped before it was saved.");
+    }
   } catch (error) {
     await markRevisionFailed(run.id);
     throw error;
+  } finally {
+    cancelWatch.stop();
   }
 }
 

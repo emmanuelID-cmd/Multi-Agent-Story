@@ -48,16 +48,21 @@ export function generateEditorConclusionsReport(
   filepath?: string
 ): string {
   const timestamp = new Date().toISOString();
-  const allBarriersPassed = traces.every((t) =>
-    t.steps.every(
-      (s) =>
-        s.barrierPassed &&
-        s.envelopeValid &&
-        s.antiImitationAudit.passed &&
-        s.typographyAudit.passed &&
-        s.editorialAudit.passed
-    )
-  );
+  const allBarriersPassed =
+    traces.length > 0 &&
+    traces.every(
+      (t) =>
+        t.handoffAudit.valid &&
+        t.steps.length > 0 &&
+        t.steps.every(
+          (s) =>
+            s.barrierPassed &&
+            s.envelopeValid &&
+            s.antiImitationAudit.passed &&
+            s.typographyAudit.passed &&
+            s.editorialAudit.passed
+        )
+    );
   const totalTokensAllRuns = traces.reduce((sum, t) => sum + t.totalTokens.total, 0);
   const totalProposals = traces.reduce((sum, t) => sum + t.steps.length, 0);
 

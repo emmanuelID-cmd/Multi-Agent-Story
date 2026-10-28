@@ -23,7 +23,7 @@ export interface WorkflowStepTrace {
   durationMs: number;
   tokens?: { input: number; output: number };
   hashes?: Record<string, string>;
-  status: "PASS" | "FLAGGED" | "FAIL" | "SIMULATED" | "complete" | "partial" | "blocked";
+  status: "PASS" | "FLAGGED" | "FAIL" | "SIMULATED" | "complete" | "partial" | "blocked" | "unavailable";
   notes?: string;
 }
 

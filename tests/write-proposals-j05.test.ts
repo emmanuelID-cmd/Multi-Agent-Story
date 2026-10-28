@@ -390,6 +390,39 @@ describe("J05: Human Gate #2 Acceptance & Preservation Integration", () => {
     expect(store.chapters[2].text).toBe(baseChapters[2].text);
   });
 
+  it("refuses to accept a manuscript while a rewrite is still running", async () => {
+    const envelopeA = buildManuscriptEnvelope({
+      runId: "run-1",
+      baseVersion: 1,
+      baseChapters,
+      manuscript: revisedManuscriptA,
+    });
+    const store: MockDbStore = {
+      projects: [{ id: "proj-1", ownerId: "user-1", version: 1, brief: { premise: "P" } }],
+      bibles: [{ id: "bible-1", projectId: "proj-1", version: 1, data: {} }],
+      runs: [
+        { id: "run-1", projectId: "proj-1", status: "completed" },
+        { id: "run-2", projectId: "proj-1", status: "running" },
+      ],
+      chapters: [],
+      proposals: [
+        {
+          id: "prop-a",
+          projectId: "proj-1",
+          baseVersion: 1,
+          kind: "manuscript_a",
+          status: "pending",
+          data: { ...revisedManuscriptA, envelope: envelopeA },
+        },
+      ],
+    };
+    setupMockDb(store);
+    await expect(approveManuscriptProposal("user-1", "proj-1", "prop-a")).rejects.toThrow(
+      /already active/
+    );
+    expect(store.proposals[0].status).toBe("pending");
+  });
+
   it("rejects when owner does not own project with 404 Project unavailable.", async () => {
     const store: MockDbStore = {
       projects: [], // No project for foreign owner

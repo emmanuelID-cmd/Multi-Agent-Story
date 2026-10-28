@@ -1,5 +1,4 @@
 import { randomUUID } from "node:crypto";
-import { z } from "zod";
 import { orderedChapters, limits, type Chapter, type Bible } from "../../contracts";
 import {
   buildFixtureHandoff,
@@ -107,7 +106,7 @@ const SWIM_ACTION =
  * Local swim-rule check for one proposal.
  * It is not READ consistency. A hash or bible-version mismatch blocks the check.
  * A swim contradiction returns partial. Complete means the swim rule applied and
- * found nothing, or the rule was not applicable and that limit is stated in the notes.
+ * found nothing. Unavailable means no approved fact says the character cannot swim.
  * proposalVersion is the revision round supplied by the caller. bibleVersion stays the bible version.
  */
 export async function executeConsistencyCheck(params: {
@@ -183,7 +182,11 @@ export async function executeConsistencyCheck(params: {
     proposalVersion: params.proposalVersion,
     proposalSha256: proposalDigest,
     bibleVersion: params.bibleVersion,
-    status: swimRuleApplicable && findings.length > 0 ? "partial" : "complete",
+    status: !swimRuleApplicable
+      ? "unavailable"
+      : findings.length > 0
+        ? "partial"
+        : "complete",
     findings,
     unresolvedIssues,
     checkedFactIds,
@@ -329,6 +332,7 @@ export async function executeRevisionCycle(
     runId: input.runId,
     baseVersion: input.bibleVersion,
     baseChapters: lockedA,
+    draftChapters: input.baseChapters,
     manuscript: resA.proposal,
   });
 
@@ -336,6 +340,7 @@ export async function executeRevisionCycle(
     runId: input.runId,
     baseVersion: input.bibleVersion,
     baseChapters: lockedB,
+    draftChapters: input.baseChapters,
     manuscript: resB.proposal,
   });
 

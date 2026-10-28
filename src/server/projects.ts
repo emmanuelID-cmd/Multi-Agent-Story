@@ -3,6 +3,7 @@ import { and, asc, desc, eq, inArray, like, ne, notLike } from "drizzle-orm";
 import { db } from "./db";
 import { projects, bibles, proposals, runs, tasks, chapters, critiques, evidence, memories } from "./db/schema";
 import { briefSchema, bibleSchema, orderedChapters, runInput, limits } from "../contracts";
+import { inspectText } from "../contracts/input-policy";
 import { newIntakeRequestSchema } from "../contracts/intake";
 import { enqueue } from "../worker/queue";
 import type { RevisedManuscript } from "../agents/editors";
@@ -133,6 +134,10 @@ export async function approveManuscriptProposal(ownerId: string, id: string, pro
     if (proposal.baseVersion !== project.version) {
       throw new AppError(409, "Proposal base version does not match current project version.");
     }
+    const projectRuns = await tx.select().from(runs).where(eq(runs.projectId, id));
+    if (projectRuns.some((run) => run.status === "pending" || run.status === "running")) {
+      throw new AppError(409, "A run is already active. Accept the manuscript after it finishes.");
+    }
     const data = proposal.data as RevisedManuscript;
 
     // Check kind and lens strict consistency
@@ -213,6 +218,7 @@ export async function rewriteRun(ownerId: string, id: string, feedback?: string,
     maxTaskRound = Math.max(0, ...projectTasks.map(t => (t.savedInput as { revisionRound?: number } | undefined)?.revisionRound ?? 0));
   }
   const critiqueRound = (critique?.data as { revisionRounds?: number } | undefined)?.revisionRounds ?? 0;
+  // A failed rewrite still counts. S03 says a failure does not reset the two-round cap.
   const currentRound = Math.max(maxTaskRound, critiqueRound);
 
   if (currentRound >= limits.revisionRounds) {
@@ -224,6 +230,10 @@ export async function rewriteRun(ownerId: string, id: string, feedback?: string,
   const userFeedback = feedback?.trim() || "";
   if (userFeedback.length > 500) {
     throw new AppError(400, "Feedback exceeds 500 characters.");
+  }
+  const feedbackCheck = inspectText(userFeedback, "creative", "editorialInstructions", "rewrite");
+  if (feedbackCheck.verdict === "REJECT") {
+    throw new AppError(400, "Feedback contains characters that cannot be saved.");
   }
   // An empty request stays empty. It does not become a placeholder sentence.
   const editorialInstructions = userFeedback;

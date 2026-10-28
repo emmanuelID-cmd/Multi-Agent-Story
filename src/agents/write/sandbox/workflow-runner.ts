@@ -24,6 +24,17 @@ import { generateWorkflowConclusionsReport } from "./workflow-conclusions";
 import { initWorkflowSandboxDirectories } from "./cleanup";
 import { AnthropicWriteModel, type WriteModel, type WriteModelCall } from "../model";
 import { createSandboxEditorialModel, swimRuleApplies } from "./editorial-model";
+import { auditTypographyInProse } from "./editor-tracer";
+
+type SwimStatus = "complete" | "partial" | "blocked" | "unavailable";
+
+/** Pick the most serious swim-rule status so a finding is not reported as a pass. */
+function worstSwimStatus(statuses: SwimStatus[]): SwimStatus {
+  if (statuses.includes("blocked")) return "blocked";
+  if (statuses.includes("partial")) return "partial";
+  if (statuses.includes("unavailable")) return "unavailable";
+  return "complete";
+}
 
 export interface WorkflowRunnerOptions {
   model?: WriteModel;
@@ -112,10 +123,14 @@ export async function executeWorkflowInSandbox(
   const model: WriteModel =
     options.model ??
     (useLive
-      ? new AnthropicWriteModel(process.env.ANTHROPIC_API_KEY || "mock-key", {
-          criticModelId: modelId,
-          writerModelId: modelId,
-        })
+      ? (() => {
+          const key = process.env.WRITE_ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY;
+          if (!key) throw new Error("ANTHROPIC_API_KEY required for live workflow sandbox run.");
+          return new AnthropicWriteModel(key, {
+            criticModelId: modelId,
+            writerModelId: modelId,
+          });
+        })()
       : createSimulatedWorkflowModel(bibleCase, options.adversarial));
 
   const tracer = new SandboxWorkflowTracer({
@@ -241,7 +256,7 @@ export async function executeWorkflowInSandbox(
     inputSummary: `Assembled 3 chapters, desired ending: "${recordedRequest.slice(0, 50)}..."`,
     outputSummary: `Built 5-field package: task, userInstructions, sourceReferences, completeness, version`,
     durationMs: Date.now() - tReader,
-    status: "PASS",
+    status: valA.valid && valB.valid ? "PASS" : "FAIL",
   });
 
   tracer.recordHandOff({
@@ -259,6 +274,19 @@ export async function executeWorkflowInSandbox(
     status: valA.valid && valB.valid ? "VALID" : "INVALID",
     details: `Receiving validation passed for Fontaine (valid=${valA.valid}) and Lang (valid=${valB.valid}).`,
   });
+
+  if (!valA.valid || !valB.valid) {
+    tracer.recordWeakPoint({
+      category: "CONTINUITY",
+      severity: "HIGH",
+      description: "The reader handoff did not pass for both editors, so no proposals were generated.",
+      recommendation: "Repair the handoff before either editor runs.",
+    });
+    const { tracePath, summaryPath } = tracer.writeTraceFiles(baseDir);
+    const finalTrace = tracer.finalize();
+    const conclusionsPath = generateWorkflowConclusionsReport(finalTrace, baseDir);
+    return { trace: finalTrace, tracePath, summaryPath, conclusionsPath };
+  }
 
   // ------------------------------------------------------------------
   // PHASE 5: Dual Critic/Editors (Round 0 Proposals)
@@ -379,20 +407,50 @@ export async function executeWorkflowInSandbox(
     }),
   ]);
 
-  // The step keeps the check's own status. A swim finding is partial, not a pass.
-  const consistencyStatus: "complete" | "partial" | "blocked" =
-    consA.status === "blocked" || consB.status === "blocked"
-      ? "blocked"
-      : consA.status === "partial" || consB.status === "partial"
-        ? "partial"
-        : "complete";
+  // Also check the draft the writers stored. An editor can remove "swam" before this step,
+  // and that repair must not hide the contradiction that was in the draft.
+  const draftManuscript: RevisedManuscript = {
+    ...propResA.proposal,
+    chapters: baseChapters,
+  };
+  const draftCheck = await executeConsistencyCheck({
+    proposalId: "draft-r0",
+    proposalVersion: 0,
+    proposal: draftManuscript,
+    envelope: buildManuscriptEnvelope({
+      runId,
+      baseVersion: bibleCase.bibleVersion,
+      baseChapters,
+      manuscript: draftManuscript,
+    }),
+    approvedFacts: bibleCase.bible.facts,
+    bibleVersion: bibleCase.bibleVersion,
+  });
+
+  const consistencyStatus = worstSwimStatus([
+    consA.status,
+    consB.status,
+    draftCheck.status,
+  ]);
+  const typography = auditTypographyInProse([
+    ...propResA.proposal.chapters,
+    ...propResB.proposal.chapters,
+  ]);
+  if (!typography.passed) {
+    tracer.recordWeakPoint({
+      category: "TYPOGRAPHY",
+      severity: "MEDIUM",
+      description: `Typography scan found: ${typography.collisionsFound.join("; ")}`,
+      recommendation: "Clean the prose before the envelope is hashed.",
+    });
+  }
   tracer.recordStep({
     stepId: "step-consistency",
     phase: "consistency_check",
     agentId: "consistency",
     agentAlias: "Consistency",
     inputSummary: `Swim-rule heuristic across chapters [1, 2, 3]`,
-    outputSummary: `Consistency results: statusA=${consA.status}, statusB=${consB.status}, findingsA=${consA.findings.length}, findingsB=${consB.findings.length}`,
+    outputSummary: `Consistency results: statusA=${consA.status}, statusB=${consB.status}, draft=${draftCheck.status}, findingsA=${consA.findings.length}, findingsB=${consB.findings.length}`,
     durationMs: Date.now() - tCons,
     status: consistencyStatus,
   });
@@ -449,9 +507,12 @@ export async function executeWorkflowInSandbox(
     stepId: "step-revision-round-1",
     phase: "revision_cycle",
     inputSummary: `Round 1, instructions: "${simulatedFeedback}"`,
-    outputSummary: `Generated 2 revised proposals with S04 envelopes, consistency verified`,
+    outputSummary: `Round 1 consistency A=${revResult1.proposals[0].consistency.status}, B=${revResult1.proposals[1].consistency.status}.`,
     durationMs: Date.now() - tRev1,
-    status: "PASS",
+    status: worstSwimStatus([
+      revResult1.proposals[0].consistency.status,
+      revResult1.proposals[1].consistency.status,
+    ]),
   });
 
   tracer.recordHandOff({
@@ -487,9 +548,12 @@ export async function executeWorkflowInSandbox(
     stepId: "step-revision-round-2",
     phase: "revision_cycle",
     inputSummary: `Round 2 polish request, starting from each editor's round 1 chapters`,
-    outputSummary: `Round ${revResult2.revisionRound} started from each editor's round 1 chapters. Editor A: "${round1ChaptersA[0]?.text.slice(0, 48) ?? ""}". Editor B: "${round1ChaptersB[0]?.text.slice(0, 48) ?? ""}".`,
+    outputSummary: `Round ${revResult2.revisionRound} started from each editor's round 1 chapters. Consistency A=${revResult2.proposals[0].consistency.status}, B=${revResult2.proposals[1].consistency.status}.`,
     durationMs: Date.now() - tRev2,
-    status: "PASS",
+    status: worstSwimStatus([
+      revResult2.proposals[0].consistency.status,
+      revResult2.proposals[1].consistency.status,
+    ]),
   });
 
   // ------------------------------------------------------------------
