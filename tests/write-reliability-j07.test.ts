@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   orderedChapters,
   chapterSchema,
@@ -17,6 +17,14 @@ import {
 import type { WriteModel, WriteModelCall } from "../src/agents/write/model";
 import { validateEditorReceivingHandoff, buildFixtureHandoff } from "../src/agents/handoff";
 import { executeRevisionCycle } from "../src/agents/write/revision";
+import { rewriteRun, retryRun } from "../src/server/projects";
+import { enqueue } from "../src/worker/queue";
+
+vi.mock("../src/worker/queue", () => ({
+  enqueue: vi.fn().mockResolvedValue(undefined),
+}));
+import { db } from "../src/server/db";
+import { projects, bibles, runs, tasks, proposals, critiques } from "../src/server/db/schema";
 
 const mockBible: Bible = {
   facts: [
@@ -350,6 +358,256 @@ describe("J07 — WRITE Reliability Evidence & Failure Recovery", () => {
       expect(cleanProseTypography(taggedCh)).toBe(
         "The tide surged violently against the harbor wall."
       );
+
+      const banner = "[Revised Version A — Continuity & Pacing]\n\nMara stayed in the boat.";
+      expect(cleanProseTypography(banner)).toBe("Mara stayed in the boat.");
+      expect(cleanProseTypography("[Revised Version A] The skiff held.")).toBe("The skiff held.");
+    });
+
+    it("leaves initials and an unfinished comma-period fragment alone", () => {
+      expect(cleanProseTypography("U.S.A. stayed on the chart.")).toBe("U.S.A. stayed on the chart.");
+      expect(cleanProseTypography("With disciplined precision, .")).toBe("With disciplined precision, .");
+    });
+  });
+
+  describe("Envelope fail-closed checks and stable change hashes", () => {
+    it("returns invalid instead of throwing when a source-hash entry is missing", () => {
+      const manuscript: RevisedManuscript = {
+        kind: "manuscript_a",
+        editorialLens: "continuity_and_pacing",
+        rationale: "Disciplined edits.",
+        chapters: baseChapters,
+        changesMade: [{ chapterIndex: 1, summary: "Edit", justification: "Reason" }],
+      };
+      const envelope = buildManuscriptEnvelope({
+        runId: "run-missing-hash",
+        baseVersion: 1,
+        baseChapters,
+        manuscript,
+      });
+      const missing = {
+        ...envelope,
+        sourceChapterHashes: envelope.sourceChapterHashes.filter((entry) => entry.chapterIndex !== 2),
+      };
+      const result = verifyManuscriptEnvelope({
+        envelope: missing,
+        storedChapters: baseChapters,
+        manuscript,
+        expectedBaseVersion: 1,
+      });
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain("Source hash entry missing");
+    });
+
+    it("hashes the same changesMade list regardless of order", () => {
+      const first = {
+        kind: "manuscript_a" as const,
+        editorialLens: "continuity_and_pacing" as const,
+        rationale: "Two edits.",
+        chapters: baseChapters,
+        changesMade: [
+          { chapterIndex: 2, summary: "Boat", justification: "Fact F1" },
+          { chapterIndex: 1, summary: "Opening", justification: "Pace" },
+        ],
+      };
+      const reversed = {
+        ...first,
+        changesMade: [first.changesMade[1], first.changesMade[0]],
+      };
+      expect(hashManuscriptContent(first)).toBe(hashManuscriptContent(reversed));
+    });
+  });
+
+  describe("Proposal preservation across failed dispatch and retry", () => {
+    function projectStore() {
+      return {
+        projects: [
+          {
+            id: "proj-j07",
+            ownerId: "writer-j07",
+            version: 1,
+            brief: {
+              premise: "Mara keeps watch at the lighthouse.",
+              audience: "Adult",
+              genre: "Mystery",
+              tone: "Suspenseful",
+              desiredEnding: "A safe return by harbor boat.",
+            },
+          },
+        ],
+        bibles: [{ id: "bible-j07", projectId: "proj-j07", version: 1, data: mockBible }],
+        runs: [
+          {
+            id: "run-j07-0",
+            projectId: "proj-j07",
+            bibleId: "bible-j07",
+            fixture: "normal",
+            status: "completed",
+            createdAt: new Date(),
+          },
+        ] as Array<Record<string, unknown>>,
+        critiques: [{ id: "critique-j07", runId: "run-j07-0", data: { revisionRounds: 0 } }],
+        tasks: [1, 2, 3].map((chapterIndex) => ({
+          id: `task-j07-${chapterIndex}`,
+          runId: "run-j07-0",
+          chapterIndex,
+          status: "completed",
+          attempts: 1,
+          savedInput: {
+            revisionRound: 0,
+            brief: { desiredEnding: "A safe return by harbor boat." },
+          },
+        })) as Array<Record<string, unknown>>,
+        proposals: [
+          { id: "keep-a", projectId: "proj-j07", kind: "manuscript_a", status: "pending" },
+          { id: "keep-b", projectId: "proj-j07", kind: "manuscript_b", status: "pending" },
+        ],
+      };
+    }
+
+    function mockProjectDb(store: ReturnType<typeof projectStore>) {
+      const rowsFor = (table: unknown) => {
+        if (table === projects) return store.projects;
+        if (table === runs) return store.runs;
+        if (table === critiques) return store.critiques;
+        if (table === tasks) return store.tasks;
+        if (table === bibles) return store.bibles;
+        if (table === proposals) return store.proposals;
+        return [];
+      };
+      const selectable = (table: unknown) => {
+        const rows = rowsFor(table);
+        const pending = Promise.resolve(rows);
+        const newestFirst = [...rows].sort((left, right) => {
+          const leftTime = left && typeof left === "object" && "createdAt" in left
+            ? new Date(left.createdAt as string | Date).getTime()
+            : 0;
+          const rightTime = right && typeof right === "object" && "createdAt" in right
+            ? new Date(right.createdAt as string | Date).getTime()
+            : 0;
+          return rightTime - leftTime;
+        });
+        return Object.assign(pending, {
+          orderBy: () => Object.assign(Promise.resolve(newestFirst), {
+            limit: (count: number) => Promise.resolve(newestFirst.slice(0, count)),
+          }),
+          limit: (count: number) => Promise.resolve(rows.slice(0, count)),
+          for: () => Promise.resolve(rows),
+        });
+      };
+
+      vi.spyOn(db, "select").mockImplementation(() => ({
+        from: (table: unknown) => ({ where: () => selectable(table) }),
+      }) as never);
+      vi.spyOn(db, "update").mockImplementation((table: unknown) => ({
+        set: (values: { status?: string }) => ({
+          where: () => {
+            if (table === runs && values.status === "failed") {
+              const latest = store.runs[store.runs.length - 1];
+              if (latest) latest.status = "failed";
+            }
+            if (table === proposals && values.status === "rejected") {
+              for (const proposal of store.proposals) {
+                if (proposal.status === "pending") proposal.status = "rejected";
+              }
+            }
+            return Promise.resolve([]);
+          },
+        }),
+      }) as never);
+      vi.spyOn(db, "transaction").mockImplementation(async (callback: any) => {
+        const tx = {
+          select: () => ({
+            from: (table: unknown) => ({ where: () => selectable(table) }),
+          }),
+          update: (table: unknown) => ({
+            set: (values: { status?: string; error?: string | null }) => ({
+              where: () => {
+                if (table === proposals && values.status === "rejected") {
+                  for (const proposal of store.proposals) {
+                    if (proposal.status === "pending") proposal.status = "rejected";
+                  }
+                }
+                if (table === tasks && values.status === "pending") {
+                  for (const task of store.tasks) {
+                    if (task.status !== "completed" && Number(task.attempts ?? 0) < 2) {
+                      task.status = "pending";
+                      task.error = null;
+                    }
+                  }
+                }
+                if (table === runs && values.status) {
+                  const latest = store.runs[store.runs.length - 1];
+                  if (latest && latest.status === "failed") latest.status = values.status;
+                }
+                return Promise.resolve([]);
+              },
+            }),
+          }),
+          insert: (table: unknown) => ({
+            values: (vals: unknown) => {
+              const arr = (Array.isArray(vals) ? vals : [vals]) as Array<Record<string, unknown>>;
+              if (table === runs) store.runs.push(...arr);
+              if (table === tasks) store.tasks.push(...arr);
+              return {
+                returning: () => Promise.resolve(arr),
+                then: (resolve: (value: unknown) => unknown, reject?: (reason: unknown) => unknown) =>
+                  Promise.resolve(arr).then(resolve, reject),
+              };
+            },
+          }),
+        };
+        return callback(tx);
+      });
+    }
+
+    it("leaves the previous pending proposals pending when dispatch fails", async () => {
+      const store = projectStore();
+      mockProjectDb(store);
+      vi.mocked(enqueue).mockRejectedValueOnce(new Error("queue down"));
+
+      try {
+        await expect(rewriteRun("writer-j07", "proj-j07", "More fog.", true)).rejects.toThrow(
+          "Worker queue unavailable"
+        );
+        expect(store.proposals.map((proposal) => proposal.status)).toEqual(["pending", "pending"]);
+        expect(store.runs.some((run) => run.status === "failed")).toBe(true);
+      } finally {
+        vi.restoreAllMocks();
+      }
+    });
+
+    it("keeps revisionRound at 1 when a round-1 task is retried", async () => {
+      const store = projectStore();
+      store.runs.unshift({
+        id: "run-j07-1",
+        projectId: "proj-j07",
+        bibleId: "bible-j07",
+        fixture: "normal",
+        status: "failed",
+        createdAt: new Date(Date.now() + 60_000),
+      });
+      store.tasks.push(
+        ...[1, 2, 3].map((chapterIndex) => ({
+          id: `task-round1-${chapterIndex}`,
+          runId: "run-j07-1",
+          chapterIndex,
+          status: "failed",
+          attempts: 1,
+          savedInput: { revisionRound: 1, editorialInstructions: "More fog." },
+        }))
+      );
+      mockProjectDb(store);
+
+      try {
+        await retryRun("writer-j07", "proj-j07", false);
+        const retried = store.tasks.filter((task) => task.runId === "run-j07-1");
+        expect(retried).toHaveLength(3);
+        expect(retried.every((task) => (task.savedInput as { revisionRound: number }).revisionRound === 1)).toBe(true);
+        expect(retried.every((task) => task.status === "pending")).toBe(true);
+      } finally {
+        vi.restoreAllMocks();
+      }
     });
   });
 });

@@ -14,11 +14,11 @@ export function generateWorkflowConclusionsReport(
   );
 
   const passingSteps = trace.steps.filter((s) => s.status === "PASS").length;
-  const flaggedSteps = trace.steps.filter((s) => s.status === "FLAGGED").length;
   const failedSteps = trace.steps.filter((s) => s.status === "FAIL").length;
 
   const validHandOffs = trace.handOffAudits.filter((h) => h.status === "VALID").length;
   const invalidHandOffs = trace.handOffAudits.filter((h) => h.status === "INVALID").length;
+  const simulatedHandOffs = trace.handOffAudits.filter((h) => h.status === "SIMULATED").length;
 
   let md = `# Weaver Multi-Agent Workflow: Comprehensive Review & Conclusions Report\n\n`;
   md += `**Execution Run**: \`${trace.runId}\`  \n`;
@@ -33,8 +33,8 @@ export function generateWorkflowConclusionsReport(
 
   md += `| Metric | Count | Status |\n`;
   md += `| :--- | :--- | :--- |\n`;
-  md += `| Execution Steps Passed | ${passingSteps} / ${trace.steps.length} | ${failedSteps === 0 ? "✅ 100% Passed" : "⚠️ Warnings/Failures"} |\n`;
-  md += `| Hand-Off Seams Validated | ${validHandOffs} / ${trace.handOffAudits.length} | ${invalidHandOffs === 0 ? "✅ All Valid" : "❌ Seam Violation"} |\n`;
+  md += `| Execution Steps Passed | ${passingSteps} / ${trace.steps.length} | ${failedSteps === 0 ? "No failed steps. Other statuses are printed as stored." : "⚠️ Warnings/Failures"} |\n`;
+  md += `| Hand-Off Seams | ${validHandOffs} valid, ${simulatedHandOffs} simulated, ${invalidHandOffs} invalid | Printed from the trace |\n`;
   md += `| S04 Proposal Envelopes Verified | 2 (Per Round) | ✅ Verified SHA-256 Hashes |\n`;
   md += `| S03 Revision Cap Enforcement | Round 0, 1, 2 permitted; Round 3 rejected | ✅ 409 Bounded Rejection |\n`;
   md += `| Editorial Instructions Decoupling | Pristine brief.desiredEnding | ✅ Decoupled First-Class |\n\n`;
@@ -43,10 +43,10 @@ export function generateWorkflowConclusionsReport(
   md += `Every transition between autonomous agents was validated for schema conformance, authority boundary, and version binding:\n\n`;
 
   for (const ho of trace.handOffAudits) {
-    const icon = ho.status === "VALID" ? "✅" : "❌";
-    md += `### ${icon} ${ho.seam}\n`;
+    md += `### ${ho.seam}\n`;
     md += `- **Source**: \`${ho.sourceAgent}\` ➔ **Destination**: \`${ho.destinationAgent}\`\n`;
-    md += `- **Audit Result**: ${ho.details}\n\n`;
+    md += `- **Audit status**: ${ho.status}\n`;
+    md += `- **Audit result**: ${ho.details}\n\n`;
   }
 
   md += `## 3. Resource Economics & Latency Analysis\n\n`;
@@ -79,10 +79,10 @@ export function generateWorkflowConclusionsReport(
   }
 
   md += `## 5. Review Conclusions & Recommendations for J06/J07\n\n`;
-  md += `1. **Connected Revision Cycle (J06)**: Successfully preserves user authority. Editorial instructions remain distinct from the writer's desired ending, and round identity is immutable across retries and rejections.\n`;
-  md += `2. **Reliability & Defensive Barriers (J07)**: Write barriers ('orderedChapters') and S04 envelope SHA-256 bindings reliably detect malformed models, truncated chapters, or database tampering.\n`;
+  md += `1. **Connected Revision Cycle (J06)**: Revision rounds persist the cycle's proposals. Editorial instructions remain distinct from the writer's desired ending. Consistency on that path is the labeled swim-rule heuristic, not a full pass.\n`;
+  md += `2. **Reliability & Defensive Barriers (J07)**: Write barriers ('orderedChapters') and S04 envelope SHA-256 bindings detect malformed models, truncated chapters, or database tampering. The human gate in this trace is simulated and is not an approval.\n`;
   md += `3. **Editorial Lens Separation**: Critic/Editor A (Fontaine) maintains strict continuity, transition pacing, and adherence to approved facts, while Critic/Editor B (Lang) provides rich sensory and atmospheric immersion without imitating prohibited modern authors.\n`;
-  md += `4. **Production Readiness**: The write lane is verified ready for integration into the full end-to-end graph (Shared Phase 4.1/4.2).\n`;
+  md += `4. **What this run does not prove**: Round 0 still uses the unavailable consistency shell. READ consistency remains M06 and is not connected by this sandbox.\n`;
 
   writeFileSync(reportPath, md, "utf8");
   return reportPath;

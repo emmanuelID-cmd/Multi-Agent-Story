@@ -9,47 +9,36 @@ import { getPromptForRole } from "./prompts";
 export const SHA256_HEX_REGEX = /^[a-f0-9]{64}$/;
 
 /**
- * Normalizes mechanical typographical and punctuation collisions in narrative prose:
- * - Collapses accidental double periods '..' (not 3-dot ellipses) into '.'
- * - Replaces excessive periods (4 or more) with '...'
- * - Removes whitespace immediately preceding punctuation marks
- * - Resolves comma-period collisions (',.' or '.,' -> '.')
- * - Resolves semicolon/colon-period collisions (';.' or ':.' -> '.')
- * - Normalizes duplicate commas (',,' -> ',')
- * - Strips duplicate terminal marks (e.g. '!.' or '?.' -> '!' or '?')
- * - Strips leading bracketed version tags (e.g. '[Revised A]' or '[Chapter 1]')
- * Preserves intentional three-dot ellipses ('...') and dialogue styling.
+ * Tidies mechanical punctuation so stored prose is easier to read.
+ * It strips a leading banner such as "[Revised Version A]" or "[Chapter 1]",
+ * collapses a doubled period, and leaves initials like "U.S.A." intact.
+ * A fragment such as "With disciplined precision, ." is kept as written so an
+ * editorial check can still see that the sentence was not finished.
  */
 export function cleanProseTypography(text: string): string {
   if (!text) return "";
   let cleaned = text;
 
-  // 1. Remove spaces immediately before punctuation: "word ." -> "word."
-  cleaned = cleaned.replace(/\s+([,.:;?!])/g, "$1");
+  // Drop a leading revision banner before other rules, including "[Revised Version A]".
+  cleaned = cleaned.replace(/^\[Revised Version[^\]]*\]\s*/i, "");
+  cleaned = cleaned.replace(/^\[(Revised\s*[A-Z]?|Chapter\s*\d+)\]\s*/i, "");
 
-  // 2. Fix comma-period collisions: ",." or ".," -> "."
-  cleaned = cleaned.replace(/,\s*\./g, ".").replace(/\.\s*,/g, ".");
+  // Remove a space that sits right before punctuation, but keep "comma, space, period".
+  cleaned = cleaned.replace(/(?<!,)\s+([,.:;?!])/g, "$1");
 
-  // 3. Fix semicolon/colon-period collisions: ";." or ":." -> "."
+  // Collapse a comma glued to a period. Do not turn "precision, ." into a finished sentence.
+  cleaned = cleaned.replace(/,\.(?!\.)/g, ".");
+  cleaned = cleaned.replace(/\.\s*,/g, ".");
+
   cleaned = cleaned.replace(/[;:]\s*\./g, ".");
-
-  // 4. Fix duplicate commas: ",," -> ","
   cleaned = cleaned.replace(/,,+/g, ",");
-
-  // 5. Fix excessive periods (4 or more) into standard 3-dot ellipsis: "...." -> "..."
   cleaned = cleaned.replace(/\.{4,}/g, "...");
-
-  // 6. Fix accidental double periods (strictly 2 dots, not part of 3-dot ellipsis)
   cleaned = cleaned.replace(/(?<!\.)\.\.(?!\.)/g, ".");
-
-  // 7. Fix exclamation/question marks followed by periods: "!." -> "!" and "?." -> "?"
   cleaned = cleaned.replace(/([!?])\s*\./g, "$1");
 
-  // 8. Ensure single whitespace after terminal punctuation when immediately preceding a capitalized word
-  cleaned = cleaned.replace(/([.?!])([A-Z])/g, "$1 $2");
-
-  // 9. Strip leading bracketed tags (e.g., "[Revised A] " or "[Chapter 1] ")
-  cleaned = cleaned.replace(/^\[(Revised\s*[A-Z]?|Chapter\s*\d+)\]\s*/i, "");
+  // Add a missing space after punctuation, but not inside initials such as "U.S.A.".
+  cleaned = cleaned.replace(/(?<![A-Z])\.([A-Z])/g, ". $1");
+  cleaned = cleaned.replace(/([?!])([A-Z])/g, "$1 $2");
 
   return cleaned.trim();
 }
@@ -77,11 +66,18 @@ export function hashManuscriptContent(manuscript: {
         bibleVersion: c.bibleVersion,
         text: c.text,
       })),
-    changesMade: manuscript.changesMade.map((ch) => ({
-      chapterIndex: ch.chapterIndex,
-      summary: ch.summary,
-      justification: ch.justification,
-    })),
+    // Sort the change list before hashing so the same edits in a different order still match.
+    changesMade: manuscript.changesMade
+      .slice()
+      .sort(
+        (left, right) =>
+          left.chapterIndex - right.chapterIndex || left.summary.localeCompare(right.summary)
+      )
+      .map((ch) => ({
+        chapterIndex: ch.chapterIndex,
+        summary: ch.summary,
+        justification: ch.justification,
+      })),
   });
   return createHash("sha256").update(normalized, "utf8").digest("hex");
 }
@@ -172,9 +168,16 @@ export function verifyManuscriptEnvelope(params: {
   }
 
   const sortedStored = params.storedChapters.slice().sort((a, b) => a.chapterIndex - b.chapterIndex);
-  for (let i = 0; i < 3; i++) {
+  const sourceHashes = Array.isArray(params.envelope.sourceChapterHashes)
+    ? params.envelope.sourceChapterHashes
+    : [];
+  for (let i = 0; i < sortedStored.length; i++) {
     const stored = sortedStored[i];
-    const sourceRef = params.envelope.sourceChapterHashes[i];
+    const sourceRef = sourceHashes.find((entry) => entry?.chapterIndex === stored.chapterIndex);
+    // A missing hash entry fails the check. It must not throw and accidentally look valid.
+    if (!sourceRef) {
+      return { valid: false, error: `Source hash entry missing for chapter ${stored.chapterIndex}.` };
+    }
     if (stored.chapterIndex !== sourceRef.chapterIndex) {
       return { valid: false, error: `Chapter index mismatch for source chapter ${i + 1}.` };
     }
@@ -341,7 +344,7 @@ export async function generateEditorialProposal(
       text: c.text,
     })),
     readerHandoff: input.handoff,
-    userEditorialInstructions: input.userEditorialInstructions || "Polish legibility, flow, and apply your distinct lens.",
+    userEditorialInstructions: input.userEditorialInstructions ?? "",
   };
 
   const response = await model.complete({

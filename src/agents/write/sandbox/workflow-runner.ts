@@ -30,6 +30,8 @@ export interface WorkflowRunnerOptions {
   liveModelId?: string;
   adversarial?: boolean;
   baseDir?: string;
+  /** Writer feedback for the simulated human gate. It is not an approval. */
+  humanFeedback?: string;
 }
 
 /**
@@ -422,7 +424,7 @@ export async function executeWorkflowInSandbox(
   const [consA, consB] = await Promise.all([
     executeConsistencyCheck({
       proposalId: "prop-a-r0",
-      proposalVersion: bibleCase.bibleVersion,
+      proposalVersion: 0,
       proposal: propResA.proposal,
       envelope: envA,
       approvedFacts: bibleCase.bible.facts,
@@ -430,7 +432,7 @@ export async function executeWorkflowInSandbox(
     }),
     executeConsistencyCheck({
       proposalId: "prop-b-r0",
-      proposalVersion: bibleCase.bibleVersion,
+      proposalVersion: 0,
       proposal: propResB.proposal,
       envelope: envB,
       approvedFacts: bibleCase.bible.facts,
@@ -438,47 +440,53 @@ export async function executeWorkflowInSandbox(
     }),
   ]);
 
-  const consPass = consA.status === "complete" && consB.status === "complete";
+  // The step keeps the check's own status. A swim finding is partial, not a pass.
+  const consistencyStatus: "complete" | "partial" | "blocked" =
+    consA.status === "blocked" || consB.status === "blocked"
+      ? "blocked"
+      : consA.status === "partial" || consB.status === "partial"
+        ? "partial"
+        : "complete";
   tracer.recordStep({
     stepId: "step-consistency",
     phase: "consistency_check",
     agentId: "consistency",
     agentAlias: "Consistency",
-    inputSummary: `Checking all ${bibleCase.bible.facts.length} facts across chapters [1, 2, 3]`,
+    inputSummary: `Swim-rule heuristic across chapters [1, 2, 3]`,
     outputSummary: `Consistency results: statusA=${consA.status}, statusB=${consB.status}, findingsA=${consA.findings.length}, findingsB=${consB.findings.length}`,
     durationMs: Date.now() - tCons,
-    status: consPass ? "PASS" : "FLAGGED",
+    status: consistencyStatus,
   });
 
   tracer.recordHandOff({
     seam: "Seam 6: Proposals Envelopes ➔ Consistency Checker",
     sourceAgent: "proposal_registry",
     destinationAgent: "consistency",
-    status: consPass ? "VALID" : "INVALID",
-    details: `Checked ${consA.checkedFactIds.length} fact IDs against all 3 chapters.`,
+    status: consistencyStatus === "complete" ? "VALID" : "INVALID",
+    details: `Swim-rule heuristic status ${consistencyStatus}. Checked fact ids: ${consA.checkedFactIds.join(", ") || "none"}.`,
   });
 
   // ------------------------------------------------------------------
   // PHASE 8: Simulated Human Gate #2 (Revision Request)
   // ------------------------------------------------------------------
   const tGate = Date.now();
-  const simulatedFeedback =
-    "Deepen the tension during Chapter 2 and ensure boat maneuvering is described with high fidelity.";
+  // The caller supplies the feedback. This step only records it. It does not approve a manuscript.
+  const simulatedFeedback = options.humanFeedback ?? "";
   tracer.recordStep({
     stepId: "step-human-gate",
     phase: "human_gate",
     inputSummary: `Reviewing Proposal A & B from Round 0`,
-    outputSummary: `Writer requested Round 1 revision: "${simulatedFeedback}"`,
+    outputSummary: `Simulated writer feedback (not an approval): "${simulatedFeedback}"`,
     durationMs: Date.now() - tGate,
-    status: "PASS",
+    status: "SIMULATED",
   });
 
   tracer.recordHandOff({
     seam: "Seam 7: Consistency Findings ➔ Writer Human Gate #2",
     sourceAgent: "consistency",
     destinationAgent: "human_writer",
-    status: "VALID",
-    details: "Writer reviewed proposals and consistency reports, then requested revision.",
+    status: "SIMULATED",
+    details: "Simulated feedback only. This does not approve a manuscript or mark the human gate as passed.",
   });
 
   // ------------------------------------------------------------------
@@ -493,7 +501,7 @@ export async function executeWorkflowInSandbox(
     baseChapters,
     revisionRound: 1,
     editorialInstructions: simulatedFeedback,
-    hasAdditionalInstructions: true,
+    hasAdditionalInstructions: simulatedFeedback.trim().length > 0,
     modelA: model,
     modelB: model,
   });
@@ -519,12 +527,16 @@ export async function executeWorkflowInSandbox(
   // PHASE 10: Connected Revision Cycle (Round 2)
   // ------------------------------------------------------------------
   const tRev2 = Date.now();
+  const round1ChaptersA = revResult1.proposals[0].manuscript.chapters;
+  const round1ChaptersB = revResult1.proposals[1].manuscript.chapters;
   const revResult2 = await executeRevisionCycle({
     runId: `${runId}-r2`,
     projectId: `proj-${runId}`,
     bibleVersion: bibleCase.bibleVersion,
     approvedBible: bibleCase.bible,
     baseChapters,
+    baseChaptersA: round1ChaptersA,
+    baseChaptersB: round1ChaptersB,
     revisionRound: 2,
     editorialInstructions: "Final polish of Chapter 3 rescue dialogue.",
     hasAdditionalInstructions: true,
@@ -535,8 +547,8 @@ export async function executeWorkflowInSandbox(
   tracer.recordStep({
     stepId: "step-revision-round-2",
     phase: "revision_cycle",
-    inputSummary: `Round 2 polish request`,
-    outputSummary: `Generated Round 2 proposals; round cap now reached (2/2)`,
+    inputSummary: `Round 2 polish request, starting from each editor's round 1 chapters`,
+    outputSummary: `Round ${revResult2.revisionRound} started from each editor's round 1 chapters. Editor A: "${round1ChaptersA[0]?.text.slice(0, 48) ?? ""}". Editor B: "${round1ChaptersB[0]?.text.slice(0, 48) ?? ""}".`,
     durationMs: Date.now() - tRev2,
     status: "PASS",
   });

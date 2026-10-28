@@ -23,7 +23,7 @@ export interface WorkflowStepTrace {
   durationMs: number;
   tokens?: { input: number; output: number };
   hashes?: Record<string, string>;
-  status: "PASS" | "FLAGGED" | "FAIL";
+  status: "PASS" | "FLAGGED" | "FAIL" | "SIMULATED" | "complete" | "partial" | "blocked";
   notes?: string;
 }
 
@@ -31,7 +31,7 @@ export interface HandOffAudit {
   seam: string;
   sourceAgent: string;
   destinationAgent: string;
-  status: "VALID" | "INVALID";
+  status: "VALID" | "INVALID" | "SIMULATED";
   details: string;
 }
 

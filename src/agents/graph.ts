@@ -2,17 +2,19 @@ import { randomUUID } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
 import { Annotation, StateGraph, START, END, MemorySaver, interrupt, Command } from "@langchain/langgraph";
 import { PostgresSaver } from "@langchain/langgraph-checkpoint-postgres";
-import { and, eq, like } from "drizzle-orm";
+import { and, desc, eq, like } from "drizzle-orm";
 import { db } from "../server/db";
 import { runs, tasks, chapters, bibles, critiques, evidence, projects, proposals } from "../server/db/schema";
-import { chapterSchema, orderedChapters, canDispatch, limits, type Fixture } from "../contracts";
+import { chapterSchema, orderedChapters, canDispatch, limits, type Bible, type Chapter, type Fixture } from "../contracts";
 import { getGenreBenchmarks } from "../server/research";
 import { buildWriterContext } from "./context";
 import { draftChapter } from "./writers";
-import { buildFixtureHandoff, validateHandoff, repairFixtureHandoff } from "./handoff";
+import { buildFixtureHandoff, validateHandoff, repairFixtureHandoff, type ReaderToEditorHandoff } from "./handoff";
 import { criticEditorA, criticEditorB } from "./editors";
 import { consistencyShell } from "./consistency-shell";
 import { buildManuscriptEnvelope } from "./write/runtime";
+import { executeRevisionCycle } from "./write/revision";
+import type { WriteModel, WriteModelCall } from "./write/model";
 
 const State = Annotation.Root({ runId: Annotation<string> });
 export async function writeChapter(runId: string, index: number, delayMs = (4-index)*80) {
@@ -66,11 +68,24 @@ export async function finishRun(runId: string) {
     }
 
     const [firstTask]=await tx.select().from(tasks).where(eq(tasks.runId,runId)).limit(1);
-    const saved = firstTask?.savedInput as any;
+    const saved = firstTask?.savedInput as {
+      revisionRound?: number;
+      editorialInstructions?: string;
+      hasAdditionalInstructions?: boolean;
+      brief?: { desiredEnding?: string };
+      userInstructions?: { recordedRequest?: string };
+    } | undefined;
     const revisionRounds = saved?.revisionRound ?? 0;
+    // Round 0 records the writer's desired ending. A missing ending fails the run
+    // instead of inventing a rescue. Later rounds are saved by the revision cycle.
+    const desiredEnding = saved?.brief?.desiredEnding?.trim() ?? "";
+    if (revisionRounds === 0 && !desiredEnding) {
+      await tx.update(runs).set({ status: "failed" }).where(eq(runs.id, runId));
+      return {};
+    }
     const recordedRequest = revisionRounds > 0
-      ? (saved?.editorialInstructions ?? saved?.userInstructions?.recordedRequest ?? "No additional instructions provided")
-      : (saved?.brief?.desiredEnding ?? "A safe rescue by boat.");
+      ? (saved?.editorialInstructions ?? saved?.userInstructions?.recordedRequest ?? "")
+      : desiredEnding;
     const hasAdditionalInstructions = Boolean(saved?.hasAdditionalInstructions);
 
     // 1. Reader handoff shell and harness validation
@@ -144,10 +159,248 @@ export async function finishRun(runId: string) {
     return {};
   });
 }
+/**
+ * Fixture editors for the worker. Their prose comes from the existing Fontaine and Lang
+ * fixtures, and the model name says fixture so this path never calls a live provider.
+ * Tests and the sandbox pass their own models into the revision cycle instead.
+ */
+function fixtureEditorialModel(): WriteModel {
+  return {
+    async complete(call: WriteModelCall) {
+      const data = call.data as {
+        bibleVersion?: number;
+        approvedFacts?: Bible["facts"];
+        baseChapters?: Array<{ chapterIndex: number; text: string; bibleVersion?: number }>;
+        readerHandoff?: ReaderToEditorHandoff;
+      };
+      if (call.role !== "critic_editor_a" && call.role !== "critic_editor_b") {
+        throw new Error(`Fixture editorial model cannot write ${call.role}.`);
+      }
+      if (!data.readerHandoff) {
+        throw new Error("Fixture editor is missing the reader handoff.");
+      }
+      const bibleVersion = data.bibleVersion ?? data.readerHandoff.version.bibleVersion;
+      const reading = orderedChapters(
+        (data.baseChapters ?? []).map((chapter) => ({
+          chapterIndex: chapter.chapterIndex,
+          bibleVersion,
+          text: chapter.text,
+        })),
+        bibleVersion
+      );
+      const bible = { facts: data.approvedFacts ?? [], beats: [] } as Bible;
+      const manuscript = call.role === "critic_editor_a"
+        ? criticEditorA(data.readerHandoff, reading, bible)
+        : criticEditorB(data.readerHandoff, reading, bible);
+      return {
+        value: {
+          rationale: manuscript.rationale,
+          chapters: manuscript.chapters.map((chapter) => ({
+            chapterIndex: chapter.chapterIndex,
+            text: chapter.text,
+          })),
+          changesMade: manuscript.changesMade,
+        },
+        usage: { inputTokens: 0, outputTokens: 0 },
+        modelUsed: call.role === "critic_editor_a" ? "fixture-editor-fontaine" : "fixture-editor-lang",
+      };
+    },
+  };
+}
+
+/** Pull chapter text out of a stored manuscript proposal so an editor can revise that copy. */
+function chaptersFromManuscript(data: unknown, bibleVersion: number): Chapter[] {
+  const chaptersOnProposal = (data as { chapters?: unknown[] } | null)?.chapters ?? [];
+  return orderedChapters(chaptersOnProposal, bibleVersion);
+}
+
+/** Mark a revision failed only while it is still running, so a finished or canceled run stays as it is. */
+async function markRevisionFailed(runId: string) {
+  await db.update(runs).set({ status: "failed" }).where(and(eq(runs.id, runId), eq(runs.status, "running")));
+}
+
+/**
+ * Rounds 1 and 2 skip the three writers. The editors run outside a database transaction,
+ * then one short save stores the source chapters, both pending proposals, the finished tasks,
+ * and the swim-rule critique together. The previous proposals are rejected only in that save.
+ */
+async function executeRequestedRevision(
+  run: { id: string; projectId: string; bibleId: string },
+  runTasks: Array<{
+    id: string;
+    savedInput: {
+      revisionRound?: number;
+      editorialInstructions?: string;
+      hasAdditionalInstructions?: boolean;
+      brief?: { desiredEnding?: string };
+    };
+  }>,
+  revisionRound: number
+) {
+  const saved = runTasks[0]?.savedInput;
+  const [bible] = await db.select().from(bibles).where(eq(bibles.id, run.bibleId));
+  if (!bible) {
+    await markRevisionFailed(run.id);
+    throw new Error("Approved bible is missing, so this revision was not saved.");
+  }
+
+  const completed = await db
+    .select()
+    .from(runs)
+    .where(and(eq(runs.projectId, run.projectId), eq(runs.status, "completed")))
+    .orderBy(desc(runs.createdAt));
+  const previous = completed.find((item) => item.id !== run.id);
+  if (!previous) {
+    await markRevisionFailed(run.id);
+    throw new Error("A completed draft is required before a revision can start.");
+  }
+
+  const previousRows = await db.select().from(chapters).where(eq(chapters.runId, previous.id));
+  const draftChapters = orderedChapters(
+    previousRows.map((row) => ({
+      chapterIndex: row.chapterIndex,
+      bibleVersion: row.bibleVersion,
+      text: row.text,
+    })),
+    bible.version
+  );
+
+  let readingA = draftChapters;
+  let readingB = draftChapters;
+  if (revisionRound === 2) {
+    const pending = await db
+      .select()
+      .from(proposals)
+      .where(and(
+        eq(proposals.projectId, run.projectId),
+        eq(proposals.status, "pending"),
+        like(proposals.kind, "manuscript_%")
+      ))
+      .orderBy(desc(proposals.createdAt));
+    const manuscriptA = pending.find((item) => item.kind === "manuscript_a");
+    const manuscriptB = pending.find((item) => item.kind === "manuscript_b");
+    if (!manuscriptA || !manuscriptB) {
+      await markRevisionFailed(run.id);
+      throw new Error("Round 2 needs each editor's previous proposal.");
+    }
+    readingA = chaptersFromManuscript(manuscriptA.data, bible.version);
+    readingB = chaptersFromManuscript(manuscriptB.data, bible.version);
+  }
+
+  const fixtureModel = fixtureEditorialModel();
+  let cycle: Awaited<ReturnType<typeof executeRevisionCycle>>;
+  try {
+    cycle = await executeRevisionCycle({
+      runId: run.id,
+      projectId: run.projectId,
+      bibleVersion: bible.version,
+      approvedBible: bible.data,
+      baseChapters: draftChapters,
+      baseChaptersA: readingA,
+      baseChaptersB: readingB,
+      // The run can store one copy of chapters 1–3. Both envelopes lock to the
+      // previous draft so acceptance can re-hash that copy. Round 2 editors still
+      // read their own previous proposals above.
+      envelopeBaseChapters: draftChapters,
+      revisionRound,
+      editorialInstructions: saved?.editorialInstructions ?? "",
+      hasAdditionalInstructions: Boolean(saved?.hasAdditionalInstructions),
+      modelA: fixtureModel,
+      modelB: fixtureModel,
+    });
+  } catch (error) {
+    await markRevisionFailed(run.id);
+    throw error;
+  }
+
+  try {
+    await db.transaction(async (tx) => {
+      const [locked] = await tx.select().from(runs).where(eq(runs.id, run.id)).for("update");
+      if (!locked || locked.canceledAt || !["running", "pending"].includes(locked.status)) return;
+
+      await tx.update(proposals)
+        .set({ status: "rejected" })
+        .where(and(
+          eq(proposals.projectId, run.projectId),
+          eq(proposals.status, "pending"),
+          like(proposals.kind, "manuscript_%")
+        ));
+
+      await tx.insert(chapters).values(draftChapters.map((chapter) => ({
+        id: randomUUID(),
+        runId: run.id,
+        chapterIndex: chapter.chapterIndex,
+        bibleVersion: chapter.bibleVersion,
+        text: chapter.text,
+      })));
+
+      for (const task of runTasks) {
+        await tx.update(tasks).set({
+          status: "completed",
+          error: null,
+          updatedAt: new Date(),
+        }).where(eq(tasks.id, task.id));
+      }
+
+      const [proposalA, proposalB] = cycle.proposals;
+      await tx.insert(proposals).values([
+        {
+          id: proposalA.id,
+          projectId: run.projectId,
+          baseVersion: bible.version,
+          kind: "manuscript_a",
+          status: "pending",
+          data: proposalA.manuscript,
+        },
+        {
+          id: proposalB.id,
+          projectId: run.projectId,
+          baseVersion: bible.version,
+          kind: "manuscript_b",
+          status: "pending",
+          data: proposalB.manuscript,
+        },
+      ]);
+
+      // Keep the swim-rule result as returned. Do not copy the unavailable shell
+      // into this critique, and do not relabel a finding as complete.
+      await tx.insert(critiques).values({
+        id: randomUUID(),
+        runId: run.id,
+        data: {
+          synthetic: true,
+          revisionRounds: revisionRound,
+          consistency: {
+            label: "swim-rule heuristic",
+            versionA: proposalA.consistency,
+            versionB: proposalB.consistency,
+          },
+          unresolvedIssues: [
+            "Consistency on this revision is a swim-rule heuristic. READ consistency is not connected.",
+            ...cycle.unresolvedIssues,
+          ],
+        },
+      }).onConflictDoNothing();
+
+      await tx.update(runs).set({ status: "completed" }).where(eq(runs.id, run.id));
+    });
+  } catch (error) {
+    await markRevisionFailed(run.id);
+    throw error;
+  }
+}
+
 export async function executeRun(runId: string, checkpoint = true) {
   const [run]=await db.select().from(runs).where(eq(runs.id,runId));
   if(!run||run.canceledAt||run.status==="completed")return;
   await db.update(runs).set({status:"running"}).where(and(eq(runs.id,runId),eq(runs.status,"pending")));
+  const runTasks = await db.select().from(tasks).where(eq(tasks.runId, runId));
+  const revisionRound = (runTasks[0]?.savedInput as { revisionRound?: number } | undefined)?.revisionRound ?? 0;
+  // Round 0 keeps the fixture writers and finishRun. Rounds 1 and 2 revise instead.
+  if (revisionRound === 1 || revisionRound === 2) {
+    await executeRequestedRevision(run, runTasks, revisionRound);
+    return;
+  }
   const saver=checkpoint?PostgresSaver.fromConnString(process.env.DATABASE_URL!):undefined;
   try {
     if(saver)await saver.setup();

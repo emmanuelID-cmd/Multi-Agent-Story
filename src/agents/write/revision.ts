@@ -15,7 +15,7 @@ import {
   type ManuscriptEnvelope,
   type RevisedManuscript,
 } from "./runtime";
-import { AnthropicWriteModel, type WriteModel } from "./model";
+import type { WriteModel } from "./model";
 
 export interface ConsistencyFinding {
   chapterIndex: number;
@@ -44,6 +44,23 @@ export interface RevisionCycleInput {
   bibleVersion: number;
   approvedBible: Bible;
   baseChapters: Chapter[];
+  /**
+   * Editor A's starting chapters. Round 2 passes manuscript A's previous proposal.
+   * When omitted, Editor A revises baseChapters.
+   */
+  baseChaptersA?: Chapter[];
+  /**
+   * Editor B's starting chapters. Round 2 passes manuscript B's previous proposal.
+   * When omitted, Editor B revises baseChapters.
+   */
+  baseChaptersB?: Chapter[];
+  /**
+   * The one chapter copy that will be saved on the run.
+   * Pass this when both envelopes must lock to that same saved copy,
+   * because a run can store only one text for each chapter index.
+   * When omitted, each envelope locks to that editor's own starting chapters.
+   */
+  envelopeBaseChapters?: Chapter[];
   revisionRound: number;
   editorialInstructions: string;
   hasAdditionalInstructions?: boolean;
@@ -74,9 +91,24 @@ export interface RevisionCycleResult {
 }
 
 /**
- * Evaluates independent consistency on a proposed manuscript.
- * Verifies that all 3 chapters and all approved fact IDs are checked,
- * and binds directly to the proposal ID, version, and S04 proposal SHA-256 hash.
+ * A fact is part of the swim rule only when its text says the character cannot swim.
+ * Other facts are left unchecked. This keeps a clockwork or orbital bible from
+ * looking fully reviewed when this heuristic has nothing to compare.
+ */
+function factSaysCannotSwim(factText: string): boolean {
+  const normalized = factText.toLowerCase();
+  return normalized.includes("cannot swim") || normalized.includes("unable to swim");
+}
+
+const SWIM_ACTION =
+  /\b(swam|swimming|dives? into the water|plunges? into the sea)\b/i;
+
+/**
+ * Local swim-rule check for one proposal.
+ * It is not READ consistency. A hash or bible-version mismatch blocks the check.
+ * A swim contradiction returns partial. Complete means the swim rule applied and
+ * found nothing, or the rule was not applicable and that limit is stated in the notes.
+ * proposalVersion is the revision round supplied by the caller. bibleVersion stays the bible version.
  */
 export async function executeConsistencyCheck(params: {
   proposalId: string;
@@ -88,7 +120,6 @@ export async function executeConsistencyCheck(params: {
 }): Promise<ConsistencyCheckResult> {
   const proposalDigest = hashManuscriptContent(params.proposal);
 
-  // Check version and digest binding integrity
   if (
     params.envelope.baseVersion !== params.bibleVersion ||
     params.envelope.proposalHash !== proposalDigest
@@ -108,39 +139,43 @@ export async function executeConsistencyCheck(params: {
     };
   }
 
-  const checkedFactIds = params.approvedFacts.map((f) => f.id);
-  const checkedChapterIndexes = [1, 2, 3];
+  const checkedFactIds: string[] = [];
   const findings: ConsistencyFinding[] = [];
   const unresolvedIssues: string[] = [];
+  const swimFacts = params.approvedFacts.filter((fact) =>
+    factSaysCannotSwim(fact.text ?? fact.fact ?? "")
+  );
 
-  // Inspect each chapter for known contradictions against approved facts
-  for (const chapter of params.proposal.chapters) {
-    for (const fact of params.approvedFacts) {
-      const factText = fact.text ?? fact.fact ?? "";
-      // Heuristic detection: e.g. "cannot swim" vs "swam"
-      if (
-        factText.toLowerCase().includes("cannot swim") ||
-        factText.toLowerCase().includes("unable to swim")
-      ) {
-        if (
-          /\b(swam|swimming|dives? into the water|plunges? into the sea)\b/i.test(
-            chapter.text
-          )
-        ) {
-          findings.push({
-            chapterIndex: chapter.chapterIndex,
-            passage: chapter.text.slice(0, 120),
-            factId: fact.id,
-            severity: "high",
-            rationale: `Passage contradicts approved fact ${fact.id} ("${factText}").`,
-            suggestedCorrection: "Ensure character remains in boat or on shore.",
-          });
-          unresolvedIssues.push(
-            `Chapter ${chapter.chapterIndex} contradicts Fact ${fact.id}: protagonist cannot swim.`
-          );
-        }
-      }
+  for (const fact of swimFacts) {
+    const factText = fact.text ?? fact.fact ?? "";
+    if (!checkedFactIds.includes(fact.id)) checkedFactIds.push(fact.id);
+    for (const chapter of params.proposal.chapters) {
+      if (!SWIM_ACTION.test(chapter.text)) continue;
+      findings.push({
+        chapterIndex: chapter.chapterIndex,
+        passage: chapter.text.slice(0, 120),
+        factId: fact.id,
+        severity: "high",
+        rationale: `Passage contradicts approved fact ${fact.id} ("${factText}").`,
+        suggestedCorrection: "Ensure character remains in boat or on shore.",
+      });
+      unresolvedIssues.push(
+        `Chapter ${chapter.chapterIndex} contradicts Fact ${fact.id}: protagonist cannot swim.`
+      );
     }
+  }
+
+  const swimRuleApplicable = swimFacts.length > 0;
+  const checkedChapterIndexes = swimRuleApplicable
+    ? params.proposal.chapters
+        .map((chapter) => chapter.chapterIndex)
+        .sort((left, right) => left - right)
+    : [];
+
+  if (!swimRuleApplicable) {
+    unresolvedIssues.push(
+      "Swim rule was not applicable: no approved fact says the character cannot swim."
+    );
   }
 
   return {
@@ -148,12 +183,29 @@ export async function executeConsistencyCheck(params: {
     proposalVersion: params.proposalVersion,
     proposalSha256: proposalDigest,
     bibleVersion: params.bibleVersion,
-    status: "complete",
+    status: swimRuleApplicable && findings.length > 0 ? "partial" : "complete",
     findings,
     unresolvedIssues,
     checkedFactIds,
     checkedChapterIndexes,
   };
+}
+
+/**
+ * A failed recheck stops the revision before either proposal is written.
+ * A result can be invalid even when it carries no rejection record, and that
+ * case still stops the cycle so one editor cannot be saved without the other.
+ */
+function throwIfHandoffRecheckFailed(result: { valid: boolean; rejection?: {
+  failedChecks: string[];
+  missingItems: string[];
+  requestedCorrection: string;
+} }): void {
+  if (result.valid) return;
+  if (result.rejection) throw new EditorialHandoffRejectionError(result.rejection);
+  throw new Error(
+    "EDITORIAL_HANDOFF_REJECTED: the handoff recheck failed without a rejection record."
+  );
 }
 
 /**
@@ -172,7 +224,7 @@ export async function executeRevisionCycle(
     throw new DOMException("Operation canceled.", "AbortError");
   }
 
-  // 1. Enforce revision round limits (Round 0 is initial draft, Round 1 and 2 are revisions)
+  // Round 0 is the initial draft. Only rounds 1 and 2 are revisions.
   if (input.revisionRound < 1) {
     throw new Error("Revision round must be at least 1.");
   }
@@ -181,18 +233,25 @@ export async function executeRevisionCycle(
       `The two-round revision limit has been reached. Current requested round: ${input.revisionRound}.`
     );
   }
+  // Both editors are required. There is no mock-key fallback and no live provider here.
+  if (!input.modelA || !input.modelB) {
+    throw new Error("Both editorial models are required.");
+  }
 
-  // 2. Validate base chapters barrier
-  orderedChapters(input.baseChapters, input.bibleVersion);
+  const readingA = input.baseChaptersA ?? input.baseChapters;
+  const readingB = input.baseChaptersB ?? input.baseChapters;
+  const lockedA = input.envelopeBaseChapters ?? readingA;
+  const lockedB = input.envelopeBaseChapters ?? readingB;
+
+  orderedChapters(readingA, input.bibleVersion);
+  orderedChapters(readingB, input.bibleVersion);
+  orderedChapters(lockedA, input.bibleVersion);
+  orderedChapters(lockedB, input.bibleVersion);
 
   const hasAdditionalInstructions =
-    input.hasAdditionalInstructions ??
-    Boolean(
-      input.editorialInstructions &&
-        input.editorialInstructions.trim() !== "No additional instructions provided"
-    );
+    input.hasAdditionalInstructions ?? Boolean(input.editorialInstructions.trim());
 
-  // 3. Reader refreshed handoff package
+  // One shared instruction and bible version. Each editor still validates their own chapters.
   let handoff = buildFixtureHandoff(
     input.baseChapters,
     input.bibleVersion,
@@ -202,18 +261,17 @@ export async function executeRevisionCycle(
     hasAdditionalInstructions
   );
 
-  // 4. Independent Editor receiving validation (both Fontaine & Lang validate independently)
   const validationA = validateEditorReceivingHandoff({
     handoff,
     expectedRecordedRequest: input.editorialInstructions,
-    baseChapters: input.baseChapters,
+    baseChapters: readingA,
     approvedBibleVersion: input.bibleVersion,
   });
 
   const validationB = validateEditorReceivingHandoff({
     handoff,
     expectedRecordedRequest: input.editorialInstructions,
-    baseChapters: input.baseChapters,
+    baseChapters: readingB,
     approvedBibleVersion: input.bibleVersion,
   });
 
@@ -222,39 +280,30 @@ export async function executeRevisionCycle(
     const recheckA = validateEditorReceivingHandoff({
       handoff,
       expectedRecordedRequest: input.editorialInstructions,
-      baseChapters: input.baseChapters,
+      baseChapters: readingA,
       approvedBibleVersion: input.bibleVersion,
     });
     const recheckB = validateEditorReceivingHandoff({
       handoff,
       expectedRecordedRequest: input.editorialInstructions,
-      baseChapters: input.baseChapters,
+      baseChapters: readingB,
       approvedBibleVersion: input.bibleVersion,
     });
-    if (!recheckA.valid && recheckA.rejection) {
-      throw new EditorialHandoffRejectionError(recheckA.rejection);
-    }
-    if (!recheckB.valid && recheckB.rejection) {
-      throw new EditorialHandoffRejectionError(recheckB.rejection);
-    }
+    throwIfHandoffRecheckFailed(recheckA);
+    throwIfHandoffRecheckFailed(recheckB);
   }
 
-  const fallbackModel = new AnthropicWriteModel(process.env.ANTHROPIC_API_KEY || "mock-key");
-  const modelA = input.modelA ?? fallbackModel;
-  const modelB = input.modelB ?? fallbackModel;
-
-  // 5. Generate proposals in parallel
   const [resA, resB] = await Promise.all([
     generateEditorialProposal(
       {
         role: "critic_editor_a",
         approvedBible: input.approvedBible,
         bibleVersion: input.bibleVersion,
-        baseChapters: input.baseChapters,
+        baseChapters: readingA,
         handoff,
         userEditorialInstructions: input.editorialInstructions,
       },
-      modelA,
+      input.modelA,
       input.signal
     ),
     generateEditorialProposal(
@@ -262,11 +311,11 @@ export async function executeRevisionCycle(
         role: "critic_editor_b",
         approvedBible: input.approvedBible,
         bibleVersion: input.bibleVersion,
-        baseChapters: input.baseChapters,
+        baseChapters: readingB,
         handoff,
         userEditorialInstructions: input.editorialInstructions,
       },
-      modelB,
+      input.modelB,
       input.signal
     ),
   ]);
@@ -279,14 +328,14 @@ export async function executeRevisionCycle(
   const envelopeA = buildManuscriptEnvelope({
     runId: input.runId,
     baseVersion: input.bibleVersion,
-    baseChapters: input.baseChapters,
+    baseChapters: lockedA,
     manuscript: resA.proposal,
   });
 
   const envelopeB = buildManuscriptEnvelope({
     runId: input.runId,
     baseVersion: input.bibleVersion,
-    baseChapters: input.baseChapters,
+    baseChapters: lockedB,
     manuscript: resB.proposal,
   });
 
@@ -307,7 +356,7 @@ export async function executeRevisionCycle(
   const [consistencyA, consistencyB] = await Promise.all([
     executeConsistencyCheck({
       proposalId: proposalIdA,
-      proposalVersion: input.bibleVersion,
+      proposalVersion: input.revisionRound,
       proposal: manuscriptA,
       envelope: envelopeA,
       approvedFacts: input.approvedBible.facts,
@@ -315,7 +364,7 @@ export async function executeRevisionCycle(
     }),
     executeConsistencyCheck({
       proposalId: proposalIdB,
-      proposalVersion: input.bibleVersion,
+      proposalVersion: input.revisionRound,
       proposal: manuscriptB,
       envelope: envelopeB,
       approvedFacts: input.approvedBible.facts,

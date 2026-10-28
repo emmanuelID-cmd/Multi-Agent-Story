@@ -154,23 +154,32 @@ export async function approveManuscriptProposal(ownerId: string, id: string, pro
       throw new AppError(400, "Manuscript must contain exactly chapters 1, 2, and 3.");
     }
 
-    // Verify S04 proposal envelope if present
-    if (data.envelope) {
-      const storedChapters = await tx
-        .select()
-        .from(chapters)
-        .where(eq(chapters.runId, data.envelope.runId));
+    // Acceptance needs the envelope. A manuscript without one cannot prove which chapters it revised.
+    if (!data.envelope) {
+      throw new AppError(409, "Manuscript proposal is missing its envelope.");
+    }
 
-      const verification = verifyManuscriptEnvelope({
-        envelope: data.envelope,
-        storedChapters,
-        manuscript: data,
-        expectedBaseVersion: project.version,
-      });
+    const envelopeRuns = await tx.select().from(runs).where(eq(runs.id, data.envelope.runId));
+    const envelopeRun = envelopeRuns.find((row) => row.id === data.envelope?.runId);
+    if (!envelopeRun || envelopeRun.projectId !== id) {
+      throw new AppError(409, "Manuscript envelope run does not belong to this project.");
+    }
 
-      if (!verification.valid) {
-        throw new AppError(409, `Manuscript envelope verification failed: ${verification.error}`);
-      }
+    const storedChapterRows = await tx
+      .select()
+      .from(chapters)
+      .where(eq(chapters.runId, data.envelope.runId));
+    const storedChapters = storedChapterRows.filter((row) => row.runId === data.envelope?.runId);
+
+    const verification = verifyManuscriptEnvelope({
+      envelope: data.envelope,
+      storedChapters,
+      manuscript: data,
+      expectedBaseVersion: project.version,
+    });
+
+    if (!verification.valid) {
+      throw new AppError(409, `Manuscript envelope verification failed: ${verification.error}`);
     }
 
     // Reject all other pending manuscript proposals for this project (excluding the accepted one)
@@ -216,8 +225,9 @@ export async function rewriteRun(ownerId: string, id: string, feedback?: string,
   if (userFeedback.length > 500) {
     throw new AppError(400, "Feedback exceeds 500 characters.");
   }
-  const editorialInstructions = userFeedback || "No additional instructions provided";
-  const hasAdditionalInstructions = Boolean(userFeedback);
+  // An empty request stays empty. It does not become a placeholder sentence.
+  const editorialInstructions = userFeedback;
+  const hasAdditionalInstructions = userFeedback.length > 0;
 
   const nextRun = await db.transaction(async tx => {
     const [project] = await tx.select().from(projects).where(eq(projects.id, id)).for("update");
@@ -226,12 +236,8 @@ export async function rewriteRun(ownerId: string, id: string, feedback?: string,
     const active = await tx.select().from(runs).where(eq(runs.projectId, id));
     if (active.some(r => ["pending", "running"].includes(r.status))) throw new AppError(409, "A run is already active.");
 
-    // Reject older pending manuscript proposals for this project
-    await tx.update(proposals).set({ status: "rejected" }).where(and(
-      eq(proposals.projectId, id),
-      eq(proposals.status, "pending"),
-      like(proposals.kind, "manuscript_%")
-    ));
+    // Leave the current proposals pending until the revision that replaces them is saved.
+    // A failed enqueue must not throw away the pair the writer can still review.
 
     const [created] = await tx.insert(runs).values({
       id: randomUUID(),
@@ -272,12 +278,8 @@ export async function startRun(ownerId: string, id: string, input: unknown, disp
     const active = await tx.select().from(runs).where(eq(runs.projectId,id));
     if (active.some(r=>["pending","running"].includes(r.status))) throw new AppError(409,"A run is already active.");
 
-    // Reject older pending manuscript proposals before starting a new run
-    await tx.update(proposals).set({ status: "rejected" }).where(and(
-      eq(proposals.projectId, id),
-      eq(proposals.status, "pending"),
-      like(proposals.kind, "manuscript_%")
-    ));
+    // A new draft does not reject the current proposals. Rejection happens only
+    // in the same save that inserts their replacements.
 
     const [created] = await tx.insert(runs).values({id:randomUUID(),projectId:id,bibleId:bible.id,fixture:parsed.fixture}).returning();
     await tx.insert(tasks).values([1,2,3].map(chapterIndex=>({
@@ -289,10 +291,10 @@ export async function startRun(ownerId: string, id: string, input: unknown, disp
         version:bible.version,
         brief:project.brief,
         revisionRound:0,
-        editorialInstructions: "Initial draft generation",
+        editorialInstructions: "",
         hasAdditionalInstructions: false,
         userInstructions: {
-          recordedRequest: "Initial draft generation",
+          recordedRequest: project.brief.desiredEnding ?? "",
           revision: 0,
           hasAdditionalInstructions: false,
         },

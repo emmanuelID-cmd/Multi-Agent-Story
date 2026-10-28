@@ -142,12 +142,15 @@ describe("J06 — Connected Revision Cycle Integration", () => {
 
     // Consistency check verification
     expect(propA.consistency.status).toBe("complete");
-    expect(propA.consistency.checkedFactIds).toEqual(["F1", "F2"]);
+    expect(propA.consistency.proposalVersion).toBe(1);
+    expect(propA.consistency.bibleVersion).toBe(1);
+    expect(propA.consistency.checkedFactIds).toEqual(["F1"]);
     expect(propA.consistency.checkedChapterIndexes).toEqual([1, 2, 3]);
     expect(propA.consistency.findings).toHaveLength(0);
 
     expect(propB.consistency.status).toBe("complete");
-    expect(propB.consistency.checkedFactIds).toEqual(["F1", "F2"]);
+    expect(propB.consistency.proposalVersion).toBe(1);
+    expect(propB.consistency.checkedFactIds).toEqual(["F1"]);
     expect(propB.consistency.checkedChapterIndexes).toEqual([1, 2, 3]);
   });
 
@@ -167,6 +170,8 @@ describe("J06 — Connected Revision Cycle Integration", () => {
       modelB: model,
     });
     expect(res2.revisionRound).toBe(2);
+    expect(res2.proposals[0].consistency.proposalVersion).toBe(2);
+    expect(res2.proposals[0].consistency.bibleVersion).toBe(1);
 
     // Round 3 is rejected
     await expect(
@@ -241,7 +246,8 @@ describe("J06 — Connected Revision Cycle Integration", () => {
       bibleVersion: 1,
     });
 
-    expect(flagged.status).toBe("complete");
+    expect(flagged.status).toBe("partial");
+    expect(flagged.checkedFactIds).toEqual(["F1"]);
     expect(flagged.findings).toHaveLength(1);
     expect(flagged.findings[0].factId).toBe("F1");
     expect(flagged.findings[0].severity).toBe("high");
@@ -420,5 +426,184 @@ describe("J06 — Connected Revision Cycle Integration", () => {
     await expect(
       rewriteRun(ownerId, projectId, "Another revision please.", false)
     ).rejects.toThrow("The two-round revision limit has been reached.");
+  });
+
+  it("stores empty rewrite feedback as an empty instruction and leaves the desired ending unchanged", async () => {
+    const ownerId = "test-writer-j06-empty";
+    const projectId = "proj-empty-feedback";
+    const store = {
+      projects: [
+        {
+          id: projectId,
+          ownerId,
+          version: 1,
+          brief: {
+            premise: "Mara keeps watch at the lighthouse.",
+            audience: "Adult",
+            genre: "Mystery",
+            tone: "Suspenseful",
+            desiredEnding: "A safe return by harbor boat.",
+          },
+        },
+      ],
+      bibles: [{ id: "bible-empty", projectId, version: 1, data: mockBible }],
+      runs: [
+        {
+          id: "run-empty-0",
+          projectId,
+          bibleId: "bible-empty",
+          fixture: "default",
+          status: "completed",
+          createdAt: new Date(),
+        },
+      ],
+      critiques: [{ id: "critique-empty", runId: "run-empty-0", data: { revisionRounds: 0 } }],
+      tasks: [1, 2, 3].map((chapterIndex) => ({
+        id: `task-empty-${chapterIndex}`,
+        runId: "run-empty-0",
+        chapterIndex,
+        status: "completed",
+        savedInput: {
+          revisionRound: 0,
+          brief: { desiredEnding: "A safe return by harbor boat." },
+        },
+      })),
+      proposals: [
+        { id: "pending-a", projectId, kind: "manuscript_a", status: "pending", data: {} },
+        { id: "pending-b", projectId, kind: "manuscript_b", status: "pending", data: {} },
+      ],
+    };
+
+    vi.spyOn(db, "select").mockImplementation(() => ({
+      from: (table: unknown) => ({
+        where: () => {
+          let rows: unknown[] = [];
+          if (table === projects) rows = store.projects;
+          else if (table === runs) rows = store.runs;
+          else if (table === critiques) rows = store.critiques;
+          else if (table === tasks) rows = store.tasks;
+          else if (table === bibles) rows = store.bibles;
+          else if (table === proposals) rows = store.proposals;
+          const pending = Promise.resolve(rows);
+          return Object.assign(pending, {
+            orderBy: () => Object.assign(Promise.resolve(rows), {
+              limit: (count: number) => Promise.resolve(rows.slice(0, count)),
+            }),
+            limit: (count: number) => Promise.resolve(rows.slice(0, count)),
+          });
+        },
+      }),
+    }) as never);
+
+    vi.spyOn(db, "transaction").mockImplementation(async (callback: any) => {
+      const tx = {
+        select: () => ({
+          from: (table: unknown) => ({
+            where: () => {
+              let rows: unknown[] = [];
+              if (table === projects) rows = store.projects;
+              else if (table === runs) rows = store.runs;
+              else if (table === bibles) rows = store.bibles;
+              const pending = Promise.resolve(rows);
+              return Object.assign(pending, { for: () => Promise.resolve(rows) });
+            },
+          }),
+        }),
+        update: () => ({
+          set: () => ({
+            where: () => Promise.resolve([]),
+          }),
+        }),
+        insert: (table: unknown) => ({
+          values: (vals: unknown) => {
+            const arr = Array.isArray(vals) ? vals : [vals];
+            if (table === runs) store.runs.push(...(arr as typeof store.runs));
+            if (table === tasks) store.tasks.push(...(arr as typeof store.tasks));
+            return {
+              returning: () => Promise.resolve(arr),
+              then: (resolve: (value: unknown) => unknown, reject?: (reason: unknown) => unknown) =>
+                Promise.resolve(arr).then(resolve, reject),
+            };
+          },
+        }),
+      };
+      return callback(tx);
+    });
+
+    try {
+      const run = await rewriteRun(ownerId, projectId, "   ", false);
+      const saved = store.tasks.find((task) => task.runId === run.id)?.savedInput as unknown as {
+        editorialInstructions: string;
+        hasAdditionalInstructions: boolean;
+        brief: { desiredEnding: string };
+        userInstructions: { recordedRequest: string };
+      };
+      expect(saved.editorialInstructions).toBe("");
+      expect(saved.hasAdditionalInstructions).toBe(false);
+      expect(saved.userInstructions.recordedRequest).toBe("");
+      expect(saved.brief.desiredEnding).toBe("A safe return by harbor boat.");
+      expect(JSON.stringify(saved)).not.toContain("No additional instructions provided");
+      expect(store.proposals.every((proposal) => proposal.status === "pending")).toBe(true);
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
+
+  it("throws when an editorial model is omitted, before either model is called", async () => {
+    const complete = vi.fn();
+    await expect(
+      executeRevisionCycle({
+        runId: "run-missing-model",
+        projectId: "proj-1",
+        bibleVersion: 1,
+        approvedBible: mockBible,
+        baseChapters,
+        revisionRound: 1,
+        editorialInstructions: "Revise the crossing.",
+        modelA: { complete },
+      })
+    ).rejects.toThrow("Both editorial models are required.");
+    expect(complete).not.toHaveBeenCalled();
+  });
+
+  it("keeps clockwork stories complete when the swim rule does not apply", async () => {
+    const manuscript: RevisedManuscript = {
+      kind: "manuscript_a",
+      editorialLens: "continuity_and_pacing",
+      rationale: "Clockwork continuity.",
+      chapters: [
+        { chapterIndex: 1, bibleVersion: 1, text: "The gears slowed." },
+        { chapterIndex: 2, bibleVersion: 1, text: "Peter found the third key." },
+        { chapterIndex: 3, bibleVersion: 1, text: "The heart seated at midnight." },
+      ],
+      changesMade: [{ chapterIndex: 1, summary: "Tightened the opening.", justification: "Pacing." }],
+    };
+    const { hashManuscriptContent } = await import("../src/agents/write/runtime");
+    const result = await executeConsistencyCheck({
+      proposalId: "p-clock",
+      proposalVersion: 2,
+      proposal: manuscript,
+      envelope: {
+        envelopeVersion: 1,
+        runId: "run-clock",
+        baseVersion: 1,
+        proposalHash: hashManuscriptContent(manuscript),
+        sourceChapterHashes: [
+          { chapterIndex: 1, bibleVersion: 1, sha256: "a".repeat(64) },
+          { chapterIndex: 2, bibleVersion: 1, sha256: "b".repeat(64) },
+          { chapterIndex: 3, bibleVersion: 1, sha256: "c".repeat(64) },
+        ],
+      },
+      approvedFacts: [
+        { id: "F1", text: "The clockwork gargoyle repels shadow beasts that cross the city walls at midnight." },
+        { id: "F2", text: "The mechanical heart requires three winding brass keys." },
+      ],
+      bibleVersion: 1,
+    });
+    expect(result.status).toBe("complete");
+    expect(result.proposalVersion).toBe(2);
+    expect(result.bibleVersion).toBe(1);
+    expect(result.checkedFactIds).toEqual([]);
+    expect(result.unresolvedIssues.join(" ")).toMatch(/not applicable/i);
   });
 });
