@@ -2,7 +2,7 @@
 
 Owner: Justin.
 
-Status: planned; not implemented by this phase-system build.
+Status: complete; verified October 27, 2026.
 
 Checklist IDs: J01.
 
@@ -34,6 +34,6 @@ Do not expand literary scoring, experiments, market-reader scope or passage-leve
 
 ## Completion record
 
-Pending. Keep the canonical item(s) unchecked until all acceptance criteria and review pass. Then check each completed item and explain what changed, why it is complete, files/artifact versions, actual validation X/Y, limitations, date and reviewer.
+Completed October 27, 2026 by Justin. Established the `WriteModel` interface, `AnthropicWriteModel` adapter with role-based routing (Haiku for Chapter Writers; Sonnet for Critics in deployment / Haiku in test), role-specific system prompts with fairy tale personas (Grimm, Andersen, Perrault, Fontaine, Lang), structured output schemas, 120s timeout, payload capping at 1MB, and sanitized error mapping. Deterministic Mara fixtures are preserved. Validated with `tests/write-model.test.ts` (9/9) and `tests/write-runtime.test.ts` (7/7); full test suite 190/190 passing across 21 files; TypeScript check passed.
 
 [Canonical checklist](../../../implementation/weaver-mvp-build-checklist.md) | [Accountability rules](../../README.md#completion-and-accountability) | [Commit groups](../../COMMIT-GROUPS.md)

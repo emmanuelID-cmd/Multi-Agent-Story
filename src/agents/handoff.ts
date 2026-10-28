@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { chapterIndex, type Chapter } from "../contracts";
+import { chapterIndex, orderedChapters, type Chapter } from "../contracts";
 
 export const handoffTaskSchema = z.object({
   taskId: z.string().min(1),
@@ -52,6 +52,125 @@ export interface HandoffValidationResult {
     missingItems: string[];
     requestedCorrection: string;
   };
+}
+
+export class EditorialHandoffRejectionError extends Error {
+  readonly failedChecks: string[];
+  readonly missingItems: string[];
+  readonly requestedCorrection: string;
+
+  constructor(rejection: {
+    failedChecks: string[];
+    missingItems: string[];
+    requestedCorrection: string;
+  }) {
+    super(`EDITORIAL_HANDOFF_REJECTED: ${rejection.failedChecks.join(", ")}`);
+    this.name = "EditorialHandoffRejectionError";
+    this.failedChecks = rejection.failedChecks;
+    this.missingItems = rejection.missingItems;
+    this.requestedCorrection = rejection.requestedCorrection;
+  }
+}
+
+export interface EditorReceivingValidationInput {
+  handoff: unknown;
+  expectedRecordedRequest: string;
+  baseChapters: Chapter[];
+  approvedBibleVersion: number;
+}
+
+/**
+ * Independent receiving validation performed by each Critic/Editor before live editing.
+ * Enforces schema conformance, user authority matching, semantic sufficiency (completeness & confidence >= 0.8),
+ * required chapter source references matching approved bible version, and base chapters barrier readiness.
+ */
+export function validateEditorReceivingHandoff(
+  input: EditorReceivingValidationInput
+): HandoffValidationResult {
+  const failedChecks: string[] = [];
+  const missingItems: string[] = [];
+
+  // 1. Base chapters integrity check
+  if (!Array.isArray(input.baseChapters) || input.baseChapters.length !== 3) {
+    failedChecks.push("BASE_CHAPTERS_INVALID");
+    missingItems.push("Exactly 3 base chapters required.");
+  } else {
+    try {
+      orderedChapters(input.baseChapters, input.approvedBibleVersion);
+    } catch (err) {
+      failedChecks.push("BASE_CHAPTERS_BARRIER_FAILED");
+      missingItems.push(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  // 2. Schema conformance check
+  const parsed = readerToEditorHandoffSchema.safeParse(input.handoff);
+  if (!parsed.success) {
+    const missing = parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`);
+    failedChecks.push("SCHEMA_CONFORMANCE_FAILED");
+    missingItems.push(...missing);
+    return {
+      valid: false,
+      rejection: {
+        failedChecks,
+        missingItems,
+        requestedCorrection: "Supply all five required fields matching the v2 handoff schema.",
+      },
+    };
+  }
+
+  const data = parsed.data;
+
+  // 3. Authority boundary check
+  if (data.userInstructions.recordedRequest !== input.expectedRecordedRequest) {
+    failedChecks.push("USER_INSTRUCTION_MISMATCH");
+    missingItems.push("User instructions must match coordinator recorded request exactly.");
+  }
+
+  // 4. Completeness & confidence check (semantic sufficiency)
+  if (!data.completeness.isComplete) {
+    failedChecks.push("INCOMPLETE_HANDOFF_COVERAGE");
+    missingItems.push(...data.completeness.missingItems);
+  }
+  if (data.completeness.confidence < 0.8) {
+    failedChecks.push("INSUFFICIENT_COMPLETENESS_CONFIDENCE");
+    missingItems.push(`Reported confidence (${data.completeness.confidence}) below required threshold (0.8).`);
+  }
+
+  // 5. Version alignment check
+  if (data.version.bibleVersion !== input.approvedBibleVersion) {
+    failedChecks.push("BIBLE_VERSION_MISMATCH");
+    missingItems.push(
+      `Handoff bibleVersion (${data.version.bibleVersion}) does not match approved version (${input.approvedBibleVersion}).`
+    );
+  }
+
+  // 6. Source references coverage check (must cover all 3 chapters on approved version)
+  const availableLocators = new Set(
+    data.sourceReferences
+      .filter((r) => r.status === "available" && r.version === input.approvedBibleVersion)
+      .map((r) => r.locator)
+  );
+  for (const idx of [1, 2, 3]) {
+    if (!availableLocators.has(`chapter_${idx}`)) {
+      failedChecks.push("MISSING_REQUIRED_SOURCE_CHAPTER");
+      missingItems.push(`chapter_${idx}`);
+    }
+  }
+
+  if (failedChecks.length > 0) {
+    return {
+      valid: false,
+      rejection: {
+        failedChecks,
+        missingItems,
+        requestedCorrection:
+          "Re-read assigned sources and provide verified references matching recorded authority and approved bible version.",
+      },
+    };
+  }
+
+  return { valid: true };
 }
 
 /**
@@ -126,7 +245,8 @@ export function buildFixtureHandoff(
   bibleVersion: number,
   recordedRequest: string,
   revisionRound = 0,
-  handoffRevision = 1
+  handoffRevision = 1,
+  hasAdditionalInstructions = false
 ): ReaderToEditorHandoff {
   return {
     task: {
@@ -138,7 +258,7 @@ export function buildFixtureHandoff(
     userInstructions: {
       recordedRequest,
       revision: revisionRound,
-      hasAdditionalInstructions: false,
+      hasAdditionalInstructions,
     },
     sourceReferences: chapters.map(c => ({
       sourceId: `chapter-${c.chapterIndex}-v${c.bibleVersion}`,

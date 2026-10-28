@@ -1,17 +1,17 @@
 import { chapterSchema, type Chapter, type Bible } from "../contracts";
-import type { ReaderToEditorHandoff } from "./handoff";
+import {
+  validateEditorReceivingHandoff,
+  EditorialHandoffRejectionError,
+  type ReaderToEditorHandoff,
+} from "./handoff";
+import type { WriteModel } from "./write/model";
+import {
+  generateEditorialProposal,
+  type GenerateEditorialProposalResult,
+  type RevisedManuscript,
+} from "./write/runtime";
 
-export interface RevisedManuscript {
-  kind: "manuscript_a" | "manuscript_b";
-  editorialLens: "continuity_and_pacing" | "voice_and_atmosphere";
-  rationale: string;
-  chapters: Chapter[];
-  changesMade: Array<{
-    chapterIndex: number;
-    summary: string;
-    justification: string;
-  }>;
-}
+export type { RevisedManuscript };
 
 /**
  * Critic/Editor A: Continuity and Pacing Lens.
@@ -189,4 +189,117 @@ export function criticEditorB(
       },
     ],
   };
+}
+
+export interface CriticEditorModelInput {
+  bibleVersion: number;
+  handoff: ReaderToEditorHandoff;
+  baseChapters: Chapter[];
+  approvedBible: Bible;
+  expectedRecordedRequest?: string;
+  userEditorialInstructions?: string;
+}
+
+/**
+ * Model-backed Critic/Editor A (Fontaine): Continuity & Pacing Lens.
+ * Validates the Reader handoff semantic sufficiency before invoking model generation.
+ * Enforces continuity, causal discipline, and fact adherence (e.g. Mara cannot swim).
+ * Output chapters are validated through the write barrier on approved bibleVersion.
+ * Never silently falls back to synthetic fixtures on model errors.
+ */
+export async function criticEditorAModel(
+  input: CriticEditorModelInput,
+  model: WriteModel,
+  signal?: AbortSignal
+): Promise<GenerateEditorialProposalResult> {
+  const expectedRequest =
+    input.expectedRecordedRequest ?? input.handoff.userInstructions.recordedRequest;
+
+  const validation = validateEditorReceivingHandoff({
+    handoff: input.handoff,
+    expectedRecordedRequest: expectedRequest,
+    baseChapters: input.baseChapters,
+    approvedBibleVersion: input.bibleVersion,
+  });
+
+  if (!validation.valid && validation.rejection) {
+    throw new EditorialHandoffRejectionError(validation.rejection);
+  }
+
+  const result = await generateEditorialProposal(
+    {
+      role: "critic_editor_a",
+      bibleVersion: input.bibleVersion,
+      approvedBible: input.approvedBible,
+      baseChapters: input.baseChapters,
+      handoff: input.handoff,
+      userEditorialInstructions:
+        input.userEditorialInstructions || input.handoff.userInstructions.recordedRequest,
+    },
+    model,
+    signal
+  );
+
+  if (
+    result.proposal.kind !== "manuscript_a" ||
+    result.proposal.editorialLens !== "continuity_and_pacing"
+  ) {
+    throw new Error(
+      "PROPOSAL_KIND_OR_LENS_MISMATCH: Editor A must produce manuscript_a with continuity_and_pacing lens."
+    );
+  }
+
+  return result;
+}
+
+/**
+ * Model-backed Critic/Editor B (Lang): Voice & Atmosphere Lens.
+ * Validates the Reader handoff semantic sufficiency before invoking model generation.
+ * Elevates sensory immersion, atmospheric mood, and poetic prose cadence while respecting facts.
+ * Output chapters are validated through the write barrier on approved bibleVersion.
+ * Never silently falls back to synthetic fixtures on model errors.
+ */
+export async function criticEditorBModel(
+  input: CriticEditorModelInput,
+  model: WriteModel,
+  signal?: AbortSignal
+): Promise<GenerateEditorialProposalResult> {
+  const expectedRequest =
+    input.expectedRecordedRequest ?? input.handoff.userInstructions.recordedRequest;
+
+  const validation = validateEditorReceivingHandoff({
+    handoff: input.handoff,
+    expectedRecordedRequest: expectedRequest,
+    baseChapters: input.baseChapters,
+    approvedBibleVersion: input.bibleVersion,
+  });
+
+  if (!validation.valid && validation.rejection) {
+    throw new EditorialHandoffRejectionError(validation.rejection);
+  }
+
+  const result = await generateEditorialProposal(
+    {
+      role: "critic_editor_b",
+      bibleVersion: input.bibleVersion,
+      approvedBible: input.approvedBible,
+      baseChapters: input.baseChapters,
+      handoff: input.handoff,
+      userEditorialInstructions:
+        input.userEditorialInstructions || input.handoff.userInstructions.recordedRequest,
+    },
+    model,
+    signal
+  );
+
+  if (
+    result.proposal.kind !== "manuscript_b" ||
+    result.proposal.editorialLens !== "voice_and_atmosphere"
+  ) {
+    throw new Error(
+      "PROPOSAL_KIND_OR_LENS_MISMATCH: Editor B must produce manuscript_b with voice_and_atmosphere lens."
+    );
+  }
+
+  return result;
 }
