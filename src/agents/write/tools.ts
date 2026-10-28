@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { chapterSchema, type Chapter, type Bible, type Brief } from "../../contracts";
 import { assertAgentTool } from "../../contracts/input-policy";
+import type { ReaderToEditorHandoff } from "../handoff";
 
 export const ALLOWED_WRITER_TOOLS = ["read_story_state", "propose_story_update"] as const;
 export type WriterToolName = (typeof ALLOWED_WRITER_TOOLS)[number];
@@ -21,12 +22,34 @@ export const readStoryStateSchema = z.object({
 });
 export type ReadStoryStateInput = z.infer<typeof readStoryStateSchema>;
 
+export const criticReadStoryStateSchema = z.object({
+  operation: z.enum(["get_approved_bible", "get_base_chapters", "get_reader_handoff"]),
+});
+export type CriticReadStoryStateInput = z.infer<typeof criticReadStoryStateSchema>;
+
 export const proposeStoryUpdateSchema = z.object({
   chapterIndex: z.number().int().min(1).max(3),
   bibleVersion: z.number().int().positive(),
   text: z.string().min(1).max(20000),
 });
 export type ProposeStoryUpdateInput = z.infer<typeof proposeStoryUpdateSchema>;
+
+export const criticProposeStoryUpdateSchema = z.object({
+  bibleVersion: z.number().int().positive(),
+  chapterIndex: z.number().int().min(1).max(3).optional(),
+  text: z.string().min(1).max(20000).optional(),
+  chapters: z
+    .array(
+      z.object({
+        chapterIndex: z.number().int().min(1).max(3),
+        text: z.string().min(1).max(20000),
+      })
+    )
+    .min(1)
+    .max(3)
+    .optional(),
+});
+export type CriticProposeStoryUpdateInput = z.infer<typeof criticProposeStoryUpdateSchema>;
 
 export interface WriterToolContext {
   approvedBible: Bible;
@@ -36,9 +59,22 @@ export interface WriterToolContext {
   precedingChapters?: Chapter[];
 }
 
+export interface CriticToolContext {
+  approvedBible: Bible;
+  bibleVersion: number;
+  baseChapters: Chapter[];
+  handoff: ReaderToEditorHandoff;
+  role?: "critic_editor_a" | "critic_editor_b";
+}
+
 export interface ProposedStoryUpdateResult {
   acceptedForValidation: boolean;
   chapter: Chapter;
+}
+
+export interface CriticProposedStoryUpdateResult {
+  acceptedForValidation: boolean;
+  chapters: Chapter[];
 }
 
 /**
@@ -102,4 +138,80 @@ export function executeWriterTool(
   }
 
   throw new Error(`Unhandled writer tool: ${toolName}`);
+}
+
+/**
+ * Execute a permitted critic tool against the critic context.
+ * Throws AGENT_TOOL_DENIED if the tool is not in the critic's allowlist.
+ */
+export function executeCriticTool(
+  toolName: string,
+  rawArgs: unknown,
+  context: CriticToolContext
+): unknown {
+  assertCriticTool(toolName);
+
+  if (toolName === "read_story_state") {
+    const parsed = criticReadStoryStateSchema.parse(rawArgs);
+    if (parsed.operation === "get_approved_bible") {
+      return {
+        bibleVersion: context.bibleVersion,
+        facts: context.approvedBible.facts,
+        beats: context.approvedBible.beats,
+      };
+    }
+    if (parsed.operation === "get_base_chapters") {
+      return {
+        bibleVersion: context.bibleVersion,
+        chapters: context.baseChapters.map((c) => ({
+          chapterIndex: c.chapterIndex,
+          bibleVersion: c.bibleVersion,
+          text: c.text,
+        })),
+      };
+    }
+    if (parsed.operation === "get_reader_handoff") {
+      return {
+        version: context.handoff.version,
+        task: context.handoff.task,
+        completeness: context.handoff.completeness,
+        sourceReferences: context.handoff.sourceReferences,
+        userInstructions: context.handoff.userInstructions,
+      };
+    }
+  }
+
+  if (toolName === "propose_story_update") {
+    const parsed = criticProposeStoryUpdateSchema.parse(rawArgs);
+    if (parsed.bibleVersion !== context.bibleVersion) {
+      throw new Error(
+        `Stale bible version: proposed ${parsed.bibleVersion}, approved ${context.bibleVersion}.`
+      );
+    }
+
+    const rawChapters = parsed.chapters ?? (
+      parsed.chapterIndex && parsed.text
+        ? [{ chapterIndex: parsed.chapterIndex, text: parsed.text }]
+        : []
+    );
+
+    if (rawChapters.length === 0) {
+      throw new Error("Missing chapters in proposal update.");
+    }
+
+    const validatedChapters = rawChapters.map((ch) =>
+      chapterSchema.parse({
+        chapterIndex: ch.chapterIndex,
+        bibleVersion: parsed.bibleVersion,
+        text: ch.text,
+      })
+    );
+
+    return {
+      acceptedForValidation: true,
+      chapters: validatedChapters,
+    } satisfies CriticProposedStoryUpdateResult;
+  }
+
+  throw new Error(`Unhandled critic tool: ${toolName}`);
 }
