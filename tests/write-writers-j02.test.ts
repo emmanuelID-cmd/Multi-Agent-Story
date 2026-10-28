@@ -65,7 +65,7 @@ describe("J02: Three Model-Backed Chapter Writers", () => {
       return "The lantern room smelled of kerosene and cold salt air. Mara stood before the glass.";
     });
 
-    const chapter = await draftChapterModel(
+    const result = await draftChapterModel(
       {
         index: 1,
         bibleVersion: 1,
@@ -75,9 +75,9 @@ describe("J02: Three Model-Backed Chapter Writers", () => {
       mockModel
     );
 
-    expect(chapter.chapterIndex).toBe(1);
-    expect(chapter.bibleVersion).toBe(1);
-    expect(chapter.text).toContain("The lantern room smelled of kerosene");
+    expect(result.chapter.chapterIndex).toBe(1);
+    expect(result.chapter.bibleVersion).toBe(1);
+    expect(result.chapter.text).toContain("The lantern room smelled of kerosene");
     expect(capturedRole).toBe("chapter_writer_1");
     expect(capturedBeat).toBe(testBible.beats[0].text);
   });
@@ -97,7 +97,7 @@ describe("J02: Three Model-Backed Chapter Writers", () => {
       return "Mara pushed the harbor boat away from the wooden pilings, hands blistered from the oars.";
     });
 
-    const chapter = await draftChapterModel(
+    const result = await draftChapterModel(
       {
         index: 2,
         bibleVersion: 1,
@@ -108,9 +108,9 @@ describe("J02: Three Model-Backed Chapter Writers", () => {
       mockModel
     );
 
-    expect(chapter.chapterIndex).toBe(2);
-    expect(chapter.bibleVersion).toBe(1);
-    expect(chapter.text).toContain("hands blistered from the oars");
+    expect(result.chapter.chapterIndex).toBe(2);
+    expect(result.chapter.bibleVersion).toBe(1);
+    expect(result.chapter.text).toContain("hands blistered from the oars");
     expect(capturedRole).toBe("chapter_writer_2");
     expect(capturedPreceding).toHaveLength(1);
     expect(capturedPreceding[0].chapterIndex).toBe(1);
@@ -136,7 +136,7 @@ describe("J02: Three Model-Backed Chapter Writers", () => {
       return "The breakwater stones were slick with kelp, but Mara gripped the sailor's wrist firmly.";
     });
 
-    const chapter = await draftChapterModel(
+    const result = await draftChapterModel(
       {
         index: 3,
         bibleVersion: 1,
@@ -147,9 +147,9 @@ describe("J02: Three Model-Backed Chapter Writers", () => {
       mockModel
     );
 
-    expect(chapter.chapterIndex).toBe(3);
-    expect(chapter.bibleVersion).toBe(1);
-    expect(chapter.text).toContain("Mara gripped the sailor's wrist firmly");
+    expect(result.chapter.chapterIndex).toBe(3);
+    expect(result.chapter.bibleVersion).toBe(1);
+    expect(result.chapter.text).toContain("Mara gripped the sailor's wrist firmly");
     expect(capturedRole).toBe("chapter_writer_3");
     expect(capturedPreceding).toHaveLength(2);
   });

@@ -30,23 +30,23 @@ export function createSandboxSimulatedModel(bibleCase: MockBibleCase): WriteMode
 
       let text = "";
       if (index === 1) {
-        // Grimm: World grounding, tactile stakes, opening incident
+        // Beat 1: World grounding, tactile stakes, opening incident
         text = `The air was sharp and laden with the grit of ${bibleCase.expectedToneNotes.toLowerCase()}. ` +
-          `Grimm established the setting where ${bibleCase.bible.facts[0].text} ` +
+          `The narrative grounded the physical setting where ${bibleCase.bible.facts[0].text} ` +
           `Without hesitation, the journey commenced under the shadows: ${beat}. ` +
           `Every stone and shadow echoed with the warning that the boundaries were shifting, ` +
           `leaving an open path for what was to follow.`;
       } else if (index === 2) {
-        // Andersen: Emotional depth, internal conflict, midpoint crisis
+        // Beat 2: Emotional depth, internal conflict, midpoint crisis
         text = `A lingering ache tightened in the chest as the initial excitement turned to dread. ` +
-          `Andersen carried the continuity forward from the first encounter. ` +
+          `The narrative carried the continuity forward from the first encounter. ` +
           `It became painfully clear that ${bibleCase.bible.facts[1]?.text ?? "the stakes had doubled"}. ` +
           `Facing the midpoint storm: ${beat}. ` +
           `Between tears and endurance, the crucible demanded everything before the night gave way.`;
       } else {
-        // Perrault: Climax, falling action, decisive resolution
+        // Beat 3: Climax, falling action, decisive resolution
         text = `The final hour arrived with the force of an unyielding tide. ` +
-          `Perrault brought the narrative threads to their apex. ` +
+          `The story threads reached their decisive apex. ` +
           `Remembering that ${bibleCase.bible.facts[2]?.text ?? "no thread could be abandoned"}, ` +
           `the decisive action unfolded: ${beat}. ` +
           `With the climax met and the danger subdued, ${bibleCase.brief.desiredEnding} ` +
@@ -93,7 +93,7 @@ export async function executeBibleInSandbox(
 
   // 1. Chapter 1: Grimm
   const t1Start = Date.now();
-  const ch1 = await draftChapterModel(
+  const res1 = await draftChapterModel(
     {
       index: 1,
       bibleVersion: bibleCase.bibleVersion,
@@ -103,77 +103,77 @@ export async function executeBibleInSandbox(
     model
   );
   const t1Duration = Date.now() - t1Start;
-  generatedChapters.push(ch1);
+  generatedChapters.push(res1.chapter);
   tracer.recordStep({
     chapterIndex: 1,
     role: "chapter_writer_1",
     alias: "Grimm",
     assignedBeat: bibleCase.bible.beats.find((b) => b.chapterIndex === 1)!.text,
     precedingChaptersPassed: [],
-    modelUsed: "chapter_writer_1 (Haiku)",
-    usage: { inputTokens: 250, outputTokens: Math.round(ch1.text.length / 4) },
+    modelUsed: res1.modelUsed,
+    usage: res1.usage,
     durationMs: t1Duration,
-    chapterText: ch1.text,
-    charCount: ch1.text.length,
-    wordCount: ch1.text.split(/\s+/).length,
+    chapterText: res1.chapter.text,
+    charCount: res1.chapter.text.length,
+    wordCount: res1.chapter.text.split(/\s+/).length,
     validationSuccess: true,
   });
 
   // 2. Chapter 2: Andersen (Receives Ch 1 context)
   const t2Start = Date.now();
-  const ch2 = await draftChapterModel(
+  const res2 = await draftChapterModel(
     {
       index: 2,
       bibleVersion: bibleCase.bibleVersion,
       approvedBible: bibleCase.bible,
       brief: bibleCase.brief,
-      precedingChapters: [ch1],
+      precedingChapters: [res1.chapter],
     },
     model
   );
   const t2Duration = Date.now() - t2Start;
-  generatedChapters.push(ch2);
+  generatedChapters.push(res2.chapter);
   tracer.recordStep({
     chapterIndex: 2,
     role: "chapter_writer_2",
     alias: "Andersen",
     assignedBeat: bibleCase.bible.beats.find((b) => b.chapterIndex === 2)!.text,
     precedingChaptersPassed: [1],
-    modelUsed: "chapter_writer_2 (Haiku)",
-    usage: { inputTokens: 430, outputTokens: Math.round(ch2.text.length / 4) },
+    modelUsed: res2.modelUsed,
+    usage: res2.usage,
     durationMs: t2Duration,
-    chapterText: ch2.text,
-    charCount: ch2.text.length,
-    wordCount: ch2.text.split(/\s+/).length,
+    chapterText: res2.chapter.text,
+    charCount: res2.chapter.text.length,
+    wordCount: res2.chapter.text.split(/\s+/).length,
     validationSuccess: true,
   });
 
   // 3. Chapter 3: Perrault (Receives Ch 1 & 2 context)
   const t3Start = Date.now();
-  const ch3 = await draftChapterModel(
+  const res3 = await draftChapterModel(
     {
       index: 3,
       bibleVersion: bibleCase.bibleVersion,
       approvedBible: bibleCase.bible,
       brief: bibleCase.brief,
-      precedingChapters: [ch1, ch2],
+      precedingChapters: [res1.chapter, res2.chapter],
     },
     model
   );
   const t3Duration = Date.now() - t3Start;
-  generatedChapters.push(ch3);
+  generatedChapters.push(res3.chapter);
   tracer.recordStep({
     chapterIndex: 3,
     role: "chapter_writer_3",
     alias: "Perrault",
     assignedBeat: bibleCase.bible.beats.find((b) => b.chapterIndex === 3)!.text,
     precedingChaptersPassed: [1, 2],
-    modelUsed: "chapter_writer_3 (Haiku)",
-    usage: { inputTokens: 610, outputTokens: Math.round(ch3.text.length / 4) },
+    modelUsed: res3.modelUsed,
+    usage: res3.usage,
     durationMs: t3Duration,
-    chapterText: ch3.text,
-    charCount: ch3.text.length,
-    wordCount: ch3.text.split(/\s+/).length,
+    chapterText: res3.chapter.text,
+    charCount: res3.chapter.text.length,
+    wordCount: res3.chapter.text.split(/\s+/).length,
     validationSuccess: true,
   });
 

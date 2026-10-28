@@ -9,6 +9,13 @@ export function assertWriterTool(toolName: string): asserts toolName is WriterTo
   assertAgentTool("writer", toolName);
 }
 
+export const ALLOWED_CRITIC_TOOLS = ["read_story_state", "propose_story_update"] as const;
+export type CriticToolName = (typeof ALLOWED_CRITIC_TOOLS)[number];
+
+export function assertCriticTool(toolName: string): asserts toolName is CriticToolName {
+  assertAgentTool("critic", toolName);
+}
+
 export const readStoryStateSchema = z.object({
   operation: z.enum(["get_approved_bible", "get_preceding_chapters"]),
 });

@@ -65,7 +65,7 @@ describe("WRITE Runtime Boundary (J01)", () => {
         }),
       });
 
-      const chapter = await generateChapterProse(
+      const result = await generateChapterProse(
         {
           chapterIndex: 1,
           bibleVersion: 42,
@@ -74,9 +74,9 @@ describe("WRITE Runtime Boundary (J01)", () => {
         mockModel
       );
 
-      expect(chapter.chapterIndex).toBe(1);
-      expect(chapter.bibleVersion).toBe(42);
-      expect(chapter.text).toContain("Mara shielded her eyes");
+      expect(result.chapter.chapterIndex).toBe(1);
+      expect(result.chapter.bibleVersion).toBe(42);
+      expect(result.chapter.text).toContain("Mara shielded her eyes");
     });
 
     it("passes preceding chapters to Chapter 2 (Andersen) for continuity", async () => {
@@ -99,7 +99,7 @@ describe("WRITE Runtime Boundary (J01)", () => {
       };
 
       const mockModel = new AnthropicWriteModel("test-key", { fetcher });
-      const chapter = await generateChapterProse(
+      const result = await generateChapterProse(
         {
           chapterIndex: 2,
           bibleVersion: 1,
@@ -109,7 +109,7 @@ describe("WRITE Runtime Boundary (J01)", () => {
         mockModel
       );
 
-      expect(chapter.chapterIndex).toBe(2);
+      expect(result.chapter.chapterIndex).toBe(2);
       expect(capturedPayload.role).toBe("chapter_writer_2");
       expect(capturedPayload.alias).toBe("Andersen");
       expect(capturedPayload.precedingChapters).toHaveLength(1);
@@ -219,18 +219,14 @@ describe("WRITE Runtime Boundary (J01)", () => {
         mockModel
       );
 
-      // Direct Chapter properties
-      expect(result.chapterIndex).toBe(1);
-      expect(result.bibleVersion).toBe(5);
-      expect(result.text).toBe("Telemetric chapter prose");
+      // Chapter record
+      expect(result.chapter.chapterIndex).toBe(1);
+      expect(result.chapter.bibleVersion).toBe(5);
+      expect(result.chapter.text).toBe("Telemetric chapter prose");
 
-      // Direct telemetry properties
+      // Telemetry properties
       expect(result.usage).toEqual({ inputTokens: 220, outputTokens: 110 });
       expect(result.modelUsed).toContain("claude");
-
-      // Backward-compatible chapter record
-      expect(result.chapter.chapterIndex).toBe(1);
-      expect(result.chapter.text).toBe("Telemetric chapter prose");
     });
 
     it("throws if chapter beat is missing in approved bible", async () => {
@@ -268,7 +264,7 @@ describe("WRITE Runtime Boundary (J01)", () => {
         }),
       });
 
-      const proposal = await generateEditorialProposal(
+      const result = await generateEditorialProposal(
         {
           role: "critic_editor_a",
           bibleVersion: 7,
@@ -278,12 +274,14 @@ describe("WRITE Runtime Boundary (J01)", () => {
         mockModel
       );
 
-      expect(proposal.kind).toBe("manuscript_a");
-      expect(proposal.editorialLens).toBe("continuity_and_pacing");
-      expect(proposal.chapters).toHaveLength(3);
-      expect(proposal.chapters.every((c) => c.bibleVersion === 7)).toBe(true);
-      expect(proposal.changesMade).toHaveLength(1);
-      expect(() => revisedManuscriptSchema.parse(proposal)).not.toThrow();
+      expect(result.proposal.kind).toBe("manuscript_a");
+      expect(result.proposal.editorialLens).toBe("continuity_and_pacing");
+      expect(result.proposal.chapters).toHaveLength(3);
+      expect(result.proposal.chapters.every((c) => c.bibleVersion === 7)).toBe(true);
+      expect(result.proposal.changesMade).toHaveLength(1);
+      expect(result.usage).toBeDefined();
+      expect(result.modelUsed).toBeDefined();
+      expect(() => revisedManuscriptSchema.parse(result.proposal)).not.toThrow();
     });
 
     it("generates a complete revision proposal with Lang (Voice & Atmosphere)", async () => {
@@ -305,7 +303,7 @@ describe("WRITE Runtime Boundary (J01)", () => {
         }),
       });
 
-      const proposal = await generateEditorialProposal(
+      const result = await generateEditorialProposal(
         {
           role: "critic_editor_b",
           bibleVersion: 7,
@@ -315,10 +313,12 @@ describe("WRITE Runtime Boundary (J01)", () => {
         mockModel
       );
 
-      expect(proposal.kind).toBe("manuscript_b");
-      expect(proposal.editorialLens).toBe("voice_and_atmosphere");
-      expect(proposal.chapters).toHaveLength(3);
-      expect(proposal.chapters.every((c) => c.bibleVersion === 7)).toBe(true);
+      expect(result.proposal.kind).toBe("manuscript_b");
+      expect(result.proposal.editorialLens).toBe("voice_and_atmosphere");
+      expect(result.proposal.chapters).toHaveLength(3);
+      expect(result.proposal.chapters.every((c) => c.bibleVersion === 7)).toBe(true);
+      expect(result.usage).toBeDefined();
+      expect(result.modelUsed).toBeDefined();
     });
 
     it("rejects fewer than 3 base chapters", async () => {

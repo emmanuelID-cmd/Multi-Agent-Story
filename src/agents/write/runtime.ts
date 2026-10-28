@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { chapterSchema, type Chapter, type Bible, type Brief } from "../../contracts";
+import { chapterSchema, orderedChapters, type Chapter, type Bible, type Brief } from "../../contracts";
 import type { ReaderToEditorHandoff } from "../handoff";
 import type { WriteModel, WriteAgentRole } from "./model";
 import { getPromptForRole } from "./prompts";
@@ -49,7 +49,7 @@ export interface GenerateChapterInput {
   precedingChapters?: Chapter[];
 }
 
-export interface GenerateChapterResult extends Chapter {
+export interface GenerateChapterResult {
   chapter: Chapter;
   usage: { inputTokens: number; outputTokens: number };
   modelUsed: string;
@@ -62,6 +62,12 @@ export interface GenerateEditorialProposalInput {
   baseChapters: Chapter[];
   handoff?: ReaderToEditorHandoff;
   userEditorialInstructions?: string;
+}
+
+export interface GenerateEditorialProposalResult {
+  proposal: RevisedManuscript;
+  usage: { inputTokens: number; outputTokens: number };
+  modelUsed: string;
 }
 
 /**
@@ -128,11 +134,11 @@ export async function generateChapterProse(
     text: parsed.text,
   });
 
-  return Object.assign(chapterRecord, {
+  return {
     chapter: chapterRecord,
     usage: response.usage,
     modelUsed: response.modelUsed,
-  });
+  };
 }
 
 /**
@@ -143,7 +149,7 @@ export async function generateEditorialProposal(
   input: GenerateEditorialProposalInput,
   model: WriteModel,
   signal: AbortSignal = new AbortController().signal
-): Promise<RevisedManuscript> {
+): Promise<GenerateEditorialProposalResult> {
   const { alias, systemPrompt, lens } = getPromptForRole(input.role);
 
   if (input.baseChapters.length !== 3) {
@@ -179,8 +185,7 @@ export async function generateEditorialProposal(
   const wireResult = revisedProposalWireSchema.parse(response.value);
 
   // Bind the chapters authoritatively to the base bibleVersion and validate
-  const revisedChapters: Chapter[] = wireResult.chapters
-    .sort((a, b) => a.chapterIndex - b.chapterIndex)
+  const rawChapters: Chapter[] = wireResult.chapters
     .map((c) =>
       chapterSchema.parse({
         chapterIndex: c.chapterIndex,
@@ -189,11 +194,20 @@ export async function generateEditorialProposal(
       })
     );
 
-  return revisedManuscriptSchema.parse({
+  // Pass through orderedChapters write barrier to enforce [1, 2, 3] uniqueness and sorting
+  const revisedChapters = orderedChapters(rawChapters, input.bibleVersion);
+
+  const proposal = revisedManuscriptSchema.parse({
     kind,
     editorialLens,
     rationale: wireResult.rationale,
     chapters: revisedChapters,
     changesMade: wireResult.changesMade,
   });
+
+  return {
+    proposal,
+    usage: response.usage,
+    modelUsed: response.modelUsed,
+  };
 }
