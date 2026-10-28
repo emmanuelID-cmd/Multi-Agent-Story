@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, asc, desc, eq, like, ne, notLike } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, like, ne, notLike } from "drizzle-orm";
 import { db } from "./db";
 import { projects, bibles, proposals, runs, tasks, chapters, critiques, evidence, memories } from "./db/schema";
 import { briefSchema, bibleSchema, orderedChapters, runInput, limits } from "../contracts";
@@ -194,28 +194,37 @@ export async function rewriteRun(ownerId: string, id: string, feedback?: string,
   const [completedRun] = await db.select().from(runs).where(and(eq(runs.projectId, id), eq(runs.status, "completed"))).orderBy(desc(runs.createdAt)).limit(1);
   if (!completedRun) throw new AppError(409, "A completed run is required before requesting a rewrite.");
   const [critique] = await db.select().from(critiques).where(eq(critiques.runId, completedRun.id));
-  const currentRound = (critique?.data as { revisionRounds?: number } | undefined)?.revisionRounds ?? 0;
+
+  // S03: Robust round accounting across runs and tasks (initial draft is round 0, max 2 requested revision rounds)
+  const projectRuns = await db.select().from(runs).where(eq(runs.projectId, id));
+  const runIds = projectRuns.map(r => r.id);
+  let maxTaskRound = 0;
+  if (runIds.length > 0) {
+    const projectTasks = await db.select().from(tasks).where(inArray(tasks.runId, runIds));
+    maxTaskRound = Math.max(0, ...projectTasks.map(t => (t.savedInput as { revisionRound?: number } | undefined)?.revisionRound ?? 0));
+  }
+  const critiqueRound = (critique?.data as { revisionRounds?: number } | undefined)?.revisionRounds ?? 0;
+  const currentRound = Math.max(maxTaskRound, critiqueRound);
+
   if (currentRound >= limits.revisionRounds) {
     throw new AppError(409, "The two-round revision limit has been reached. Existing proposals remain available.");
   }
   const nextRound = currentRound + 1;
 
-  let desiredEnding: string = completedRun.fixture; // placeholder fallback
+  // S04 / PRD 7j: Represent editorial instructions separately from desired ending
+  const userFeedback = feedback?.trim() || "";
+  if (userFeedback.length > 500) {
+    throw new AppError(400, "Feedback exceeds 500 characters.");
+  }
+  const editorialInstructions = userFeedback || "No additional instructions provided";
+  const hasAdditionalInstructions = Boolean(userFeedback);
+
   const nextRun = await db.transaction(async tx => {
     const [project] = await tx.select().from(projects).where(eq(projects.id, id)).for("update");
     const [bible] = await tx.select().from(bibles).where(and(eq(bibles.projectId, id), eq(bibles.version, project.version)));
     if (!bible) throw new AppError(409, "Approve a story bible before drafting.");
     const active = await tx.select().from(runs).where(eq(runs.projectId, id));
     if (active.some(r => ["pending", "running"].includes(r.status))) throw new AppError(409, "A run is already active.");
-
-    desiredEnding = project.brief.desiredEnding;
-    if (feedback && feedback.trim()) {
-      const combined = `${desiredEnding} [Feedback: ${feedback.trim()}]`;
-      if (combined.length > 500) {
-        throw new AppError(400, "Feedback causes desired ending to exceed 500 characters.");
-      }
-      desiredEnding = combined;
-    }
 
     // Reject older pending manuscript proposals for this project
     await tx.update(proposals).set({ status: "rejected" }).where(and(
@@ -237,11 +246,15 @@ export async function rewriteRun(ownerId: string, id: string, feedback?: string,
       savedInput: {
         bible: bible.data,
         version: bible.version,
-        brief: {
-          ...project.brief,
-          desiredEnding,
-        },
+        brief: project.brief,
         revisionRound: nextRound,
+        editorialInstructions,
+        hasAdditionalInstructions,
+        userInstructions: {
+          recordedRequest: editorialInstructions,
+          revision: nextRound,
+          hasAdditionalInstructions,
+        },
       },
     })));
     return created;
@@ -276,6 +289,13 @@ export async function startRun(ownerId: string, id: string, input: unknown, disp
         version:bible.version,
         brief:project.brief,
         revisionRound:0,
+        editorialInstructions: "Initial draft generation",
+        hasAdditionalInstructions: false,
+        userInstructions: {
+          recordedRequest: "Initial draft generation",
+          revision: 0,
+          hasAdditionalInstructions: false,
+        },
       },
     })));
     return created;
@@ -319,8 +339,12 @@ export async function exportProject(ownerId: string, id: string) {
   doc += state.chapters.map(c => `## Draft Chapter ${c.chapterIndex} (bible v${c.bibleVersion})\n${c.text}`).join("\n\n");
   if (state.acceptedManuscript) {
     const ms = state.acceptedManuscript.data as RevisedManuscript;
-    doc += `\n\n## Accepted Manuscript (${ms.editorialLens})\nRationale: ${ms.rationale}\n\n` +
-      ms.chapters.map(c => `### Chapter ${c.chapterIndex}\n${c.text}`).join("\n\n");
+    doc += `\n\n## Accepted Manuscript (${ms.editorialLens})\nRationale: ${ms.rationale}\n\n`;
+    if (ms.changesMade && ms.changesMade.length > 0) {
+      doc += `### Located Editorial Changes\n` +
+        ms.changesMade.map(ch => `- **Chapter ${ch.chapterIndex}**: ${ch.summary} _(Justification: ${ch.justification})_`).join("\n") + "\n\n";
+    }
+    doc += ms.chapters.map(c => `### Chapter ${c.chapterIndex}\n${c.text}`).join("\n\n");
   } else {
     doc += "\n\n## Accepted Manuscript\nNone accepted yet. Draft chapters remain pending review.\n";
   }

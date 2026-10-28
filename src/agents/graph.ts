@@ -66,11 +66,15 @@ export async function finishRun(runId: string) {
     }
 
     const [firstTask]=await tx.select().from(tasks).where(eq(tasks.runId,runId)).limit(1);
-    const recordedRequest=firstTask?.savedInput?.brief?.desiredEnding ?? "A safe rescue by boat.";
-    const revisionRounds=firstTask?.savedInput?.revisionRound ?? 0;
+    const saved = firstTask?.savedInput as any;
+    const revisionRounds = saved?.revisionRound ?? 0;
+    const recordedRequest = revisionRounds > 0
+      ? (saved?.editorialInstructions ?? saved?.userInstructions?.recordedRequest ?? "No additional instructions provided")
+      : (saved?.brief?.desiredEnding ?? "A safe rescue by boat.");
+    const hasAdditionalInstructions = Boolean(saved?.hasAdditionalInstructions);
 
     // 1. Reader handoff shell and harness validation
-    const initialHandoff=buildFixtureHandoff(outputs,bible.version,recordedRequest,revisionRounds);
+    const initialHandoff=buildFixtureHandoff(outputs,bible.version,recordedRequest,revisionRounds,1,hasAdditionalInstructions);
     let validation=validateHandoff(initialHandoff,recordedRequest);
     let validHandoff=initialHandoff;
     if(!validation.valid){

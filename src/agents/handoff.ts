@@ -245,7 +245,8 @@ export function buildFixtureHandoff(
   bibleVersion: number,
   recordedRequest: string,
   revisionRound = 0,
-  handoffRevision = 1
+  handoffRevision = 1,
+  hasAdditionalInstructions = false
 ): ReaderToEditorHandoff {
   return {
     task: {
@@ -257,7 +258,7 @@ export function buildFixtureHandoff(
     userInstructions: {
       recordedRequest,
       revision: revisionRound,
-      hasAdditionalInstructions: false,
+      hasAdditionalInstructions,
     },
     sourceReferences: chapters.map(c => ({
       sourceId: `chapter-${c.chapterIndex}-v${c.bibleVersion}`,

@@ -51,3 +51,41 @@ export function cleanupSandboxLogs(baseDir = process.cwd()): { purgedCount: numb
 
   return { purgedCount };
 }
+
+export function resolveWorkflowSandboxPaths(baseDir = process.cwd()): SandboxPaths {
+  const root = join(baseDir, "logs", "workflow-sandbox");
+  return {
+    root,
+    traces: join(root, "traces"),
+    reviews: join(root, "reviews"),
+    conclusions: join(root, "conclusions"),
+  };
+}
+
+export function initWorkflowSandboxDirectories(baseDir = process.cwd()): SandboxPaths {
+  const paths = resolveWorkflowSandboxPaths(baseDir);
+  for (const dir of [paths.root, paths.traces, paths.reviews, paths.conclusions]) {
+    if (!existsSync(dir)) {
+      mkdirSync(dir, { recursive: true });
+    }
+  }
+  return paths;
+}
+
+export function cleanupWorkflowSandboxLogs(baseDir = process.cwd()): { purgedCount: number } {
+  const paths = initWorkflowSandboxDirectories(baseDir);
+  let purgedCount = 0;
+
+  for (const dir of [paths.traces, paths.reviews, paths.conclusions]) {
+    if (existsSync(dir)) {
+      const files = readdirSync(dir);
+      for (const file of files) {
+        if (file === ".gitkeep") continue;
+        rmSync(join(dir, file), { force: true, recursive: true });
+        purgedCount++;
+      }
+    }
+  }
+
+  return { purgedCount };
+}

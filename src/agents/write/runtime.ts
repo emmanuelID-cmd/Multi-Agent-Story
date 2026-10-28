@@ -3,9 +3,56 @@ import { z } from "zod";
 import { chapterSchema, orderedChapters, type Chapter, type Bible, type Brief } from "../../contracts";
 import type { ReaderToEditorHandoff } from "../handoff";
 import type { WriteModel, WriteAgentRole } from "./model";
+export type { WriteModel, WriteAgentRole };
 import { getPromptForRole } from "./prompts";
 
 export const SHA256_HEX_REGEX = /^[a-f0-9]{64}$/;
+
+/**
+ * Normalizes mechanical typographical and punctuation collisions in narrative prose:
+ * - Collapses accidental double periods '..' (not 3-dot ellipses) into '.'
+ * - Replaces excessive periods (4 or more) with '...'
+ * - Removes whitespace immediately preceding punctuation marks
+ * - Resolves comma-period collisions (',.' or '.,' -> '.')
+ * - Resolves semicolon/colon-period collisions (';.' or ':.' -> '.')
+ * - Normalizes duplicate commas (',,' -> ',')
+ * - Strips duplicate terminal marks (e.g. '!.' or '?.' -> '!' or '?')
+ * - Strips leading bracketed version tags (e.g. '[Revised A]' or '[Chapter 1]')
+ * Preserves intentional three-dot ellipses ('...') and dialogue styling.
+ */
+export function cleanProseTypography(text: string): string {
+  if (!text) return "";
+  let cleaned = text;
+
+  // 1. Remove spaces immediately before punctuation: "word ." -> "word."
+  cleaned = cleaned.replace(/\s+([,.:;?!])/g, "$1");
+
+  // 2. Fix comma-period collisions: ",." or ".," -> "."
+  cleaned = cleaned.replace(/,\s*\./g, ".").replace(/\.\s*,/g, ".");
+
+  // 3. Fix semicolon/colon-period collisions: ";." or ":." -> "."
+  cleaned = cleaned.replace(/[;:]\s*\./g, ".");
+
+  // 4. Fix duplicate commas: ",," -> ","
+  cleaned = cleaned.replace(/,,+/g, ",");
+
+  // 5. Fix excessive periods (4 or more) into standard 3-dot ellipsis: "...." -> "..."
+  cleaned = cleaned.replace(/\.{4,}/g, "...");
+
+  // 6. Fix accidental double periods (strictly 2 dots, not part of 3-dot ellipsis)
+  cleaned = cleaned.replace(/(?<!\.)\.\.(?!\.)/g, ".");
+
+  // 7. Fix exclamation/question marks followed by periods: "!." -> "!" and "?." -> "?"
+  cleaned = cleaned.replace(/([!?])\s*\./g, "$1");
+
+  // 8. Ensure single whitespace after terminal punctuation when immediately preceding a capitalized word
+  cleaned = cleaned.replace(/([.?!])([A-Z])/g, "$1 $2");
+
+  // 9. Strip leading bracketed tags (e.g., "[Revised A] " or "[Chapter 1] ")
+  cleaned = cleaned.replace(/^\[(Revised\s*[A-Z]?|Chapter\s*\d+)\]\s*/i, "");
+
+  return cleaned.trim();
+}
 
 export function hashChapterText(text: string): string {
   return createHash("sha256").update(text, "utf8").digest("hex");
@@ -254,7 +301,7 @@ export async function generateChapterProse(
   const chapterRecord = chapterSchema.parse({
     chapterIndex: input.chapterIndex,
     bibleVersion: input.bibleVersion,
-    text: parsed.text,
+    text: cleanProseTypography(parsed.text),
   });
 
   return {
@@ -313,7 +360,7 @@ export async function generateEditorialProposal(
       chapterSchema.parse({
         chapterIndex: c.chapterIndex,
         bibleVersion: input.bibleVersion,
-        text: c.text,
+        text: cleanProseTypography(c.text),
       })
     );
 
