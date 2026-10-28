@@ -17,6 +17,15 @@ function stalledBody(signal?: AbortSignal) {
 }
 
 describe("authenticated project benchmark request boundary", () => {
+  it("derives the v3 topic and authority URI from confirmed server scope",async()=>{
+    const read=vi.fn<typeof readBookBenchmarks>().mockResolvedValue([]);
+    const scope={genre:"Family mystery",providers:["nyt","gutendex"] as ["nyt","gutendex"],dimensions:[{field:"genre" as const,value:"Family mystery"}],
+      vocabulary:{originalGenre:"Family mystery",genreForm:null,subject:{kind:"subject" as const,uri:"http://id.loc.gov/authorities/subjects/sh85047009",label:"Families",
+        sourceUrl:"https://id.loc.gov/authorities/subjects/suggest2/?q=families",retrievedAt:"2026-10-28T00:00:00.000Z"},gutendexPhrase:"Families",mappingStatus:"mapped" as const}};
+    await getProjectBenchmarks("owner",{projectId,genre:"Family mystery",providers:["nyt","gutendex"],limit:5,nytList:"hardcover-fiction"},
+      {ownsProject:async()=>true,confirmedScope:async()=>scope,read});
+    expect(read).toHaveBeenCalledWith(expect.objectContaining({genre:"Family mystery",topicPhrase:"Families",subjectUri:scope.vocabulary.subject.uri,intakeVersion:"intake-v3"}));
+  });
   it("accepts only a bounded request with known fields and a valid project", async () => {
     const parsed = await parseBenchmarkBody(body({ projectId, genre: "Mystery" }));
     expect(parsed).toEqual({ projectId, genre: "Mystery", providers: ["nyt", "gutendex"], nytList: "hardcover-fiction", limit: 5 });

@@ -659,3 +659,45 @@ publish its PR and safely merge to `developer`, verify eligible non-main branch
 alignment, then delete the verified merged temporary branch and stop. Automatic
 Phase 3/4 continuation is deferred until the user reinstates the rule; their
 previously approved names and product decisions remain recorded for later use.
+
+## 7k. Approved Phase 2B vocabulary amendment, October 28, 2026
+
+The user approved the complete supplemental Phase 2B implementation and exact
+branch `manny/phase-2b-vocabulary-alignment`. This amendment records that approved
+behavior in the existing v4 draft; the submitted PRD and prior trace history
+remain unchanged. Implementation, synthetic verification and release approval
+are separate statuses; Phase 3/4 remain paused.
+
+- [P0] The writer can explicitly search Library of Congress genre/forms (LCGFT)
+  and optional subjects (LCSH) after saving and analyzing the idea. Send only
+  1–80 typed search characters, never the story, with no extra model call.
+- [P0] The writer can choose zero to three validated terms or use an original
+  manual answer. Preserve original/custom wording as unmapped where appropriate;
+  keep genre/form, subject and Gutendex query phrase distinct. New `intake-v3`
+  analyses cannot present model-authored genre options as authority choices;
+  saved v1/v2 option decisions remain readable and confirmable.
+- [P0] The writer can correct vocabulary without a paid reanalysis. Reopening
+  retains current selections and original decisions, invalidates confirmation
+  and rebinds snapshot revisions. An unavailable lookup leaves saved choices and
+  manual answers intact. A successful replacement clears that kind's prior
+  selection so a current candidate must be explicitly selected.
+- [P0] The writer can rely on server-owned snapshots bound to ownership,
+  revision, analysis and source hash. Authority selection references a validated
+  current snapshot; invalid, future or 24-hour-old timestamps cannot authorize
+  selection, confirmation, metadata or Research. Expiry requires a new explicit
+  search/selection or a manual unmapped answer, never an automatic lookup.
+- [P0] The writer can see unmapped, no-match and unavailable outcomes separately.
+  New confirmed intake derives a candidate Gutendex topic from an explicitly
+  selected subject; it never silently uses raw genre or treats an LCGFT genre
+  as a Gutendex match. Returned subjects/bookshelves establish record relevance.
+  Metadata still supplies no text rights or dossier acceptance.
+
+Lookup limits: fixed `https://id.loc.gov` Suggest2 path, keyword search, three
+records maximum, 15-second deadline, 256 KiB response, 100-entry/24-hour cache,
+no redirects or retries. The two authorized readiness data GETs both returned
+HTTP 200; no extra provider/model calls are part of implementation tests.
+Synthetic checks, completed review and subsequent human acceptance are recorded in the
+[Phase 2B plan](../../phase/Manny/Phase-2B-Controlled-vocabulary-and-intake-research-alignment/2B-Controlled-vocabulary-and-intake-research-alignment.md).
+The separately authorized live user-browser check passed with LC selection and
+Gutendex metadata HTTP 200. This verifies metadata alignment only; acquisition
+still requires confirmed scope and the existing rights/source gates.

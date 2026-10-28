@@ -11,6 +11,7 @@ import { limits } from "../../contracts";
 import type { ReadResult, ResearchDossier } from "../../agents/read/contracts";
 import type { ProviderEvidence } from "./book-metadata";
 import type { AcquisitionReport } from "./research-acquisition";
+import { isLcFresh } from "../../contracts/vocabulary";
 
 type ProjectRecord = { id: string; ownerId: string; version: number; brief: { intake?: unknown } };
 export type ConfirmedIntakeRepository = {
@@ -90,10 +91,18 @@ export async function prepareConfirmedResearchInput(request: ConfirmedResearchRe
   if (new Set(intake.analysis.observations.map(o => o.field)).size !== intake.analysis.observations.length ||
       intake.analysis.observations.some(o => !intake.rawText.includes(o.quote)))
     throw new AppError(409, "Confirmed intake is invalid.");
+  if (intake.version === 2) for (const kind of ["genreForm", "subject"] as const) {
+    const selected = intake.selection?.[kind];
+    const snapshot = intake.lookups?.[kind];
+    if (selected && (!snapshot || snapshot.revision !== intake.revision - 1 || snapshot.analysisId !== intake.analysis.id ||
+        snapshot.sourceHash !== intake.analysis.sourceHash || !isLcFresh(snapshot.retrievedAt) || !isLcFresh(selected.retrievedAt) ||
+        !snapshot.candidates.some(candidate => candidate.uri === selected.uri && candidate.label === selected.label)))
+      throw new AppError(409, "Confirmed vocabulary is invalid.");
+  }
   let scope;
   try {
-    assertIntakeDecisionsReviewed(intake.analysis, intake.decisions);
-    scope = scopeFromIntake(intake.analysis, intake.decisions);
+    assertIntakeDecisionsReviewed(intake.analysis, intake.decisions, intake.selection);
+    scope = scopeFromIntake(intake.analysis, intake.decisions, intake.selection, intake.version === 2);
   } catch { throw new AppError(409, "Confirmed intake is invalid."); }
   if (JSON.stringify(scope) !== JSON.stringify(intake.confirmed.scope))
     throw new AppError(409, "Confirmed scope changed. Reload before research.");
@@ -109,11 +118,13 @@ export async function prepareConfirmedResearchInput(request: ConfirmedResearchRe
       genre: scope.genre, optionalDetails, acceptedSuggestions },
     confirmedIntake: { revision: intake.revision, rawText: intake.rawText, sourceHash: request.expectedSourceHash,
       analysisHash: createHash("sha256").update(JSON.stringify(intake.analysis)).digest("hex"),
-      analysis: intake.analysis, decisions: intake.decisions, scope },
+      analysis: intake.analysis, decisions: intake.decisions, selection: intake.selection, scope },
     dimensions: scope.dimensions.map(d => ({ id: d.field, label: `Research confirmed ${fieldLabels.get(d.field)} only.`,
       claimType: d.field === "timePeriod" || d.field === "setting" ? "historical" as const : "craft" as const })),
     eligibleSources: [],
-    benchmarkRequest: request.benchmarkRequest ?? { genre: scope.genre, providers: ["nyt", "gutendex"] },
+    benchmarkRequest: scope.vocabulary ? { genre: scope.genre, providers: ["nyt", "gutendex"], intakeVersion: "intake-v3",
+      topicPhrase: scope.vocabulary.gutendexPhrase, subjectUri: scope.vocabulary.subject?.uri ?? null } :
+      request.benchmarkRequest ?? { genre: scope.genre, providers: ["nyt", "gutendex"] },
   };
   return researchInputSchema.parse(input);
 }

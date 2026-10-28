@@ -27,7 +27,8 @@ export function approvedSourceFingerprint(value: ApprovedResearchSource): string
   return parsed.success ? sha256(JSON.stringify(parsed.data)) : null;
 }
 export type AcquisitionReport = {
-  queries: {provider: "nyt" | "gutendex"; genre: string; endpoint: string; status: ProviderEvidence["status"]; reasonCode: string; checkedAt: string; recordIds: string[]}[];
+  queries: {provider: "nyt" | "gutendex"; genre: string; topicPhrase:string|null; subjectUri:string|null; scopeVersion:"intake-v3"|"legacy";
+    endpoint: string; status: ProviderEvidence["status"]; reasonCode: string; checkedAt: string; recordIds: string[]}[];
   sources: {sourceId: string; status: "eligible" | "blocked" | "unavailable"; reasonCode: string;
     matchedDimensions: string[]; gapDimensions: string[]; providerRecordId: string | null;
     kind: string; work: string; author: string; publicationDate: string | null;
@@ -80,6 +81,9 @@ export async function acquireResearchEvidence(input: ResearchInput, options: Acq
   const read = options.readBenchmarks ?? ((request: z.output<typeof researchInputSchema>["benchmarkRequest"], signal: AbortSignal) => readBookBenchmarks(request, {signal}));
   const outcomes = await bounded(() => read(parsed.benchmarkRequest, signal), signal);
   const report: AcquisitionReport = {queries: outcomes.map(o => ({provider:o.provider,genre:parsed.benchmarkRequest.genre,
+    topicPhrase:o.queryProvenance?.topicPhrase??parsed.benchmarkRequest.topicPhrase??null,
+    subjectUri:o.queryProvenance?.subjectUri??parsed.benchmarkRequest.subjectUri??null,
+    scopeVersion:o.queryProvenance?.scopeVersion??parsed.benchmarkRequest.intakeVersion??"legacy",
     endpoint:o.sourceUrl,status:o.status,reasonCode:o.reasonCode,checkedAt:o.checkedAt,recordIds:o.records.map(r => r.providerRecordId)})),sources:[],gaps:[]};
   const eligibleSources: z.output<typeof researchInputSchema>["eligibleSources"] = [];
   const expected = new Map<string,string>(parsed.confirmedIntake?.scope.dimensions.map(d => [d.field,d.value]) ?? []);
@@ -126,6 +130,7 @@ export async function acquireResearchEvidence(input: ResearchInput, options: Acq
     else if (source.identity.type === "licensed_user" &&
       (source.identity.ownerId !== parsed.authority.ownerId || source.identity.projectId !== parsed.authority.projectId || source.rights.type !== "user_license")) entry.reasonCode = "LICENSED_OWNER_MISMATCH";
     else if (source.identity.type === "gutendex" && (!record || !["available","partial"].includes(gut?.status ?? "unavailable"))) entry.reasonCode = "PROVIDER_RECORD_UNAVAILABLE";
+    else if (source.identity.type === "gutendex" && parsed.benchmarkRequest.intakeVersion === "intake-v3" && record?.relevance !== "matched") entry.reasonCode = "PROVIDER_SUBJECT_NO_MATCH";
     else if (record && (record.title !== source.work || !record.authors.includes(source.author))) entry.reasonCode = "WORK_IDENTITY_MISMATCH";
     else if (record?.copyright !== false && source.rights.type === "us_public_domain") entry.reasonCode = "CATALOG_RIGHTS_UNCERTAIN";
     else if (!options.readApprovedText) {entry.status = "unavailable"; entry.reasonCode = "APPROVED_READER_UNAVAILABLE";}

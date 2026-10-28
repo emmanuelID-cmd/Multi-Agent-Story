@@ -37,7 +37,7 @@ describe("stored story intake", () => {
     const f = setup();
     const analyzed = await updateProjectIntake("owner", "project", { action: "analyze", expectedRevision: 0 }, f);
     const base = { action: "confirm" as const, expectedRevision: 2, analysisId: analyzed.intake.analysis!.id,
-      decisions: [{ field: "genre" as const, action: "accept" as const, optionIndex: 0 }], confirmScope: true as const };
+      decisions: [{ field: "genre" as const, action: "custom" as const, value: "Mystery" }], confirmScope: true as const };
     await expect(updateProjectIntake("owner", "project", { ...base, analysisId: "3a78dce2-c341-426a-9fe6-87c53599b9d1" }, f))
       .rejects.toMatchObject({ status: 409 });
     await expect(updateProjectIntake("owner", "project", { ...base, decisions: [{ field: "genre", action: "reject" }] }, f))

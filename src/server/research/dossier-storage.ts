@@ -16,6 +16,8 @@ const findingSchema=z.strictObject({fieldRef:z.string().max(128),source:z.string
   requiredEvidenceImpact:z.enum(["none","review","unavailable"]),humanCorrectionNeeded:z.boolean()});
 export const acquisitionProvenanceSchema=z.strictObject({
   queries:z.array(z.strictObject({provider:z.enum(["nyt","gutendex"]),genre:z.string().max(80),
+    topicPhrase:z.string().max(200).nullable().optional(),subjectUri:z.string().max(200).nullable().optional(),
+    scopeVersion:z.enum(["intake-v3","legacy"]).optional(),
     endpoint:reference,status:providerSchema.shape.status,reasonCode:z.string().max(100),
     checkedAt:z.iso.datetime(),recordIds:z.array(z.string().max(200)).max(20)})).length(2),
   sources:z.array(z.strictObject({sourceId:z.string().max(128),status:z.enum(["eligible","blocked","unavailable"]),

@@ -7,6 +7,31 @@ const gut={id:11,title:"Café — حكاية",authors:[{name:"Zoë Example"}],do
 const options=(payload:unknown)=>({enabled:true,termsReviewed:true,fetcher:vi.fn<typeof fetch>().mockResolvedValue(Response.json(payload))});
 
 describe("Manny's bounded metadata reads",()=>{
+  it("records the upstream HTTP status without retaining error bodies or retrying",async()=>{
+    const fetcher=vi.fn<typeof fetch>().mockResolvedValue(new Response("private provider error",{status:503}));
+    const [failed]=await readBookBenchmarks({genre:"Fiction",providers:["gutendex"]},{enabled:true,termsReviewed:true,fetcher});
+    expect(failed).toMatchObject({httpStatus:503,reasonCode:"PROVIDER_HTTP_ERROR",records:[]});
+    expect(JSON.stringify(failed)).not.toContain("private provider error");
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    const [success]=await readBookBenchmarks({genre:"Fiction",providers:["gutendex"]},options({results:[]}));
+    expect(success.httpStatus).toBe(200);
+    const [offline]=await readBookBenchmarks({genre:"Fiction",providers:["gutendex"]},{enabled:true,termsReviewed:true,fetcher:vi.fn<typeof fetch>().mockRejectedValue(Error("offline"))});
+    expect(offline.httpStatus).toBeUndefined();
+  });
+  it("keeps v3 unmapped separate from no match and unavailable, using only the selected subject phrase",async()=>{
+    const fetcher=vi.fn<typeof fetch>().mockImplementation(async()=>Response.json({results:[{...gut,subjects:["Families -- Fiction"],bookshelves:["Family stories"]},{...gut,id:12,subjects:["Sea stories"],bookshelves:[]}]}));
+    const input={genre:"Family mystery",intakeVersion:"intake-v3" as const,topicPhrase:"Families",subjectUri:"http://id.loc.gov/authorities/subjects/sh85047009",providers:["gutendex"] as ["gutendex"]};
+    const [unmapped]=await readBookBenchmarks({...input,topicPhrase:null,subjectUri:null},{enabled:true,termsReviewed:true,fetcher});
+    expect(unmapped).toMatchObject({status:"not_requested",reasonCode:"UNMAPPED_SUBJECT"});expect(fetcher).not.toHaveBeenCalled();
+    const [matched]=await readBookBenchmarks(input,{enabled:true,termsReviewed:true,fetcher});
+    expect(new URL(String(fetcher.mock.calls[0][0])).searchParams.get("topic")).toBe("Families");
+    expect(matched.queryProvenance).toMatchObject({originalGenre:"Family mystery",topicPhrase:"Families",subjectUri:input.subjectUri,scopeVersion:"intake-v3"});
+    expect(matched.records.map(record=>record.relevance)).toEqual(["matched","not_matched"]);
+    const [noMatch]=await readBookBenchmarks({...input,topicPhrase:"Castles"},{enabled:true,termsReviewed:true,fetcher});
+    expect(noMatch).toMatchObject({status:"no_match",reasonCode:"RETURNED_METADATA_NO_MATCH"});
+    const [unavailable]=await readBookBenchmarks(input,{enabled:true,termsReviewed:true,fetcher:vi.fn<typeof fetch>().mockRejectedValue(Error("offline"))});
+    expect(unavailable.status).toBe("unavailable");
+  });
   it("defaults to disabled without a network request or invented retrieval date",async()=>{
     const fetcher=vi.fn<typeof fetch>();
     const result=await readBookBenchmarks({genre:"Mystery"},{enabled:false,fetcher});
@@ -83,12 +108,35 @@ describe("Manny's bounded metadata reads",()=>{
       const stalled=()=>new Response(new ReadableStream({start(){}}));
       const fetcher=vi.fn<typeof fetch>().mockImplementation(async()=>stalled());
       const pending=readBookBenchmarks({genre:"Horror",providers:["gutendex"]},{enabled:true,termsReviewed:true,fetcher});
-      await vi.advanceTimersByTimeAsync(5000);
+      let settled=false;
+      void pending.then(()=>{settled=true;});
+      await vi.advanceTimersByTimeAsync(29_999);
+      expect(settled).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
       expect((await pending)[0].reasonCode).toBe("TIMEOUT");
+      expect(fetcher).toHaveBeenCalledTimes(1);
       const controller=new AbortController();
       const canceled=readBookBenchmarks({genre:"Horror",providers:["gutendex"]},{enabled:true,termsReviewed:true,fetcher,signal:controller.signal});
       await Promise.resolve();controller.abort("CANCELED");
       expect((await canceled)[0].reasonCode).toBe("CANCELED");
+      expect(vi.getTimerCount()).toBe(0);
+    }finally{vi.useRealTimers();}
+  });
+  it("accepts Gutendex after five seconds while retaining the NYT deadline",async()=>{
+    vi.useFakeTimers();
+    try{
+      const fetcher=vi.fn<typeof fetch>().mockImplementation(async url=>{
+        if(String(url).includes("nytimes"))return new Promise<Response>(()=>{});
+        await new Promise(resolve=>setTimeout(resolve,6_000));
+        return Response.json({results:[gut]});
+      });
+      const pending=readBookBenchmarks({genre:"Horror",providers:["nyt","gutendex"]},{enabled:true,termsReviewed:true,nytKey:"synthetic",fetcher});
+      await vi.advanceTimersByTimeAsync(6_000);
+      const [nyt,gutendex]=await pending;
+      expect(nyt.reasonCode).toBe("TIMEOUT");
+      expect(gutendex.status).toBe("available");
+      expect(gutendex.records).toHaveLength(1);
+      expect(fetcher).toHaveBeenCalledTimes(2);
       expect(vi.getTimerCount()).toBe(0);
     }finally{vi.useRealTimers();}
   });

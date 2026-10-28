@@ -39,6 +39,17 @@ TEST MODE is explicitly requested and read-only; it never authorizes edits.
 
 ## Collaboration ownership
 
+### Tree check shorthand
+
+When the user asks to "check the tree", inspect all local worktrees for dirty
+changes, fetch remote references, check open pull requests and incoming commits,
+and compare local and remote branch ancestry. Fast-forward eligible authorized
+branches from verified `developer` only when safe. Exclude `main` unless the user
+explicitly changes that instruction. Preserve uncommitted work, stop on unique
+commits or divergence, and obtain the owner's approval for teammate-managed lanes.
+Verify remote tips after any authorized synchronization push. Report branches
+advanced, remaining blockers, open PRs, and whether incoming changes remain.
+
 - **Manny: READ Agents.** Research, Reader, and Consistency: authorized retrieval,
   research evidence, editorial handoffs, independent findings, and read contracts.
 - **Justin: WRITE Agents.** Chapter Writers 1/2/3 and combined Critic/Editors A/B:
@@ -138,6 +149,20 @@ tools, SQL, or commands. These are design requirements, not implemented live-tex
 controls or a guarantee of detection.
 
 ## Research and configuration
+
+Approved Phase 2B vocabulary boundary, October 28, 2026: explicit saved-intake
+searches send only 1–80 typed search characters to the fixed Library of Congress
+host. Keep LCGFT genre/forms, LCSH subjects, writer wording and candidate Gutendex
+topics distinct. Allow 0–3 verified choices and manual unmapped answers; new
+`intake-v3` Claude genre options cannot act as authority choices. Selection,
+confirmation and both downstream entry points reject evidence aged 24 hours or
+more. Reopening catalog review preserves answers without paid reanalysis; an
+unavailable refresh preserves prior choices. Preserve legacy v1/v2 decisions.
+The full build and `manny/phase-2b-vocabulary-alignment` branch were approved;
+the two readiness data GETs are used (2/2 HTTP 200), with no further live calls
+authorized by this implementation record. SECURITY/REVIEWER and the subsequently
+authorized human browser check passed; Phase 2B is complete in its stated scope.
+Phase 3/4 and the canonical 26 checklist items stay unchanged.
 
 NYT Books and Gutendex are the mandatory v2 research sources after confirmed
 intake. No NYC geographic filter is established. Current implementation is still
@@ -294,6 +319,50 @@ change. Before approval, scan every changed file, report exact changed lines,
 check Markdown fences and whitespace, and preview documentation through links.
 For future application changes, use the PRD eval fixtures and applicable security,
 API, input validation, accessibility, and frontend checks. Never claim unrun tests pass.
+
+## Trace visibility, execution limits and scores
+
+User-approved project trace rules, October 27, 2026. Apply the personal trace
+skill and its protocol/metrics together with these execution boundaries.
+
+- Before dispatch, link `docs/temp/trace/TRACE-LIVE.md` so the user can open its
+  Markdown preview. Update that same status file at each stage transition;
+  do not make the user find new reports to follow progress. Show the trace ID,
+  version, round budget used/remaining, active roles, last completed stage,
+  next action, pending gates, test counts and time of the latest update.
+  Give a plain-language progress update at least every 60 seconds while active.
+  This is an agent-maintained status file, not an installed streaming UI.
+- Declare the round and test budget before starting. At most two full rounds
+  per authorized assignment: two independent concurrent reviewers in round 1;
+  two NEW reviewers in round 2. A second round requires explicit human approval
+  unless the user has expressly preauthorized the skill's C/D action. It is
+  never justified by an INCOMPLETE result or a partial percentage.
+- A-E actions are bounded actions, not permission for repeated orchestration.
+  A maintenance checks and targeted regression tests are not another full trace.
+  Fixes, new versions, reviewer re-review and SECURITY work must be included in
+  the declared budget; renaming them does not evade it. Stop before work would
+  exceed the budget, preserve findings, and request a new explicit authorization.
+  A second-round result never recursively dispatches a third round.
+- Keep one live status file; retain the timestamped evidence and required audit
+  reports separately. State that report count is not execution-round count.
+  A viewer's `--follow` only watches existing events until Ctrl+C; it neither
+  starts an agent nor authorizes background work. Offer a one-shot command.
+- At termination, set execution to STOPPED, record an actual end timestamp,
+  active roles/calls remaining, and COMPLETE or INCOMPLETE investigation status.
+  Immediately tell the user `TRACE FINISHED - COMPLETE` or
+  `TRACE FINISHED - INCOMPLETE`, summarize findings and scores, and link the final
+  report. Pending human checks must not leave an idle trace labeled RUNNING.
+- Always report unit/eval results separately as X/Y and percentage, with mocks
+  versus live scope. Report trace passed/expected, failed/unverified counts,
+  verified coverage and completion. Verified-only accuracy is partial evidence,
+  not a final band. Assign A-E only to a complete trace with a verified denominator.
+- Reliability is completed passing traces divided by completed passing plus
+  completed failing traces, for the same version. Show incomplete/cancelled counts
+  separately. With no valid completed observations, report NOT MEASURABLE, never
+  0% or 100%. Synthetic unit success is not live-agent reliability. Validate the
+  history ledger; malformed or stale entries make automated counters unverified.
+  Preserve original records and explicit correction history rather than silently
+  repairing prior outcomes. No reliability counter triggers further work.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

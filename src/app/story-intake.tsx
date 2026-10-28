@@ -4,26 +4,30 @@ import { useEffect, useRef, useState } from "react";
 import { assertIntakeDecisionsReviewed, intakeFields, intakeText, resolveIntake, scopeFromIntake, type IntakeDecision, type IntakeField, type IntakeRecord } from "../contracts/intake";
 import styles from "./story-intake.module.css";
 import { inspectText } from "../contracts/input-policy";
+import { lcQuerySchema, type LcKind } from "../contracts/vocabulary";
 
 type Props =
   | { mode: "create"; onCreated: (id: string) => Promise<void> }
   | { mode: "saved"; projectId: string; intake: IntakeRecord; locked: boolean; onRefresh: () => Promise<IntakeRecord | undefined> };
-type ApiError = Error & { fields?: Record<string, string[]>; status?: number };
+type ApiError = Error & { fields?: Record<string, string[]>; status?: number; traceId?: string; traceAvailability?: string };
 type Metadata = { evidence: { provider: string; status: string; reasonCode: string; records: unknown[] }[] };
 const groups = ["Foundation", "People and world", "Story direction"] as const;
 
 async function post(path: string, body: unknown) {
   const response = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw Object.assign(new Error(data.error || data.message || "The request is unavailable. Try again."), { fields: data.fields, status: response.status });
+  if (!response.ok) throw Object.assign(new Error(data.error || data.message || "The request is unavailable. Try again."), { fields: data.fields, status: response.status, traceId: data.traceId, traceAvailability: data.traceAvailability });
   return data;
 }
 
 export default function StoryIntake(props: Props) {
   const intake = props.mode === "saved" ? props.intake : undefined;
+  const locked = props.mode === "saved" && props.locked;
   const [rawText, setRawText] = useState(intake?.rawText || "");
   const [decisions, setDecisions] = useState<IntakeDecision[]>(intake?.decisions || []);
   const [custom, setCustom] = useState<Partial<Record<IntakeField, string>>>({});
+  const [searchWords, setSearchWords] = useState<Record<LcKind, string>>({ genreForm: "", subject: "" });
+  const [searchErrors, setSearchErrors] = useState<Partial<Record<LcKind, string>>>({});
   const [scopeChecked, setScopeChecked] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -70,8 +74,10 @@ export default function StoryIntake(props: Props) {
   if (analysis) {
     try { values = resolveIntake(analysis, decisions); }
     catch (cause) { previewError = (cause as Error).message; }
+    if (!values.genre && intake?.selection?.genreForm) values.genre = intake.selection.genreForm.label;
   }
-  const pendingSuggestions = analysis?.suggestions.filter(item => !decisionsFor(item.field) && (!item.dependsOn || values[item.dependsOn])) || [];
+  const pendingSuggestions = analysis?.suggestions.filter(item => !(item.field === "genre" && intake?.selection?.genreForm) &&
+    !decisionsFor(item.field) && (!item.dependsOn || values[item.dependsOn])) || [];
   const dependentSuggestions = analysis?.suggestions.filter(item => item.dependsOn && !values[item.dependsOn]) || [];
   const deferredFields = decisions.filter(item => item.action === "reject" || item.action === "defer");
   const unansweredFields = analysis ? intakeFields.filter(item => item.id !== "genre" && !values[item.id] && !analysis.suggestions.some(suggestion => suggestion.field === item.id) && !deferredFields.some(decision => decision.field === item.id)) : [];
@@ -114,7 +120,9 @@ export default function StoryIntake(props: Props) {
       const failure = cause as ApiError;
       if (failure.fields?.rawText) setTextError(true);
       const detail = failure.fields ? Object.values(failure.fields).flat().join(" ") : "";
-      setError(failure.status === 409 ? "This project changed elsewhere. Refresh the project, review your text, and try again." : `${failure.message}${detail ? ` ${detail}` : ""}`);
+      const notice = failure.fields?.vocabulary ? "Search again and select a current Library of Congress term, or use your answer. Your saved story and answers are preserved."
+        : failure.status === 409 ? "This project changed elsewhere. Refresh the project, review your text, and try again." : `${failure.message}${detail ? ` ${detail}` : ""}`;
+      setError(notice + (failure.traceId && /^[a-f0-9-]{36}$/i.test(failure.traceId) ? ` Trace ID: ${failure.traceId}${failure.traceAvailability === "UNAVAILABLE" ? " (local trace unavailable)" : failure.traceAvailability === "DISABLED" ? " (local trace disabled)" : ""}.` : ""));
       if (refreshAfterFailure && props.mode === "saved") {
         preserveOnRevision.current = true;
         try { const updated = await props.onRefresh(); if (updated?.revision === intake?.revision) preserveOnRevision.current = false; }
@@ -131,6 +139,26 @@ export default function StoryIntake(props: Props) {
     if (props.mode !== "saved") return;
     await post(`/api/projects/${props.projectId}/intake`, body);
     await props.onRefresh();
+  }
+  async function search(kind: LcKind) {
+    if (props.mode !== "saved" || !intake) return;
+    const parsed = lcQuerySchema.safeParse(searchWords[kind]);
+    if (!parsed.success) { setSearchErrors(previous => ({ ...previous, [kind]: "Enter 1–80 plain search characters." }));
+      setError("Review the highlighted search words."); return; }
+    setSearchErrors(previous => ({ ...previous, [kind]: undefined }));
+    await run(async () => {
+      preserveOnRevision.current = true;
+      await post(`/api/projects/${props.projectId}/intake/lookup`, { expectedRevision: intake.revision, kind, words: parsed.data });
+      await props.onRefresh();
+      setMessage("Vocabulary lookup finished. Review the verified choices below.");
+    }, true);
+  }
+  async function select(kind: LcKind, uri: string | null) {
+    if (!intake) return;
+    await run(async () => { preserveOnRevision.current = true;
+      await act({ action: "selectVocabulary", expectedRevision: intake.revision, kind, uri });
+      setMessage(uri ? "Verified term selected." : "Your answer remains unmapped.");
+    }, true);
   }
 
   return <section className={styles.card} aria-labelledby="intake-title">
@@ -168,14 +196,38 @@ export default function StoryIntake(props: Props) {
     {intake?.status === "analyzing" && !edited && <p role="status" className={styles.notice}>{stalled ? "The analysis did not finish. Retry analysis to request a fresh Claude review, or refresh the project to check its latest state." : "Claude is analyzing this saved idea. Use Refresh in Your projects to check for the result."}</p>}
     {props.mode === "saved" && intake?.status === "draft" && !edited && <p className={styles.notice}>Your original idea is saved. Analyze with Claude when you are ready; the call uses paid model tokens.</p>}
     {intake?.confirmed && !edited && <div className={styles.review}><h3>Confirmed research scope</h3><p><strong>Genre:</strong> {intake.confirmed.scope.genre}</p><ul>{intake.confirmed.scope.dimensions.filter(item => item.field !== "genre").map(item => <li key={item.field}><strong>{labelFor(item.field)}:</strong> {item.value}</li>)}</ul><p>Sources: NYT Books and Gutendex. This confirmation saves the scope; it does not start live research or drafting.</p>
+      {intake.confirmed.scope.vocabulary && <p><strong>LC genre/form:</strong> {intake.confirmed.scope.vocabulary.genreForm?.label ?? "Unmapped"}. <strong>LC subject:</strong> {intake.confirmed.scope.vocabulary.subject?.label ?? "Unmapped"}. <strong>Gutendex topic:</strong> {intake.confirmed.scope.vocabulary.gutendexPhrase ?? "Unmapped; no Gutendex topic request"}.</p>}
+      {props.mode === "saved" && !props.locked && <button disabled={busy} onClick={() => run(async () => {
+        await act({ action: "reopenVocabulary", expectedRevision: intake.revision });
+        setMessage("Vocabulary choices reopened. Your original idea and decisions are preserved.");
+      }, true)}>Revise vocabulary choices</button>}
       {props.mode === "saved" && <button disabled={busy} onClick={() => run(async () => {
         const result = await post("/api/research/benchmarks", { projectId: props.projectId, genre: intake.confirmed!.scope.genre, providers: intake.confirmed!.scope.providers });
         setMetadata(result as Metadata);
         setMessage("Book metadata request finished. Provider status is shown below.");
       })}>Request book metadata</button>}
-      {metadata && <div role="status"><h4>Metadata provider status</h4><ul>{metadata.evidence.map(item => <li key={item.provider}><strong>{item.provider === "nyt" ? "NYT Books" : "Gutendex"}:</strong> {item.status.replaceAll("_", " ")} ({item.reasonCode.replaceAll("_", " ")}), {item.records.length} records</li>)}</ul><p>Metadata only. These results do not establish prose rights or complete the research dossier.</p></div>}
+      {metadata && <div role="status"><h4>Metadata provider status</h4><ul>{metadata.evidence.map(item => <li key={item.provider}><strong>{item.provider === "nyt" ? "NYT Books" : "Gutendex"}:</strong> {item.status.replaceAll("_", " ")} ({item.reasonCode.replaceAll("_", " ")}), {item.records.length} records</li>)}</ul><p>Metadata only. These results do not establish prose rights or complete the research dossier. No match, unmapped, and provider unavailable require different corrections.</p></div>}
     </div>}
     {analysis && intake?.status !== "confirmed" && <>
+      <div className={styles.review}><h3>Look up verified book terms</h3><p>Enter only short search words, then choose Search. The Library of Congress returns up to three verified terms. Your answer stays in your words even when no term is selected.</p>
+        {(["genreForm", "subject"] as const).map(kind => { const snapshot = intake?.lookups?.[kind]; const selected = intake?.selection?.[kind];
+          const label = kind === "genreForm" ? "Genre/form (LCGFT)" : "Subject (LCSH, optional)";
+          return <div key={kind} className={styles.vocabulary}><label htmlFor={`vocabulary-${kind}`}>{label} search words</label>
+            <p className={styles.hint}>{kind === "subject" ? "A selected subject can become the candidate Gutendex topic; returned book subjects and bookshelves still determine relevance." : "A genre/form term describes the work, but does not become a Gutendex topic automatically."}</p>
+            <div className={styles.actions}><input id={`vocabulary-${kind}`} type="text" maxLength={80} value={searchWords[kind]}
+              aria-invalid={!!searchErrors[kind]} aria-describedby={searchErrors[kind] ? `vocabulary-error-${kind}` : undefined}
+              onChange={event => { setSearchWords(previous => ({ ...previous, [kind]: event.target.value }));
+                setSearchErrors(previous => ({ ...previous, [kind]: undefined })); }} disabled={busy || edited || locked} />
+              <button type="button" disabled={busy || edited || locked} onClick={() => search(kind)}>Search Library of Congress</button></div>
+            {searchErrors[kind] && <p id={`vocabulary-error-${kind}`} className={styles.blocker}>{searchErrors[kind]}</p>}
+            {snapshot && <div role="status"><p>Source: Library of Congress {label}. {snapshot.status === "available" ? `${snapshot.candidates.length} verified choices` : snapshot.status === "empty" ? "No verified choices" : "Temporarily unavailable"}.</p>
+              {snapshot.status === "available" && <div className={styles.options}>{snapshot.candidates.map(item => <label key={item.uri}><input type="radio" name={`vocabulary-${kind}`} checked={selected?.uri === item.uri}
+                onChange={() => select(kind, item.uri)} disabled={busy || locked} /><span>{item.label}</span></label>)}</div>}
+              <p className={styles.hint}>Retrieved {new Date(snapshot.retrievedAt).toLocaleString()}. Terms are catalog identities, not story suggestions.</p></div>}
+            <button type="button" disabled={busy || locked} onClick={() => select(kind, null)}>Your answer / leave unmapped</button>
+            <p className={styles.hint}>Current choice: {selected ? `${selected.label} (verified ${kind === "genreForm" ? "LCGFT" : "LCSH"})` : "Unmapped"}.</p>
+          </div>; })}
+      </div>
       <div className={styles.review}><h3>What Claude found in your text</h3><p>{analysis.summary}</p>
         {analysis.observations.length ? <ul>{analysis.observations.map((item, index) => <li key={`${item.field}-${index}`}><strong>{labelFor(item.field)}:</strong> “{item.quote}” {item.ambiguous ? <em>Needs clarification; excluded from the brief until you decide.</em> : <em>Quoted from your idea.</em>}</li>)}</ul> : <p>No details could be quoted with confidence. Add an answer below or revise your idea.</p>}
       </div>
@@ -190,7 +242,7 @@ export default function StoryIntake(props: Props) {
             const entry = <fieldset className={styles.fieldset} disabled={blocked || busy} aria-invalid={!!decisionErrors[field.id]} aria-describedby={decisionErrors[field.id] ? `decision-error-${field.id}` : undefined}><legend>{field.label}{field.id === "genre" ? " — needed for research" : " — optional"}</legend>
               {decisionErrors[field.id] && <p id={`decision-error-${field.id}`} className={styles.blocker}>{decisionErrors[field.id]}</p>}
               {blocked && <p className={styles.hint}>Answer {labelFor(suggestion!.dependsOn!)} first to use this follow-up.</p>}
-              {suggestion && <><p>{suggestion.question}</p><p className={styles.hint}>{suggestion.reason}</p><div className={styles.options}>{suggestion.options.map((option, index) => <label key={index}><input type="radio" name={`intake-${field.id}`} checked={decision?.action === "accept" && decision.optionIndex === index} onChange={() => choose({ field: field.id, action: "accept", optionIndex: index })} /><span>{option}</span></label>)}</div></>}
+              {suggestion && <><p>{suggestion.question}</p><p className={styles.hint}>{suggestion.reason}</p>{field.id !== "genre" && <div className={styles.options}>{suggestion.options.map((option, index) => <label key={index}><input type="radio" name={`intake-${field.id}`} checked={decision?.action === "accept" && decision.optionIndex === index} onChange={() => choose({ field: field.id, action: "accept", optionIndex: index })} /><span>{option}</span></label>)}</div>}</>}
               <label htmlFor={`custom-${field.id}`}>Your answer</label><textarea id={`custom-${field.id}`} rows={2} maxLength={2_000} value={custom[field.id] ?? (decision?.action === "custom" ? decision.value : "")} aria-invalid={!!fieldErrors[field.id]} aria-describedby={fieldErrors[field.id] ? `custom-error-${field.id}` : undefined} onChange={event => { setCustom(current => ({ ...current, [field.id]: event.target.value })); if (event.target.value.trim()) setFieldErrors(previous => { const next = { ...previous }; delete next[field.id]; return next; }); if (decision?.action === "custom") choose({ field: field.id, action: "defer" }); }} />
               {fieldErrors[field.id] && <p id={`custom-error-${field.id}`} className={styles.blocker}>{fieldErrors[field.id]}</p>}
               <div className={styles.actions}><button type="button" onClick={() => { const value = (custom[field.id] ?? (decision?.action === "custom" ? decision.value : "")).trim(); const invalid = !value ? `Write an answer for ${field.label} first.` : inspectText(value, field.id === "genre" ? "label" : "creative", field.id, "intake-decision").verdict !== "ACCEPT" ? `Review the formatting in ${field.label}; remove role markers or hidden control characters.` : field.id === "genre" && value.length > 80 ? "Keep Genre within 80 characters." : ""; if (invalid) { setFieldErrors(previous => ({ ...previous, [field.id]: invalid })); setError("Review the highlighted answer."); return; } choose({ field: field.id, action: "custom", value }); }}>Use my answer</button><button type="button" aria-pressed={decision?.action === "reject"} onClick={() => choose({ field: field.id, action: "reject" })}>Reject suggestions</button><button type="button" aria-pressed={decision?.action === "defer"} onClick={() => choose({ field: field.id, action: "defer" })}>Decide later</button></div>
@@ -221,8 +273,8 @@ export default function StoryIntake(props: Props) {
           setScopeError(!scopeChecked);
           if (!values.genre) setFieldErrors(previous => ({ ...previous, genre: "Add a genre before confirming the research scope." }));
           if (previewError || !values.genre || !scopeChecked || pendingSuggestions.length) { setError(previewError || "Review the highlighted details before confirmation."); return; }
-          assertIntakeDecisionsReviewed(analysis, decisions);
-          scopeFromIntake(analysis, decisions);
+          assertIntakeDecisionsReviewed(analysis, decisions, intake?.selection);
+          scopeFromIntake(analysis, decisions, intake?.selection, intake?.version === 2);
           await act({ action: "confirm", expectedRevision: intake!.revision, analysisId: analysis.id, decisions, confirmScope: true });
           setMessage("Brief and research scope confirmed.");
         })}>Confirm brief and research scope</button>

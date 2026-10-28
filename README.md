@@ -42,6 +42,19 @@ server network access; this is a functional check, not a reliability benchmark.
 New intake projects keep planning blocked until an accepted research dossier
 is connected. The metadata button alone does not create or accept that dossier.
 
+Phase 2B adds explicit Library of Congress searches to the saved intake review:
+genre/form (LCGFT) and optional subject (LCSH), each with zero to three verified
+choices and a manual answer path. Only the short typed search words are sent
+after the writer presses Search; the story is never the vocabulary query.
+Writer wording, authority concepts and the candidate Gutendex topic stay separate.
+New `intake-v3` analysis supplies no authoritative genre options; saved v1/v2
+analyses remain supported. A selected subject supplies a candidate topic whose
+relevance is checked against returned subjects/bookshelves; an unmapped v3 scope
+does not fall back to raw genre. Selected evidence expires after 24 hours.
+Catalog corrections reopen confirmation without another Claude analysis, and
+failed refreshes preserve saved choices and manual input. This implementation is
+verified by SECURITY/REVIEWER and the separately authorized human browser check. Phase 2B is complete within its metadata-alignment scope. See the [Phase 2B record](docs/phase/Manny/Phase-2B-Controlled-vocabulary-and-intake-research-alignment/2B-Controlled-vocabulary-and-intake-research-alignment.md).
+
 The [confirmed Research acquisition boundary](docs/implementation/research-acquisition.md)
 now connects both provider outcomes and a trusted reviewed-source reader to
 Research. Phase 2.1 passed 32/32 targeted and 155/155 full synthetic tests,
