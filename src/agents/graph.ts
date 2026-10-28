@@ -12,6 +12,7 @@ import { draftChapter } from "./writers";
 import { buildFixtureHandoff, validateHandoff, repairFixtureHandoff } from "./handoff";
 import { criticEditorA, criticEditorB } from "./editors";
 import { consistencyShell } from "./consistency-shell";
+import { buildManuscriptEnvelope } from "./write/runtime";
 
 const State = Annotation.Root({ runId: Annotation<string> });
 export async function writeChapter(runId: string, index: number, delayMs = (4-index)*80) {
@@ -108,9 +109,14 @@ export async function finishRun(runId: string) {
       ));
 
     // Store manuscript proposals for Gate #2 review
+    const envelopeA = buildManuscriptEnvelope({ runId, baseVersion: bible.version, baseChapters: outputs, manuscript: manuscriptA });
+    const envelopeB = buildManuscriptEnvelope({ runId, baseVersion: bible.version, baseChapters: outputs, manuscript: manuscriptB });
+    const dataA = { ...manuscriptA, envelope: envelopeA };
+    const dataB = { ...manuscriptB, envelope: envelopeB };
+
     await tx.insert(proposals).values([
-      { id:randomUUID(), projectId:run.projectId, baseVersion:bible.version, kind:"manuscript_a", data:manuscriptA },
-      { id:randomUUID(), projectId:run.projectId, baseVersion:bible.version, kind:"manuscript_b", data:manuscriptB },
+      { id:randomUUID(), projectId:run.projectId, baseVersion:bible.version, kind:"manuscript_a", data:dataA },
+      { id:randomUUID(), projectId:run.projectId, baseVersion:bible.version, kind:"manuscript_b", data:dataB },
     ]);
 
     const contradiction=outputs.find(c=>c.text.includes("Mara swam"));

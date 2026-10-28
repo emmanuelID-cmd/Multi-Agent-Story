@@ -1,11 +1,12 @@
 import { randomUUID } from "node:crypto";
-import { and, asc, desc, eq, like, notLike } from "drizzle-orm";
+import { and, asc, desc, eq, like, ne, notLike } from "drizzle-orm";
 import { db } from "./db";
 import { projects, bibles, proposals, runs, tasks, chapters, critiques, evidence, memories } from "./db/schema";
-import { briefSchema, bibleSchema, runInput, limits } from "../contracts";
+import { briefSchema, bibleSchema, orderedChapters, runInput, limits } from "../contracts";
 import { newIntakeRequestSchema } from "../contracts/intake";
 import { enqueue } from "../worker/queue";
 import type { RevisedManuscript } from "../agents/editors";
+import { verifyManuscriptEnvelope } from "../agents/write/runtime";
 
 export class AppError extends Error { constructor(public status: number, message: string, public fields?: Record<string,string[]>) { super(message); } }
 export async function ownedProject(ownerId: string, id: string) {
@@ -133,17 +134,59 @@ export async function approveManuscriptProposal(ownerId: string, id: string, pro
       throw new AppError(409, "Proposal base version does not match current project version.");
     }
     const data = proposal.data as RevisedManuscript;
-    if (!data.chapters || data.chapters.length !== 3 || new Set(data.chapters.map(c => c.chapterIndex)).size !== 3) {
+
+    // Check kind and lens strict consistency
+    if (proposal.kind === "manuscript_a" && data.editorialLens !== "continuity_and_pacing") {
+      throw new AppError(400, "Proposal kind and editorial lens mismatch.");
+    }
+    if (proposal.kind === "manuscript_b" && data.editorialLens !== "voice_and_atmosphere") {
+      throw new AppError(400, "Proposal kind and editorial lens mismatch.");
+    }
+
+    // Barrier check: orderedChapters on project.version
+    try {
+      orderedChapters(data.chapters, project.version);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes("Stale chapter version")) {
+        throw new AppError(409, "Proposal base version does not match current project version.");
+      }
       throw new AppError(400, "Manuscript must contain exactly chapters 1, 2, and 3.");
     }
-    // Reject all other pending manuscript proposals for this project
+
+    // Verify S04 proposal envelope if present
+    if (data.envelope) {
+      const storedChapters = await tx
+        .select()
+        .from(chapters)
+        .where(eq(chapters.runId, data.envelope.runId));
+
+      const verification = verifyManuscriptEnvelope({
+        envelope: data.envelope,
+        storedChapters,
+        manuscript: data,
+        expectedBaseVersion: project.version,
+      });
+
+      if (!verification.valid) {
+        throw new AppError(409, `Manuscript envelope verification failed: ${verification.error}`);
+      }
+    }
+
+    // Reject all other pending manuscript proposals for this project (excluding the accepted one)
     await tx.update(proposals).set({ status: "rejected" }).where(and(
       eq(proposals.projectId, id),
       eq(proposals.status, "pending"),
-      like(proposals.kind, "manuscript_%")
+      like(proposals.kind, "manuscript_%"),
+      ne(proposals.id, proposalId)
     ));
-    await tx.update(proposals).set({ status: "accepted" }).where(eq(proposals.id, proposalId));
-    return proposal;
+
+    const [updated] = await tx.update(proposals)
+      .set({ status: "accepted" })
+      .where(eq(proposals.id, proposalId))
+      .returning();
+
+    return updated ?? { ...proposal, status: "accepted" };
   });
 }
 export async function rewriteRun(ownerId: string, id: string, feedback?: string, dispatch = true) {

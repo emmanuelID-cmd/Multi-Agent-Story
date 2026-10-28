@@ -1,8 +1,61 @@
+import { createHash } from "node:crypto";
 import { z } from "zod";
 import { chapterSchema, orderedChapters, type Chapter, type Bible, type Brief } from "../../contracts";
 import type { ReaderToEditorHandoff } from "../handoff";
 import type { WriteModel, WriteAgentRole } from "./model";
 import { getPromptForRole } from "./prompts";
+
+export const SHA256_HEX_REGEX = /^[a-f0-9]{64}$/;
+
+export function hashChapterText(text: string): string {
+  return createHash("sha256").update(text, "utf8").digest("hex");
+}
+
+export function hashManuscriptContent(manuscript: {
+  kind: string;
+  editorialLens: string;
+  rationale: string;
+  chapters: Array<{ chapterIndex: number; bibleVersion: number; text: string }>;
+  changesMade: Array<{ chapterIndex: number; summary: string; justification: string }>;
+}): string {
+  const normalized = JSON.stringify({
+    kind: manuscript.kind,
+    editorialLens: manuscript.editorialLens,
+    rationale: manuscript.rationale,
+    chapters: manuscript.chapters
+      .slice()
+      .sort((a, b) => a.chapterIndex - b.chapterIndex)
+      .map((c) => ({
+        chapterIndex: c.chapterIndex,
+        bibleVersion: c.bibleVersion,
+        text: c.text,
+      })),
+    changesMade: manuscript.changesMade.map((ch) => ({
+      chapterIndex: ch.chapterIndex,
+      summary: ch.summary,
+      justification: ch.justification,
+    })),
+  });
+  return createHash("sha256").update(normalized, "utf8").digest("hex");
+}
+
+export const manuscriptEnvelopeSchema = z.object({
+  envelopeVersion: z.literal(1),
+  runId: z.string().min(1),
+  baseVersion: z.number().int().positive(),
+  proposalHash: z.string().regex(SHA256_HEX_REGEX),
+  sourceChapterHashes: z
+    .array(
+      z.object({
+        chapterIndex: z.number().int().min(1).max(3),
+        bibleVersion: z.number().int().positive(),
+        sha256: z.string().regex(SHA256_HEX_REGEX),
+      })
+    )
+    .length(3),
+});
+
+export type ManuscriptEnvelope = z.infer<typeof manuscriptEnvelopeSchema>;
 
 export const revisedManuscriptSchema = z.object({
   kind: z.enum(["manuscript_a", "manuscript_b"]),
@@ -16,9 +69,79 @@ export const revisedManuscriptSchema = z.object({
       justification: z.string().min(1).max(1000),
     })
   ).min(1),
+  envelope: manuscriptEnvelopeSchema.optional(),
 });
 
 export type RevisedManuscript = z.infer<typeof revisedManuscriptSchema>;
+
+export function buildManuscriptEnvelope(params: {
+  runId: string;
+  baseVersion: number;
+  baseChapters: Chapter[];
+  manuscript: RevisedManuscript;
+}): ManuscriptEnvelope {
+  const sortedBase = params.baseChapters.slice().sort((a, b) => a.chapterIndex - b.chapterIndex);
+  const sourceChapterHashes = sortedBase.map((c) => ({
+    chapterIndex: c.chapterIndex,
+    bibleVersion: c.bibleVersion,
+    sha256: hashChapterText(c.text),
+  }));
+
+  const proposalHash = hashManuscriptContent(params.manuscript);
+
+  return {
+    envelopeVersion: 1,
+    runId: params.runId,
+    baseVersion: params.baseVersion,
+    proposalHash,
+    sourceChapterHashes,
+  };
+}
+
+export function verifyManuscriptEnvelope(params: {
+  envelope: ManuscriptEnvelope;
+  storedChapters: Chapter[];
+  manuscript: RevisedManuscript;
+  expectedBaseVersion: number;
+}): { valid: boolean; error?: string } {
+  if (params.envelope.envelopeVersion !== 1) {
+    return { valid: false, error: "Unsupported envelope version." };
+  }
+
+  if (params.envelope.baseVersion !== params.expectedBaseVersion) {
+    return {
+      valid: false,
+      error: `Envelope baseVersion (${params.envelope.baseVersion}) does not match expected version (${params.expectedBaseVersion}).`,
+    };
+  }
+
+  const expectedProposalHash = hashManuscriptContent(params.manuscript);
+  if (params.envelope.proposalHash !== expectedProposalHash) {
+    return { valid: false, error: "Proposal content hash mismatch (tampered manuscript)." };
+  }
+
+  if (params.storedChapters.length !== 3) {
+    return { valid: false, error: "Stored source chapters count is not 3." };
+  }
+
+  const sortedStored = params.storedChapters.slice().sort((a, b) => a.chapterIndex - b.chapterIndex);
+  for (let i = 0; i < 3; i++) {
+    const stored = sortedStored[i];
+    const sourceRef = params.envelope.sourceChapterHashes[i];
+    if (stored.chapterIndex !== sourceRef.chapterIndex) {
+      return { valid: false, error: `Chapter index mismatch for source chapter ${i + 1}.` };
+    }
+    if (stored.bibleVersion !== sourceRef.bibleVersion) {
+      return { valid: false, error: `Bible version mismatch for source chapter ${i + 1}.` };
+    }
+    const computedHash = hashChapterText(stored.text);
+    if (computedHash !== sourceRef.sha256) {
+      return { valid: false, error: `Source chapter ${stored.chapterIndex} text hash mismatch.` };
+    }
+  }
+
+  return { valid: true };
+}
 
 export const chapterProseWireSchema = z.object({
   text: z.string().min(1).max(20000),
