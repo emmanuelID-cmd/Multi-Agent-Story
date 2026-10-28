@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { ProviderEvidence } from "../../server/research/book-metadata";
-import { intakeAnalysisSchema, intakeDecisionSchema, intakeScopeSchema, intakeText } from "../../contracts/intake";
+import { intakeAnalysisSchema, intakeDecisionSchema, intakeScopeSchema, intakeSelectionSchema, intakeText } from "../../contracts/intake";
 
 const id = z.string().min(1).max(128).regex(/^[\p{L}\p{N}._:-]+$/u);
 const digest = z.string().regex(/^[a-f0-9]{64}$/);
@@ -44,6 +44,7 @@ export const confirmedIntakeSchema = z.strictObject({
   rawText: intakeText, sourceHash: digest, analysisHash: digest,
   analysis: intakeAnalysisSchema,
   decisions: z.array(intakeDecisionSchema).max(18),
+  selection: intakeSelectionSchema.optional(),
   scope: intakeScopeSchema,
 });
 export const researchInputSchema = z.strictObject({
@@ -53,7 +54,10 @@ export const researchInputSchema = z.strictObject({
   confirmedIntake: confirmedIntakeSchema.optional(),
   dimensions: z.array(researchDimensionSchema).min(1).max(24),
   eligibleSources: z.array(eligibleSourceSchema).max(24),
-  benchmarkRequest: z.strictObject({ genre: z.string().min(1).max(80), providers: z.tuple([z.literal("nyt"), z.literal("gutendex")]), nytList: z.enum(["hardcover-fiction", "trade-fiction-paperback"]).default("hardcover-fiction"), limit: z.number().int().min(1).max(10).default(5) }),
+  benchmarkRequest: z.strictObject({ genre: z.string().min(1).max(80), intakeVersion: z.literal("intake-v3").optional(),
+    topicPhrase: z.string().min(1).max(200).nullable().optional(),
+    subjectUri: z.string().regex(/^http:\/\/id\.loc\.gov\/authorities\/subjects\/sh[0-9]+$/).nullable().optional(),
+    providers: z.tuple([z.literal("nyt"), z.literal("gutendex")]), nytList: z.enum(["hardcover-fiction", "trade-fiction-paperback"]).default("hardcover-fiction"), limit: z.number().int().min(1).max(10).default(5) }),
 });
 export type ResearchInput = z.input<typeof researchInputSchema>;
 

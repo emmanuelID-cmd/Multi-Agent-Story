@@ -1,4 +1,4 @@
-# Shared Phase 3: Durable execution and recovery
+# Shared Phase 4: Planning and complete orchestration
 
 Owner: Shared; execution owner assigned before implementation.
 
@@ -8,9 +8,8 @@ Keep this approved phase order and folder setup. Changes to scope/order need an 
 
 ## Ordered sub-phases
 
-- [3.1: Storage review and conditional SQL work](3.1.md)
-- [3.2: Atomic state and dependency recording](3.2.md)
-- [3.3: Worker recovery and idempotency](3.3.md)
+- [4.1: Model-backed Bible planning and approval](4.1-Model-backed-Bible-planning-and-approval.md)
+- [4.2: Full fixed graph and phase barriers](4.2-Full-fixed-graph-and-phase-barriers.md)
 
 ## Boundaries and completion
 

@@ -1,12 +1,14 @@
 import { z } from "zod";
 import { inReadSnapshot, ReadError } from "../read-state";
 import { benchmarkRequest, readBookBenchmarks } from "./book-metadata";
-import { intakeRecordSchema, type IntakeScope } from "../../contracts/intake";
+import { intakeRecordSchema, scopeFromIntake, assertIntakeDecisionsReviewed, type IntakeScope } from "../../contracts/intake";
+import { intakeHash } from "../../agents/intake";
 import { briefSchema } from "../../contracts";
+import { isLcFresh } from "../../contracts/vocabulary";
 
 const MAX_REQUEST_BYTES = 4_096;
 const BODY_DEADLINE_MS = 5_000;
-const requestSchema = z.strictObject({ projectId: z.uuid(), ...benchmarkRequest.shape });
+const requestSchema = z.strictObject({ projectId: z.uuid(), ...benchmarkRequest.omit({ intakeVersion: true, topicPhrase: true, subjectUri: true }).shape });
 
 export function verifyBenchmarkOrigin(request: Request) {
   const origin = request.headers.get("origin");
@@ -84,7 +86,20 @@ const defaults: Dependencies = {
     if (!brief.success) return null;
     if (!brief.data.intake) return undefined;
     const intake = intakeRecordSchema.parse(brief.data.intake);
-    return intake.status === "confirmed" ? intake.confirmed?.scope ?? null : null;
+    if (intake.status !== "confirmed" || !intake.confirmed || !intake.analysis ||
+        intake.confirmed.analysisId !== intake.analysis.id || intakeHash(intake.rawText) !== intake.analysis.sourceHash) return null;
+    try {
+      assertIntakeDecisionsReviewed(intake.analysis, intake.decisions, intake.selection);
+      const scope = scopeFromIntake(intake.analysis, intake.decisions, intake.selection, intake.version === 2);
+      if (JSON.stringify(scope) !== JSON.stringify(intake.confirmed.scope)) return null;
+      for (const kind of ["genreForm", "subject"] as const) {
+        const selected = intake.selection?.[kind]; const snapshot = intake.lookups?.[kind];
+        if (selected && (!snapshot || snapshot.revision !== intake.revision - 1 || snapshot.analysisId !== intake.analysis.id ||
+          snapshot.sourceHash !== intake.analysis.sourceHash || !isLcFresh(snapshot.retrievedAt) || !isLcFresh(selected.retrievedAt) ||
+          !snapshot.candidates.some(candidate => candidate.uri === selected.uri && candidate.label === selected.label))) return null;
+      }
+      return scope;
+    } catch { return null; }
   }),
   read: readBookBenchmarks,
 };
@@ -97,6 +112,8 @@ export async function getProjectBenchmarks(ownerId: string, input: BenchmarkInpu
   if (scope && (query.genre !== scope.genre || query.providers.length !== scope.providers.length ||
     query.providers.some(provider => !scope.providers.includes(provider))))
     throw new ReadError(400, "The metadata request must match the confirmed story scope.");
-  const evidence = await dependencies.read(query);
+  const boundQuery = scope?.vocabulary ? { ...query, intakeVersion: "intake-v3" as const,
+    topicPhrase: scope.vocabulary.gutendexPhrase, subjectUri: scope.vocabulary.subject?.uri ?? null } : query;
+  const evidence = await dependencies.read(boundQuery);
   return scope ? { projectId, scope, evidence } : { projectId, evidence };
 }

@@ -1,16 +1,15 @@
-# Manny Phase 3: Reader and Consistency connections
+# Justin Phase 3: Editorial proposals
 
-Owner: Manny.
+Owner: Justin.
 
 Status: planned. Parent completes only after every required sub-phase is verified; conditionally unnecessary SQL work needs an explicit reuse/N/A record.
 
-Keep this approved phase order and folder setup. Changes to scope/order need an explicit plan update.
+Justin owns WRITE implementation and may adjust his phase organization under his own rules. His rules override this reference organization for him; agreed shared contracts, product gates and peer boundaries remain binding.
 
 ## Ordered sub-phases
 
-- [3.1: Actual Reader snapshots](3.1.md)
-- [3.2: Rejection and bounded repair](3.2.md)
-- [3.3: Exact-proposal Consistency](3.3.md)
+- [3.1: Receiving validation and live editorial work](3.1-Receiving-validation-and-live-editorial-work.md)
+- [3.2: Versioned manuscript proposals and preservation](3.2-Versioned-manuscript-proposals-and-preservation.md)
 
 ## Boundaries and completion
 

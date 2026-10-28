@@ -17,7 +17,9 @@ import { assertModelVersion, type ReadModel } from "./model";
 type BenchmarkRequest = z.output<typeof researchInputSchema>["benchmarkRequest"];
 export const providerSchema = z.object({
   provider: z.enum(["nyt", "gutendex"]),
-  status: z.enum(["available", "partial", "empty", "unavailable", "not_requested", "rate_limited"]),
+  status: z.enum(["available", "partial", "empty", "no_match", "unavailable", "not_requested", "rate_limited"]),
+  queryProvenance: z.object({originalGenre:z.string().max(80),topicPhrase:z.string().max(200).nullable(),
+    subjectUri:z.string().max(200).nullable(),scopeVersion:z.enum(["intake-v3","legacy"])}).optional(),
   reasonCode: z.string().min(1).max(100), sourceUrl: z.url().max(2_000),
   checkedAt: z.iso.datetime(), fetchedAt: z.iso.datetime().nullable(),
   limitation: z.string().max(1_000), quarantinedCount: z.number().int().nonnegative(), findingsOmittedCount: z.number().int().nonnegative().optional(),
@@ -34,6 +36,7 @@ export const providerSchema = z.object({
     textCandidates: z.array(z.object({format:z.string(),url:z.string()})).max(4).optional(),
     signals: z.object({ rank: z.number().int().positive().nullable(), weeksOnList: z.number().int().nonnegative().nullable(), downloadCount: z.number().int().nonnegative().nullable() }),
     missingFields: z.array(z.string().max(80)).max(20), matchConfidence: z.literal("unmatched"),
+    relevance: z.enum(["matched","not_matched","unmapped"]).optional(),
   })).max(20),
 });
 function cleanUrl(value: string): boolean { const url = new URL(value); return url.protocol === "https:" && !url.username && !url.password && ![...url.searchParams.keys()].some(k => /key|token|secret|credential/i.test(k)); }
@@ -200,8 +203,8 @@ export async function runResearch(input: ResearchInput, deps: ReadDependencies):
       const confirmed = parsed.confirmedIntake;
       let scope;
       try {
-        assertIntakeDecisionsReviewed(confirmed.analysis, confirmed.decisions);
-        scope = scopeFromIntake(confirmed.analysis, confirmed.decisions);
+        assertIntakeDecisionsReviewed(confirmed.analysis, confirmed.decisions, confirmed.selection);
+        scope = scopeFromIntake(confirmed.analysis, confirmed.decisions, confirmed.selection, Boolean(confirmed.scope.vocabulary));
       } catch { return result(ctx, "blocked", "INVALID_CONFIRMED_SCOPE"); }
       if (sha256(confirmed.rawText) !== confirmed.sourceHash || confirmed.analysis.sourceHash !== confirmed.sourceHash ||
           sha256(JSON.stringify(confirmed.analysis)) !== confirmed.analysisHash ||
@@ -212,6 +215,9 @@ export async function runResearch(input: ResearchInput, deps: ReadDependencies):
           confirmed.revision !== parsed.briefVersion || confirmed.revision !== parsed.scopeVersion ||
           JSON.stringify(scope) !== JSON.stringify(confirmed.scope) || parsed.brief.genre !== scope.genre ||
           parsed.benchmarkRequest.genre !== scope.genre ||
+          (scope.vocabulary && (parsed.benchmarkRequest.intakeVersion !== "intake-v3" ||
+            parsed.benchmarkRequest.topicPhrase !== scope.vocabulary.gutendexPhrase ||
+            parsed.benchmarkRequest.subjectUri !== (scope.vocabulary.subject?.uri ?? null))) ||
           parsed.dimensions.length !== scope.dimensions.length ||
           scope.dimensions.some((d, index) => parsed.dimensions[index]?.id !== d.field ||
             parsed.dimensions[index]?.claimType !== (d.field === "timePeriod" || d.field === "setting" ? "historical" : "craft")) ||

@@ -6,7 +6,7 @@ Status: Phase 1 complete (verified October 27, 2026); Phases 2-4 complete (verif
 
 [Master phase index](../README.md) | [Commit groups](../COMMIT-GROUPS.md)
 
-- [Phase 1: Live WRITE runtime boundary](Phase-1-Live-WRITE-runtime-boundary/1.md)
-- [Phase 2: Chapter generation and write barrier](Phase-2-Chapter-generation-and-write-barrier/2.md)
-- [Phase 3: Editorial proposals](Phase-3-Editorial-proposals/3.md)
-- [Phase 4: Revision cycle and WRITE verification](Phase-4-Revision-cycle-and-WRITE-verification/4.md)
+- [Phase 1: Live WRITE runtime boundary](Phase-1-Live-WRITE-runtime-boundary/1-Live-WRITE-runtime-boundary.md)
+- [Phase 2: Chapter generation and write barrier](Phase-2-Chapter-generation-and-write-barrier/2-Chapter-generation-and-write-barrier.md)
+- [Phase 3: Editorial proposals](Phase-3-Editorial-proposals/3-Editorial-proposals.md)
+- [Phase 4: Revision cycle and WRITE verification](Phase-4-Revision-cycle-and-WRITE-verification/4-Revision-cycle-and-WRITE-verification.md)

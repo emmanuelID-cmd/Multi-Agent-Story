@@ -1,15 +1,16 @@
-# Justin Phase 4: Revision cycle and WRITE verification
+# Justin Phase 2: Chapter generation and write barrier
 
 Owner: Justin.
 
-Status: revision rounds persist the cycle's proposals. Consistency on that path is the labeled swim-rule heuristic. Round 0 still uses the unavailable shell. READ consistency remains M06. Unit suite 293/293 across 29 files on October 28, 2026.
+Status: complete; verified October 27, 2026. Sub-phases 2.1 (J02) and 2.2 (J03) complete and verified with 218/218 tests passing. No SQL changes were required (reused existing PostgreSQL schema).
+
 
 Justin owns WRITE implementation and may adjust his phase organization under his own rules. His rules override this reference organization for him; agreed shared contracts, product gates and peer boundaries remain binding.
 
 ## Ordered sub-phases
 
-- [4.1: Revision-cycle integration](4.1.md)
-- [4.2: Failure, cancellation and preservation coverage](4.2.md)
+- [2.1: Three model-backed writers](2.1-Three-model-backed-writers.md)
+- [2.2: Indexed output, version and completion validation](2.2-Indexed-output-version-and-completion-validation.md)
 
 ## Boundaries and completion
 

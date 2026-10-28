@@ -5,6 +5,7 @@ export type ModelCall = {
   agent: "research" | "reader" | "consistency" | "coordinator";
   system: string; data: unknown; schema: z.ZodType;
   maxOutputTokens: number; signal: AbortSignal;
+  onDiagnostic?: (stage: "model_http" | "model_envelope" | "model_json", category: "PASSED" | "MODEL_HTTP_AUTH" | "MODEL_HTTP_CONFIG" | "MODEL_HTTP_RATE_LIMIT" | "MODEL_HTTP_UNAVAILABLE" | "MODEL_ENVELOPE_INVALID" | "MODEL_STOP_MAX_TOKENS" | "MODEL_STOP_OTHER" | "MODEL_JSON_INVALID" | "MODEL_STREAM_ERROR" | "MODEL_RESPONSE_TOO_LARGE", httpStatus?: number) => void;
 };
 export type ModelResponse = { value: unknown; usage: { inputTokens: number; outputTokens: number } };
 export interface ReadModel { readonly modelId: string; complete(call: ModelCall): Promise<ModelResponse> }
@@ -46,10 +47,11 @@ export function modelWireSchema(schema: z.ZodType): Record<string, unknown> {
 }
 
 async function boundedJson(response: Response, signal: AbortSignal): Promise<unknown> {
-  if (Number(response.headers.get("content-length") || 0) > MAX_RESPONSE_BYTES || !response.body) {
+  if (Number(response.headers.get("content-length") || 0) > MAX_RESPONSE_BYTES) {
     await response.body?.cancel().catch(() => undefined);
-    throw new Error("MODEL_RESPONSE_INVALID");
+    throw new Error("MODEL_RESPONSE_TOO_LARGE");
   }
+  if (!response.body) throw new Error("MODEL_RESPONSE_INVALID");
   const reader = response.body.getReader();
   const chunks: Uint8Array[] = [];
   let size = 0;
@@ -59,7 +61,9 @@ async function boundedJson(response: Response, signal: AbortSignal): Promise<unk
   try {
     while (true) {
       if (signal.aborted) throw new Error("CANCELED");
-      const next = await reader.read();
+      let next: ReadableStreamReadResult<Uint8Array>;
+      try { next = await reader.read(); }
+      catch { throw new Error("MODEL_STREAM_ERROR"); }
       if (next.done) { complete = true; break; }
       size += next.value.byteLength;
       if (size > MAX_RESPONSE_BYTES) throw new Error("MODEL_RESPONSE_TOO_LARGE");
@@ -95,16 +99,33 @@ export class AnthropicReadModel implements ReadModel {
       }),
     });
     if (!response.ok) {
+      call.onDiagnostic?.("model_http", response.status === 429 ? "MODEL_HTTP_RATE_LIMIT" : [401, 403].includes(response.status) ? "MODEL_HTTP_AUTH" : [400, 404].includes(response.status) ? "MODEL_HTTP_CONFIG" : "MODEL_HTTP_UNAVAILABLE", response.status);
       await response.body?.cancel().catch(() => undefined);
       throw new ModelHttpError(response.status);
     }
-    const parsed = envelope.safeParse(await boundedJson(response, call.signal));
-    if (!parsed.success) throw new Error("MODEL_RESPONSE_INVALID");
-    if (parsed.data.content.some(part => !["text", "thinking", "redacted_thinking"].includes(part.type))) throw new Error("MODEL_RESPONSE_INVALID");
+    call.onDiagnostic?.("model_http", "PASSED", response.status);
+    let body: unknown;
+    try { body = await boundedJson(response, call.signal); }
+    catch (error) {
+      if (error instanceof Error && error.message === "MODEL_RESPONSE_TOO_LARGE") call.onDiagnostic?.("model_envelope", "MODEL_RESPONSE_TOO_LARGE");
+      else if (error instanceof Error && error.message === "MODEL_STREAM_ERROR" && !call.signal.aborted) call.onDiagnostic?.("model_envelope", "MODEL_STREAM_ERROR");
+      else if (!response.body) call.onDiagnostic?.("model_envelope", "MODEL_ENVELOPE_INVALID");
+      else if (!call.signal.aborted) call.onDiagnostic?.("model_envelope", "MODEL_JSON_INVALID");
+      throw error;
+    }
+    const parsed = envelope.safeParse(body);
+    if (!parsed.success) {
+      const stop = body && typeof body === "object" && "stop_reason" in body ? (body as { stop_reason: unknown }).stop_reason : undefined;
+      call.onDiagnostic?.("model_envelope", stop === "max_tokens" ? "MODEL_STOP_MAX_TOKENS" : typeof stop === "string" && stop !== "end_turn" ? "MODEL_STOP_OTHER" : "MODEL_ENVELOPE_INVALID");
+      throw new Error("MODEL_RESPONSE_INVALID");
+    }
+    if (parsed.data.content.some(part => !["text", "thinking", "redacted_thinking"].includes(part.type))) { call.onDiagnostic?.("model_envelope", "MODEL_ENVELOPE_INVALID"); throw new Error("MODEL_RESPONSE_INVALID"); }
     const textBlocks = parsed.data.content.filter(part => part.type === "text");
-    if (textBlocks.length !== 1 || !textBlocks[0].text) throw new Error("MODEL_RESPONSE_INVALID");
+    if (textBlocks.length !== 1 || !textBlocks[0].text) { call.onDiagnostic?.("model_envelope", "MODEL_ENVELOPE_INVALID"); throw new Error("MODEL_RESPONSE_INVALID"); }
+    call.onDiagnostic?.("model_envelope", "PASSED");
     let value: unknown;
-    try { value = JSON.parse(textBlocks[0].text); } catch { throw new Error("MODEL_RESPONSE_INVALID"); }
+    try { value = JSON.parse(textBlocks[0].text); } catch { call.onDiagnostic?.("model_json", "MODEL_JSON_INVALID"); throw new Error("MODEL_RESPONSE_INVALID"); }
+    call.onDiagnostic?.("model_json", "PASSED");
     return { value, usage: { inputTokens: parsed.data.usage.input_tokens, outputTokens: parsed.data.usage.output_tokens } };
   }
 }

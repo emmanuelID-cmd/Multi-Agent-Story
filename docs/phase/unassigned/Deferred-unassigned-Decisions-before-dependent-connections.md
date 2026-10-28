@@ -72,4 +72,29 @@ Consistency evidence cannot accept a proposal for the user. Changes to shared
 execution behavior remain a separate integration dependency. This completes the
 product decision, not its implementation or separate Justin code review.
 
+## Deferred extension: Autobiography, memoir and broader nonfiction
+
+Status: deferred by the user on October 27, 2026. Outside the current
+fiction-focused MVP; no implementation, owner or delivery phase is assigned.
+This is a future extension, not another item in the canonical 26-item checklist.
+
+Revisit only after explicit scope approval:
+
+- Select writing form before genre so intake and research can distinguish
+  fiction, autobiography, memoir and other approved nonfiction forms.
+- Add verified nonfiction NYT list choices and appropriate source routing;
+  current fiction-only allowlists do not establish nonfiction support.
+- Adapt intake to personal experiences, chronology, themes and supplied
+  materials without requiring fictional lore, an antagonist or a dramatic climax.
+- Preserve the writer's account and distinguish recollection, documented facts
+  and uncertainty. Never invent personal events or present invented dialogue
+  as something that actually happened.
+- Research narrative craft and relevant historical/context evidence; external
+  books cannot prove the writer's personal experiences.
+- Adapt Bible planning to a chronological or thematic narrative plan while
+  retaining writer approval and the three-chapter MVP unless separately changed.
+
+No provider enablement, prompt, agent roster, interface or current phase order
+changes are authorized by recording this deferral. Phase 3 remains stopped.
+
 [Canonical checklist](../../implementation/weaver-mvp-build-checklist.md) | [Master index](../README.md)

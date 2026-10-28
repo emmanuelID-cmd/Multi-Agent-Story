@@ -1,15 +1,15 @@
-# Justin Phase 3: Editorial proposals
+# Shared Phase 1: Accountability structure and lane identity
 
-Owner: Justin.
+Owner: Shared; execution owner assigned before implementation.
 
 Status: planned. Parent completes only after every required sub-phase is verified; conditionally unnecessary SQL work needs an explicit reuse/N/A record.
 
-Justin owns WRITE implementation and may adjust his phase organization under his own rules. His rules override this reference organization for him; agreed shared contracts, product gates and peer boundaries remain binding.
+Keep this approved phase order and folder setup. Changes to scope/order need an explicit plan update.
 
 ## Ordered sub-phases
 
-- [3.1: Receiving validation and live editorial work](3.1.md)
-- [3.2: Versioned manuscript proposals and preservation](3.2.md)
+- [1.1: Phase files, task coverage and commit groups](1.1-Phase-files-task-coverage-and-commit-groups.md)
+- [1.2: SQL branch-name transition and current references](1.2-SQL-branch-name-transition-and-current-references.md)
 
 ## Boundaries and completion
 

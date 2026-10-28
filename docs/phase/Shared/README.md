@@ -8,8 +8,8 @@ Documentation milestone 1.1 completed October 26, 2026: owner structure, phase m
 
 [Master phase index](../README.md) | [Commit groups](../COMMIT-GROUPS.md)
 
-- [Phase 1: Accountability structure and lane identity](Phase-1-Accountability-structure-and-lane-identity/1.md)
-- [Phase 2: Agreed integration contracts](Phase-2-Agreed-integration-contracts/2.md)
-- [Phase 3: Durable execution and recovery](Phase-3-Durable-execution-and-recovery/3.md)
-- [Phase 4: Planning and complete orchestration](Phase-4-Planning-and-complete-orchestration/4.md)
-- [Phase 5: Application completion and acceptance evidence](Phase-5-Application-completion-and-acceptance-evidence/5.md)
+- [Phase 1: Accountability structure and lane identity](Phase-1-Accountability-structure-and-lane-identity/1-Accountability-structure-and-lane-identity.md)
+- [Phase 2: Agreed integration contracts](Phase-2-Agreed-integration-contracts/2-Agreed-integration-contracts.md)
+- [Phase 3: Durable execution and recovery](Phase-3-Durable-execution-and-recovery/3-Durable-execution-and-recovery.md)
+- [Phase 4: Planning and complete orchestration](Phase-4-Planning-and-complete-orchestration/4-Planning-and-complete-orchestration.md)
+- [Phase 5: Application completion and acceptance evidence](Phase-5-Application-completion-and-acceptance-evidence/5-Application-completion-and-acceptance-evidence.md)

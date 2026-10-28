@@ -83,6 +83,21 @@ Verified move hashes:
 
 # Handoffs prepared for push
 
+## 2026-10-28T18:35:00-04:00
+
+Summary file: PROJECT-HANDOFF.md
+
+- Prepared for initial push: manny/phase-2b-vocabulary-alignment into developer; no publication claimed in this entry. Verified integration baseline: 271f6c62f1bf5eab1394fd86bc6252eb5e753d27.
+- Outgoing commit author: Emmanuel De Jesus <emmanuel.dejesus@pursuit.org> (Manny). Activity: private intake diagnostics f2b0a57, descriptive phase filenames 5a931a9, completed vocabulary/metadata alignment f396a09, developer reconciliation bf5c261, and subsequent closeout metadata. Justin Day's existing developer work, completed WRITE statuses and Bible-ownership agreement are preserved; no outgoing WRITE implementation changes.
+- [x] Done: Phase 2B.1-2B.5, including bounded LC choices/manual inputs, legacy support, current confirmed query provenance, and source-relevance distinction.
+- [x] Done: Human browser acceptance reported NYT OK (5 records) and Gutendex available/OK HTTP 200; no prose-rights, acquisition or Bible-run completion claim.
+- [x] Done: Gutendex deadline 30 seconds, NYT 5 seconds, numeric upstream status and no automatic retries; affected metadata checks 14/14.
+- [x] Done: Integrated units 379/379 across 40 files, typecheck PASS, focused SECURITY clear and final independent REVIEWER APPROVE.
+- [x] Done: Descriptive phase links and owner records preserved; both additive PRD amendments retained.
+- [ ] Not completed at preparation: initial push, PR to developer, safe merge, eligible non-main alignment and temporary phase-branch deletion.
+- [ ] Not completed: Manny Phase 3/4 remain paused; full-text acquisition/rights and Research-to-Bible execution are outside Phase 2B. Historical docs/temp/trace archives remain local and untracked.
+
+
 ## 2026-10-28T15:45:00-04:00
 
 - Preparation time: America/New_York; not a verified push timestamp.
@@ -260,7 +275,7 @@ Verified move hashes:
 
 - [x] Publish-ready Weaver concept gallery, five Threadkeeper variations and the jointly selected merged artwork; README records the name and approved logo.
 - [x] Prepare PRD v4's reliability-first MVP amendments and preserve v3 history; inventory all 26 remaining assignments without claiming implementation.
-- [x] Complete Shared Phase 1.1: owner folders, integer phase overviews and decimal sub-phases, primary task mapping, deferred decision register, phase commit groups and evidence-based completion rules. Every numbered phase folder includes its approved title; numeric filenames remain inside.
+- [x] Complete Shared Phase 1.1: owner folders, integer phase overviews and decimal sub-phases, primary task mapping, deferred decision register, phase commit groups and evidence-based completion rules. Every numbered phase folder includes its approved title; phase files use their phase ID and descriptive subtitle in the filename.
 - [x] Document shared SQL ownership and canonical sql-foundation lane; preserve historical branch records.
 - [x] Verify the unit suite and scoped documentation checks; preserve application, database, main and external AGENTS files.
 
