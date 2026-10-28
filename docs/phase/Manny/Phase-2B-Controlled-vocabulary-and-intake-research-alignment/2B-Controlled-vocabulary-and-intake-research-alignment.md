@@ -1,7 +1,7 @@
 # Phase 2B: Controlled vocabulary and intake research alignment
 
 Owner: Manny (READ)
-Status: COMPLETE ? all sub-phases, source review, synthetic verification and human browser acceptance passed October 28, 2026. Publication is authorized and in progress.
+Status: COMPLETE - all sub-phases, source review, synthetic verification and human browser acceptance passed October 28, 2026. Publication is authorized and in progress.
 
 Phase 2B is supplemental to completed Manny Phase 2. It records the bounded plan to align verified Library of Congress vocabulary with writer intake and later Gutendex lookup. Phase 3 Reader Consistency and Phase 4 READ reliability retain their existing numbering and remain paused under the current user override. The 26-item canonical checklist is unchanged.
 
@@ -31,6 +31,10 @@ Why checked: the implementation and its stated acceptance conditions were verifi
 
 Evidence: `.tools/reviews/phase2b-builder-results.md`, `.tools/reviews/phase2b-security-results.md`, `.tools/reviews/phase2b-reviewer-results.md` (local verification records). Human browser evidence remains unverified. The canonical 26-item checklist and Phase 3/4 pause are unchanged.
 
-## Human acceptance and closeout ? October 28, 2026
+## Human acceptance and closeout - October 28, 2026
 
 The user confirmed saved Claude analysis/suggestions, LC selection and reconfirmation, and application metadata retrieval: NYT available/OK with five records; Gutendex available/OK with HTTP 200. The separate one-request Node diagnostic returned HTTP 200 in 0.49 seconds, 681 total matches and 32 returned records. These user-run live checks are distinct from synthetic tests and do not establish prose rights, source-text acquisition, style synthesis or a Research-to-Bible run. Earlier timeout/HTTP failures remain recorded; their exact cause is unconfirmed. Gutendex now has a bounded 30-second deadline, no automatic retries, and numeric upstream HTTP diagnostics. Latest affected metadata tests: 14/14 passed. Phase 3/4 stay paused; the canonical 26-item checklist is unchanged. All Phase 2B criteria are satisfied; publication and safe integration were subsequently authorized by the user.
+
+## Integrated publication verification - October 28, 2026
+
+After preserving developer commit 271f6c62f1bf5eab1394fd86bc6252eb5e753d27, the integrated application passed 379/379 unit tests across 40 files and typecheck. One focused SECURITY inspection reused current relevant evidence and found no issues; final publication REVIEWER checks include all outgoing changes. No live calls or new trace execution occurred.

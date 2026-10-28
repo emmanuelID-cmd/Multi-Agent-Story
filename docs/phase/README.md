@@ -9,7 +9,7 @@ Every numbered phase has its own folder named `Phase-<integer>-<phase-title>`, i
 ## Owner plans
 
 - [Manny: READ](Manny/README.md)
-- [Manny Phase 2B supplemental plan](Manny/Phase-2B-Controlled-vocabulary-and-intake-research-alignment/2B-Controlled-vocabulary-and-intake-research-alignment.md) — approved documentation plan; PLANNED / NOT STARTED
+- [Manny Phase 2B supplemental plan](Manny/Phase-2B-Controlled-vocabulary-and-intake-research-alignment/2B-Controlled-vocabulary-and-intake-research-alignment.md) — approved documentation plan; COMPLETE (metadata alignment and user acceptance; publication authorized)
 - [Justin: WRITE](Justin/README.md)
 - [Shared: integration, persistence and application](Shared/README.md)
 - [Unassigned: deferred decisions](unassigned/Deferred-unassigned-Decisions-before-dependent-connections.md)
