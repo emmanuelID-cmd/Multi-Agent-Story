@@ -153,7 +153,7 @@ Verified move hashes:
 
 - [x] Publish-ready Weaver concept gallery, five Threadkeeper variations and the jointly selected merged artwork; README records the name and approved logo.
 - [x] Prepare PRD v4's reliability-first MVP amendments and preserve v3 history; inventory all 26 remaining assignments without claiming implementation.
-- [x] Complete Shared Phase 1.1: owner folders, integer phase overviews and decimal sub-phases, primary task mapping, deferred decision register, phase commit groups and evidence-based completion rules. Every numbered phase folder includes its approved title; numeric filenames remain inside.
+- [x] Complete Shared Phase 1.1: owner folders, integer phase overviews and decimal sub-phases, primary task mapping, deferred decision register, phase commit groups and evidence-based completion rules. Every numbered phase folder includes its approved title; phase files use their phase ID and descriptive subtitle in the filename.
 - [x] Document shared SQL ownership and canonical sql-foundation lane; preserve historical branch records.
 - [x] Verify the unit suite and scoped documentation checks; preserve application, database, main and external AGENTS files.
 

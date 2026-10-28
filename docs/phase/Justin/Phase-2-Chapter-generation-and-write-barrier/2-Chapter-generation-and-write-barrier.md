@@ -1,4 +1,4 @@
-# Justin Phase 4: Revision cycle and WRITE verification
+# Justin Phase 2: Chapter generation and write barrier
 
 Owner: Justin.
 
@@ -8,8 +8,8 @@ Justin owns WRITE implementation and may adjust his phase organization under his
 
 ## Ordered sub-phases
 
-- [4.1: Revision-cycle integration](4.1.md)
-- [4.2: Failure, cancellation and preservation coverage](4.2.md)
+- [2.1: Three model-backed writers](2.1-Three-model-backed-writers.md)
+- [2.2: Indexed output, version and completion validation](2.2-Indexed-output-version-and-completion-validation.md)
 
 ## Boundaries and completion
 

@@ -8,9 +8,9 @@ Keep this approved phase order and folder setup. Changes to scope/order need an 
 
 ## Ordered sub-phases
 
-- [5.1: Actions, progress and approval connections](5.1.md)
-- [5.2: Accepted export](5.2.md)
-- [5.3: Full-circle and failed-gate verification](5.3.md)
+- [5.1: Actions, progress and approval connections](5.1-Actions-progress-and-approval-connections.md)
+- [5.2: Accepted export](5.2-Accepted-export.md)
+- [5.3: Full-circle and failed-gate verification](5.3-Full-circle-and-failed-gate-verification.md)
 
 ## Boundaries and completion
 

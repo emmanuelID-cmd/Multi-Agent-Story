@@ -1,6 +1,6 @@
-# Shared Phase 1: Accountability structure and lane identity
+# Manny Phase 4: READ reliability evidence
 
-Owner: Shared; execution owner assigned before implementation.
+Owner: Manny.
 
 Status: planned. Parent completes only after every required sub-phase is verified; conditionally unnecessary SQL work needs an explicit reuse/N/A record.
 
@@ -8,8 +8,8 @@ Keep this approved phase order and folder setup. Changes to scope/order need an 
 
 ## Ordered sub-phases
 
-- [1.1: Phase files, task coverage and commit groups](1.1.md)
-- [1.2: SQL branch-name transition and current references](1.2.md)
+- [4.1: Failure, freshness and recovery coverage](4.1-Failure-freshness-and-recovery-coverage.md)
+- [4.2: Safe diagnostics and documentation corrections](4.2-Safe-diagnostics-and-documentation-corrections.md)
 
 ## Boundaries and completion
 

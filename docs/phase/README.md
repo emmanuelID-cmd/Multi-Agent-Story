@@ -4,14 +4,15 @@ Approved ownership plan for the remaining MVP, against [PRD v4](../prd/drafts/PR
 
 ## Folder convention
 
-Every numbered phase has its own folder named `Phase-<integer>-<phase-title>`, including phases without sub-phases. Use the approved integer phase title, with spaces replaced by hyphens. Keep numeric files inside: `Manny/Phase-1-Confirmed-intake-to-Research-contract/1.md`, or `Manny/Phase-3-Reader-and-Consistency-connections/3.md` beside `3.1.md`, `3.2.md` and `3.3.md`. Sub-phase filenames do not repeat their subtitles. Owner-level README files remain indexes. This replaces the earlier folder naming convention without changing phase numbers, order, ownership or completion status.
+Every numbered phase has its own folder named `Phase-<integer>-<phase-title>`, including phases without sub-phases. Name each phase file `<phase-id>-<descriptive-subtitle>.md`, using its existing heading subtitle with spaces and slashes replaced by hyphens and unsafe filename punctuation removed. For example, `Manny/Phase-1-Confirmed-intake-to-Research-contract/1-Confirmed-intake-to-Research-contract.md` and `Manny/Phase-3-Reader-and-Consistency-connections/3.1-Actual-Reader-snapshots.md`. Owner-level README files remain indexes. These filenames do not change phase numbers, order, ownership or completion status.
 
 ## Owner plans
 
 - [Manny: READ](Manny/README.md)
+- [Manny Phase 2B supplemental plan](Manny/Phase-2B-Controlled-vocabulary-and-intake-research-alignment/2B-Controlled-vocabulary-and-intake-research-alignment.md) — approved documentation plan; PLANNED / NOT STARTED
 - [Justin: WRITE](Justin/README.md)
 - [Shared: integration, persistence and application](Shared/README.md)
-- [Unassigned: deferred decisions](unassigned/deferred-unassigned-phase.md)
+- [Unassigned: deferred decisions](unassigned/Deferred-unassigned-Decisions-before-dependent-connections.md)
 - [Phase commit groups](COMMIT-GROUPS.md)
 
 ## Order and dependencies
@@ -104,32 +105,32 @@ Each ID appears once below at its primary completion location; supporting phases
 
 | Item | Owner | Primary completion phase |
 | --- | --- | --- |
-| I01 | Shared | [4.1](Shared/Phase-4-Planning-and-complete-orchestration/4.1.md) |
-| I02 | Shared | [4.2](Shared/Phase-4-Planning-and-complete-orchestration/4.2.md) |
-| I03 | Shared | [3.2](Shared/Phase-3-Durable-execution-and-recovery/3.2.md) |
-| I04 | Shared | [3.3](Shared/Phase-3-Durable-execution-and-recovery/3.3.md) |
-| I05 | Shared | [5.1](Shared/Phase-5-Application-completion-and-acceptance-evidence/5.1.md) |
-| I06 | Shared | [5.2](Shared/Phase-5-Application-completion-and-acceptance-evidence/5.2.md) |
-| I07 | Shared | [5.3](Shared/Phase-5-Application-completion-and-acceptance-evidence/5.3.md) |
-| J01 | Justin | [1](Justin/Phase-1-Live-WRITE-runtime-boundary/1.md) |
-| J02 | Justin | [2.1](Justin/Phase-2-Chapter-generation-and-write-barrier/2.1.md) |
-| J03 | Justin | [2.2](Justin/Phase-2-Chapter-generation-and-write-barrier/2.2.md) |
-| J04 | Justin | [3.1](Justin/Phase-3-Editorial-proposals/3.1.md) |
-| J05 | Justin | [3.2](Justin/Phase-3-Editorial-proposals/3.2.md) |
-| J06 | Justin | [4.1](Justin/Phase-4-Revision-cycle-and-WRITE-verification/4.1.md) |
-| J07 | Justin | [4.2](Justin/Phase-4-Revision-cycle-and-WRITE-verification/4.2.md) |
-| M01 | Manny | [1](Manny/Phase-1-Confirmed-intake-to-Research-contract/1.md) |
-| M02 | Manny | [2.1](Manny/Phase-2-Research-evidence-and-dossier-acceptance/2.1.md) |
-| M03 | Manny | [2.2](Manny/Phase-2-Research-evidence-and-dossier-acceptance/2.2.md) |
-| M04 | Manny | [3.1](Manny/Phase-3-Reader-and-Consistency-connections/3.1.md) |
-| M05 | Manny | [3.2](Manny/Phase-3-Reader-and-Consistency-connections/3.2.md) |
-| M06 | Manny | [3.3](Manny/Phase-3-Reader-and-Consistency-connections/3.3.md) |
-| M07 | Manny | [4.1](Manny/Phase-4-READ-reliability-evidence/4.1.md) |
-| M08 | Manny | [4.2](Manny/Phase-4-READ-reliability-evidence/4.2.md) |
-| S01 | unassigned | [deferred](unassigned/deferred-unassigned-phase.md) |
-| S02 | unassigned | [deferred](unassigned/deferred-unassigned-phase.md) |
-| S03 | unassigned | [deferred](unassigned/deferred-unassigned-phase.md) |
-| S04 | unassigned | [deferred](unassigned/deferred-unassigned-phase.md) |
+| I01 | Shared | [4.1](Shared/Phase-4-Planning-and-complete-orchestration/4.1-Model-backed-Bible-planning-and-approval.md) |
+| I02 | Shared | [4.2](Shared/Phase-4-Planning-and-complete-orchestration/4.2-Full-fixed-graph-and-phase-barriers.md) |
+| I03 | Shared | [3.2](Shared/Phase-3-Durable-execution-and-recovery/3.2-Atomic-state-and-dependency-recording.md) |
+| I04 | Shared | [3.3](Shared/Phase-3-Durable-execution-and-recovery/3.3-Worker-recovery-and-idempotency.md) |
+| I05 | Shared | [5.1](Shared/Phase-5-Application-completion-and-acceptance-evidence/5.1-Actions-progress-and-approval-connections.md) |
+| I06 | Shared | [5.2](Shared/Phase-5-Application-completion-and-acceptance-evidence/5.2-Accepted-export.md) |
+| I07 | Shared | [5.3](Shared/Phase-5-Application-completion-and-acceptance-evidence/5.3-Full-circle-and-failed-gate-verification.md) |
+| J01 | Justin | [1](Justin/Phase-1-Live-WRITE-runtime-boundary/1-Live-WRITE-runtime-boundary.md) |
+| J02 | Justin | [2.1](Justin/Phase-2-Chapter-generation-and-write-barrier/2.1-Three-model-backed-writers.md) |
+| J03 | Justin | [2.2](Justin/Phase-2-Chapter-generation-and-write-barrier/2.2-Indexed-output-version-and-completion-validation.md) |
+| J04 | Justin | [3.1](Justin/Phase-3-Editorial-proposals/3.1-Receiving-validation-and-live-editorial-work.md) |
+| J05 | Justin | [3.2](Justin/Phase-3-Editorial-proposals/3.2-Versioned-manuscript-proposals-and-preservation.md) |
+| J06 | Justin | [4.1](Justin/Phase-4-Revision-cycle-and-WRITE-verification/4.1-Revision-cycle-integration.md) |
+| J07 | Justin | [4.2](Justin/Phase-4-Revision-cycle-and-WRITE-verification/4.2-Failure-cancellation-and-preservation-coverage.md) |
+| M01 | Manny | [1](Manny/Phase-1-Confirmed-intake-to-Research-contract/1-Confirmed-intake-to-Research-contract.md) |
+| M02 | Manny | [2.1](Manny/Phase-2-Research-evidence-and-dossier-acceptance/2.1-Provider-source-retrieval.md) |
+| M03 | Manny | [2.2](Manny/Phase-2-Research-evidence-and-dossier-acceptance/2.2-Dossier-persistence-coverage-and-acceptance-connection.md) |
+| M04 | Manny | [3.1](Manny/Phase-3-Reader-and-Consistency-connections/3.1-Actual-Reader-snapshots.md) |
+| M05 | Manny | [3.2](Manny/Phase-3-Reader-and-Consistency-connections/3.2-Rejection-and-bounded-repair.md) |
+| M06 | Manny | [3.3](Manny/Phase-3-Reader-and-Consistency-connections/3.3-Exact-proposal-Consistency.md) |
+| M07 | Manny | [4.1](Manny/Phase-4-READ-reliability-evidence/4.1-Failure-freshness-and-recovery-coverage.md) |
+| M08 | Manny | [4.2](Manny/Phase-4-READ-reliability-evidence/4.2-Safe-diagnostics-and-documentation-corrections.md) |
+| S01 | unassigned | [deferred](unassigned/Deferred-unassigned-Decisions-before-dependent-connections.md) |
+| S02 | unassigned | [deferred](unassigned/Deferred-unassigned-Decisions-before-dependent-connections.md) |
+| S03 | unassigned | [deferred](unassigned/Deferred-unassigned-Decisions-before-dependent-connections.md) |
+| S04 | unassigned | [deferred](unassigned/Deferred-unassigned-Decisions-before-dependent-connections.md) |
 
 ## Current boundary
 

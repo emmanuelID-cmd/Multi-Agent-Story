@@ -1,4 +1,4 @@
-# Manny Phase 4: READ reliability evidence
+# Manny Phase 3: Reader and Consistency connections
 
 Owner: Manny.
 
@@ -8,8 +8,9 @@ Keep this approved phase order and folder setup. Changes to scope/order need an 
 
 ## Ordered sub-phases
 
-- [4.1: Failure, freshness and recovery coverage](4.1.md)
-- [4.2: Safe diagnostics and documentation corrections](4.2.md)
+- [3.1: Actual Reader snapshots](3.1-Actual-Reader-snapshots.md)
+- [3.2: Rejection and bounded repair](3.2-Rejection-and-bounded-repair.md)
+- [3.3: Exact-proposal Consistency](3.3-Exact-proposal-Consistency.md)
 
 ## Boundaries and completion
 

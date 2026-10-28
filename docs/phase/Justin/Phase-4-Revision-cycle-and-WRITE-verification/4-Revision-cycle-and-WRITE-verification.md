@@ -1,4 +1,4 @@
-# Justin Phase 3: Editorial proposals
+# Justin Phase 4: Revision cycle and WRITE verification
 
 Owner: Justin.
 
@@ -8,8 +8,8 @@ Justin owns WRITE implementation and may adjust his phase organization under his
 
 ## Ordered sub-phases
 
-- [3.1: Receiving validation and live editorial work](3.1.md)
-- [3.2: Versioned manuscript proposals and preservation](3.2.md)
+- [4.1: Revision-cycle integration](4.1-Revision-cycle-integration.md)
+- [4.2: Failure, cancellation and preservation coverage](4.2-Failure-cancellation-and-preservation-coverage.md)
 
 ## Boundaries and completion
 

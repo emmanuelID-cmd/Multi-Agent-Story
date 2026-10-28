@@ -10,7 +10,7 @@ kind, immutable versioned dossier payload and dedicated authenticated acceptance
 service. Preserve owner/version checks, existing Writer/Editor behavior and
 legacy pending-proposal controls. No migration is needed for this reuse. Apply
 the PRD per-dimension gate; no new numeric threshold is agreed. See
-[the bounded implementation agreement](../../Manny/Phase-2-Research-evidence-and-dossier-acceptance/2.2.md#approved-implementation-agreement).
+[the bounded implementation agreement](../../Manny/Phase-2-Research-evidence-and-dossier-acceptance/2.2-Dossier-persistence-coverage-and-acceptance-connection.md#approved-implementation-agreement).
 This resolves that storage decision only; Shared Phase 2 remains incomplete and
 S03/S04 product decisions were subsequently approved in the decision register;
 their implementation still needs verification. S02 remains unresolved.

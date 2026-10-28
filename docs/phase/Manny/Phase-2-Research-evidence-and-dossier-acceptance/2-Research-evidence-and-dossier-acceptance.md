@@ -24,8 +24,8 @@ Keep this approved phase order and folder setup. Changes to scope/order need an 
 
 ## Ordered sub-phases
 
-- [2.1: Provider/source retrieval](2.1.md)
-- [2.2: Dossier persistence, coverage and acceptance connection](2.2.md)
+- [2.1: Provider/source retrieval](2.1-Provider-source-retrieval.md)
+- [2.2: Dossier persistence, coverage and acceptance connection](2.2-Dossier-persistence-coverage-and-acceptance-connection.md)
 
 ## Boundaries and completion
 

@@ -32,6 +32,7 @@ may be labeled a completed phase, and unresolved prerequisites remain gates.
 | manny-1 | feat(manny-read): phase 1 — confirmed intake-to-research contract | M01; all criteria in the phase file verified |
 | manny-2.1 | feat(manny-read): phase 2.1 — provider/source retrieval | M02; all criteria in the phase file verified |
 | manny-2.2 | feat(manny-read): phase 2.2 — dossier persistence, coverage and acceptance connection | M03; all criteria in the phase file verified |
+| manny-2b | docs(manny-read): phase 2B — controlled vocabulary and intake/research alignment | Supplemental approved plan only; planned/not started; implementation, branch and publication are not authorized by this record |
 | manny-3.1 | feat(manny-read): phase 3.1 — actual reader snapshots | M04; all criteria in the phase file verified |
 | manny-3.2 | feat(manny-read): phase 3.2 — rejection and bounded repair | M05; all criteria in the phase file verified |
 | manny-3.3 | feat(manny-read): phase 3.3 — exact-proposal consistency | M06; all criteria in the phase file verified |
