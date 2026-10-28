@@ -2,7 +2,7 @@
 
 Owner: Justin.
 
-Status: planned. Parent completes only after every required sub-phase is verified; conditionally unnecessary SQL work needs an explicit reuse/N/A record.
+Status: revision rounds persist the cycle's proposals. Consistency on that path is the labeled swim-rule heuristic. Round 0 still uses the unavailable shell. READ consistency remains M06. Unit suite 293/293 across 29 files on October 28, 2026.
 
 Justin owns WRITE implementation and may adjust his phase organization under his own rules. His rules override this reference organization for him; agreed shared contracts, product gates and peer boundaries remain binding.
 

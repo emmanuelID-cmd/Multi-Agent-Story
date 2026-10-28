@@ -660,7 +660,22 @@ alignment, then delete the verified merged temporary branch and stop. Automatic
 Phase 3/4 continuation is deferred until the user reinstates the rule; their
 previously approved names and product decisions remain recorded for later use.
 
-## 7k. Approved Phase 2B vocabulary amendment, October 28, 2026
+## 7k. Addendum: Assignment of Story Bible Creation Agents to Justin (October 28, 2026)
+
+On October 28, 2026, the project user explicitly directed that **Justin will take over making the agents that will create the story bibles** (`bible_a`, `bible_b`, `bible_c` / Bible Planning roles).
+
+### Key Decisions and Architectural Implications:
+1. **Ownership direction (S02 stays open on the phase checklist):**
+   - The October 28 direction assigns Story Bible creation (`bible_a`, `bible_b`, `bible_c`) to **Justin**. The phase checklist still lists S02 as unresolved, so this addendum does not mark that gate complete.
+   - Justin's implementation domain expands from the 5 WRITE instances (Chapter Writers 1/2/3 and Critic/Editors A/B) to include the 3 Story Bible creation agents (totaling 8 agent instances).
+   - Manny retains ownership of the 3 READ instances (`research`, `reader`, `consistency`). Coordinator / Showrunner remains shared.
+
+2. **Input Boundary and Gate Invariants Preserved:**
+   - Bible planning begins only after Research records both NYT Books and Gutendex outcomes and an accepted versioned dossier is established under the confirmed intake scope.
+   - Justin's Bible creation agents receive the accepted Research dossier and confirmed brief via strictly validated boundaries.
+   - Bible planning outputs remain *proposals* until explicit human approval binds an immutable `bibleVersion` for downstream chapter drafting.
+
+## 7l. Approved Phase 2B vocabulary amendment, October 28, 2026
 
 The user approved the complete supplemental Phase 2B implementation and exact
 branch `manny/phase-2b-vocabulary-alignment`. This amendment records that approved

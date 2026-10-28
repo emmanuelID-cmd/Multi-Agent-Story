@@ -1,4 +1,10 @@
-import { chapterSchema, type Chapter, type Fixture } from "../contracts";
+import { chapterSchema, type Chapter, type Fixture, type Bible, type Brief } from "../contracts";
+import type { WriteModel } from "./write/model";
+import {
+  generateChapterProse,
+  type GenerateChapterInput,
+  type GenerateChapterResult,
+} from "./write/runtime";
 
 export function draftChapterOne(bibleVersion: number): Chapter {
   return chapterSchema.parse({
@@ -42,3 +48,34 @@ export function draftChapter(index: number, bibleVersion: number, fixture: Fixtu
       throw new Error(`Invalid chapter index: ${index}`);
   }
 }
+
+export interface DraftChapterModelInput {
+  index: 1 | 2 | 3;
+  bibleVersion: number;
+  approvedBible: Bible;
+  brief?: Brief;
+  precedingChapters?: Chapter[];
+}
+
+/**
+ * Live model-backed chapter generation for J02.
+ * Connects all three chapter writers (1: Grimm, 2: Andersen, 3: Perrault)
+ * to model-generated prose using the approved bible.
+ *
+ * CRITICAL INVARIANT: Failures are never replaced by fixture prose.
+ */
+export async function draftChapterModel(
+  input: DraftChapterModelInput,
+  model: WriteModel,
+  signal?: AbortSignal
+): Promise<GenerateChapterResult> {
+  const chapterInput: GenerateChapterInput = {
+    chapterIndex: input.index,
+    bibleVersion: input.bibleVersion,
+    approvedBible: input.approvedBible,
+    brief: input.brief,
+    precedingChapters: input.precedingChapters,
+  };
+  return generateChapterProse(chapterInput, model, signal);
+}
+

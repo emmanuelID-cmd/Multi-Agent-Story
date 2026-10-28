@@ -1,11 +1,13 @@
 import { randomUUID } from "node:crypto";
-import { and, asc, desc, eq, like, notLike } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, like, ne, notLike } from "drizzle-orm";
 import { db } from "./db";
 import { projects, bibles, proposals, runs, tasks, chapters, critiques, evidence, memories } from "./db/schema";
-import { briefSchema, bibleSchema, runInput, limits } from "../contracts";
+import { briefSchema, bibleSchema, orderedChapters, runInput, limits } from "../contracts";
+import { inspectText } from "../contracts/input-policy";
 import { newIntakeRequestSchema } from "../contracts/intake";
 import { enqueue } from "../worker/queue";
 import type { RevisedManuscript } from "../agents/editors";
+import { verifyManuscriptEnvelope } from "../agents/write/runtime";
 
 export class AppError extends Error { constructor(public status: number, message: string, public fields?: Record<string,string[]>) { super(message); } }
 export async function ownedProject(ownerId: string, id: string) {
@@ -132,18 +134,73 @@ export async function approveManuscriptProposal(ownerId: string, id: string, pro
     if (proposal.baseVersion !== project.version) {
       throw new AppError(409, "Proposal base version does not match current project version.");
     }
+    const projectRuns = await tx.select().from(runs).where(eq(runs.projectId, id));
+    if (projectRuns.some((run) => run.status === "pending" || run.status === "running")) {
+      throw new AppError(409, "A run is already active. Accept the manuscript after it finishes.");
+    }
     const data = proposal.data as RevisedManuscript;
-    if (!data.chapters || data.chapters.length !== 3 || new Set(data.chapters.map(c => c.chapterIndex)).size !== 3) {
+
+    // Check kind and lens strict consistency
+    if (proposal.kind === "manuscript_a" && data.editorialLens !== "continuity_and_pacing") {
+      throw new AppError(400, "Proposal kind and editorial lens mismatch.");
+    }
+    if (proposal.kind === "manuscript_b" && data.editorialLens !== "voice_and_atmosphere") {
+      throw new AppError(400, "Proposal kind and editorial lens mismatch.");
+    }
+
+    // Barrier check: orderedChapters on project.version
+    try {
+      orderedChapters(data.chapters, project.version);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes("Stale chapter version")) {
+        throw new AppError(409, "Proposal base version does not match current project version.");
+      }
       throw new AppError(400, "Manuscript must contain exactly chapters 1, 2, and 3.");
     }
-    // Reject all other pending manuscript proposals for this project
+
+    // Acceptance needs the envelope. A manuscript without one cannot prove which chapters it revised.
+    if (!data.envelope) {
+      throw new AppError(409, "Manuscript proposal is missing its envelope.");
+    }
+
+    const envelopeRuns = await tx.select().from(runs).where(eq(runs.id, data.envelope.runId));
+    const envelopeRun = envelopeRuns.find((row) => row.id === data.envelope?.runId);
+    if (!envelopeRun || envelopeRun.projectId !== id) {
+      throw new AppError(409, "Manuscript envelope run does not belong to this project.");
+    }
+
+    const storedChapterRows = await tx
+      .select()
+      .from(chapters)
+      .where(eq(chapters.runId, data.envelope.runId));
+    const storedChapters = storedChapterRows.filter((row) => row.runId === data.envelope?.runId);
+
+    const verification = verifyManuscriptEnvelope({
+      envelope: data.envelope,
+      storedChapters,
+      manuscript: data,
+      expectedBaseVersion: project.version,
+    });
+
+    if (!verification.valid) {
+      throw new AppError(409, `Manuscript envelope verification failed: ${verification.error}`);
+    }
+
+    // Reject all other pending manuscript proposals for this project (excluding the accepted one)
     await tx.update(proposals).set({ status: "rejected" }).where(and(
       eq(proposals.projectId, id),
       eq(proposals.status, "pending"),
-      like(proposals.kind, "manuscript_%")
+      like(proposals.kind, "manuscript_%"),
+      ne(proposals.id, proposalId)
     ));
-    await tx.update(proposals).set({ status: "accepted" }).where(eq(proposals.id, proposalId));
-    return proposal;
+
+    const [updated] = await tx.update(proposals)
+      .set({ status: "accepted" })
+      .where(eq(proposals.id, proposalId))
+      .returning();
+
+    return updated ?? { ...proposal, status: "accepted" };
   });
 }
 export async function rewriteRun(ownerId: string, id: string, feedback?: string, dispatch = true) {
@@ -151,13 +208,37 @@ export async function rewriteRun(ownerId: string, id: string, feedback?: string,
   const [completedRun] = await db.select().from(runs).where(and(eq(runs.projectId, id), eq(runs.status, "completed"))).orderBy(desc(runs.createdAt)).limit(1);
   if (!completedRun) throw new AppError(409, "A completed run is required before requesting a rewrite.");
   const [critique] = await db.select().from(critiques).where(eq(critiques.runId, completedRun.id));
-  const currentRound = (critique?.data as { revisionRounds?: number } | undefined)?.revisionRounds ?? 0;
+
+  // S03: Robust round accounting across runs and tasks (initial draft is round 0, max 2 requested revision rounds)
+  const projectRuns = await db.select().from(runs).where(eq(runs.projectId, id));
+  const runIds = projectRuns.map(r => r.id);
+  let maxTaskRound = 0;
+  if (runIds.length > 0) {
+    const projectTasks = await db.select().from(tasks).where(inArray(tasks.runId, runIds));
+    maxTaskRound = Math.max(0, ...projectTasks.map(t => (t.savedInput as { revisionRound?: number } | undefined)?.revisionRound ?? 0));
+  }
+  const critiqueRound = (critique?.data as { revisionRounds?: number } | undefined)?.revisionRounds ?? 0;
+  // A failed rewrite still counts. S03 says a failure does not reset the two-round cap.
+  const currentRound = Math.max(maxTaskRound, critiqueRound);
+
   if (currentRound >= limits.revisionRounds) {
     throw new AppError(409, "The two-round revision limit has been reached. Existing proposals remain available.");
   }
   const nextRound = currentRound + 1;
 
-  let desiredEnding: string = completedRun.fixture; // placeholder fallback
+  // S04 / PRD 7j: Represent editorial instructions separately from desired ending
+  const userFeedback = feedback?.trim() || "";
+  if (userFeedback.length > 500) {
+    throw new AppError(400, "Feedback exceeds 500 characters.");
+  }
+  const feedbackCheck = inspectText(userFeedback, "creative", "editorialInstructions", "rewrite");
+  if (feedbackCheck.verdict === "REJECT") {
+    throw new AppError(400, "Feedback contains characters that cannot be saved.");
+  }
+  // An empty request stays empty. It does not become a placeholder sentence.
+  const editorialInstructions = userFeedback;
+  const hasAdditionalInstructions = userFeedback.length > 0;
+
   const nextRun = await db.transaction(async tx => {
     const [project] = await tx.select().from(projects).where(eq(projects.id, id)).for("update");
     const [bible] = await tx.select().from(bibles).where(and(eq(bibles.projectId, id), eq(bibles.version, project.version)));
@@ -165,21 +246,8 @@ export async function rewriteRun(ownerId: string, id: string, feedback?: string,
     const active = await tx.select().from(runs).where(eq(runs.projectId, id));
     if (active.some(r => ["pending", "running"].includes(r.status))) throw new AppError(409, "A run is already active.");
 
-    desiredEnding = project.brief.desiredEnding;
-    if (feedback && feedback.trim()) {
-      const combined = `${desiredEnding} [Feedback: ${feedback.trim()}]`;
-      if (combined.length > 500) {
-        throw new AppError(400, "Feedback causes desired ending to exceed 500 characters.");
-      }
-      desiredEnding = combined;
-    }
-
-    // Reject older pending manuscript proposals for this project
-    await tx.update(proposals).set({ status: "rejected" }).where(and(
-      eq(proposals.projectId, id),
-      eq(proposals.status, "pending"),
-      like(proposals.kind, "manuscript_%")
-    ));
+    // Leave the current proposals pending until the revision that replaces them is saved.
+    // A failed enqueue must not throw away the pair the writer can still review.
 
     const [created] = await tx.insert(runs).values({
       id: randomUUID(),
@@ -194,11 +262,15 @@ export async function rewriteRun(ownerId: string, id: string, feedback?: string,
       savedInput: {
         bible: bible.data,
         version: bible.version,
-        brief: {
-          ...project.brief,
-          desiredEnding,
-        },
+        brief: project.brief,
         revisionRound: nextRound,
+        editorialInstructions,
+        hasAdditionalInstructions,
+        userInstructions: {
+          recordedRequest: editorialInstructions,
+          revision: nextRound,
+          hasAdditionalInstructions,
+        },
       },
     })));
     return created;
@@ -216,12 +288,8 @@ export async function startRun(ownerId: string, id: string, input: unknown, disp
     const active = await tx.select().from(runs).where(eq(runs.projectId,id));
     if (active.some(r=>["pending","running"].includes(r.status))) throw new AppError(409,"A run is already active.");
 
-    // Reject older pending manuscript proposals before starting a new run
-    await tx.update(proposals).set({ status: "rejected" }).where(and(
-      eq(proposals.projectId, id),
-      eq(proposals.status, "pending"),
-      like(proposals.kind, "manuscript_%")
-    ));
+    // A new draft does not reject the current proposals. Rejection happens only
+    // in the same save that inserts their replacements.
 
     const [created] = await tx.insert(runs).values({id:randomUUID(),projectId:id,bibleId:bible.id,fixture:parsed.fixture}).returning();
     await tx.insert(tasks).values([1,2,3].map(chapterIndex=>({
@@ -233,6 +301,13 @@ export async function startRun(ownerId: string, id: string, input: unknown, disp
         version:bible.version,
         brief:project.brief,
         revisionRound:0,
+        editorialInstructions: "",
+        hasAdditionalInstructions: false,
+        userInstructions: {
+          recordedRequest: project.brief.desiredEnding ?? "",
+          revision: 0,
+          hasAdditionalInstructions: false,
+        },
       },
     })));
     return created;
@@ -276,8 +351,12 @@ export async function exportProject(ownerId: string, id: string) {
   doc += state.chapters.map(c => `## Draft Chapter ${c.chapterIndex} (bible v${c.bibleVersion})\n${c.text}`).join("\n\n");
   if (state.acceptedManuscript) {
     const ms = state.acceptedManuscript.data as RevisedManuscript;
-    doc += `\n\n## Accepted Manuscript (${ms.editorialLens})\nRationale: ${ms.rationale}\n\n` +
-      ms.chapters.map(c => `### Chapter ${c.chapterIndex}\n${c.text}`).join("\n\n");
+    doc += `\n\n## Accepted Manuscript (${ms.editorialLens})\nRationale: ${ms.rationale}\n\n`;
+    if (ms.changesMade && ms.changesMade.length > 0) {
+      doc += `### Located Editorial Changes\n` +
+        ms.changesMade.map(ch => `- **Chapter ${ch.chapterIndex}**: ${ch.summary} _(Justification: ${ch.justification})_`).join("\n") + "\n\n";
+    }
+    doc += ms.chapters.map(c => `### Chapter ${c.chapterIndex}\n${c.text}`).join("\n\n");
   } else {
     doc += "\n\n## Accepted Manuscript\nNone accepted yet. Draft chapters remain pending review.\n";
   }
