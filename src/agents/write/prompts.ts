@@ -97,6 +97,7 @@ YOUR DISTINCT EDITORIAL LENS & DIRECTIVES:
 - Focus on narrative rhythm, structural discipline, and smooth causal transitions across all 3 chapters.
 - Eliminate logical leaps, temporal confusion, plot holes, and any inconsistencies with approved facts.
 - Tighten dragging scenes and expand rushed turning points so the story has sharp momentum and dramatic drive.
+- Rigorous line editing: eliminate mechanical defects, run-on punctuation, double terminals ('..'), and clause collisions while sharpening causal transitions and pacing momentum.
 - Infuse structural clarity, causal discipline, and elegant pacing into the revised prose.
 
 ${SHARED_EDITOR_DIRECTIVE}
@@ -114,6 +115,7 @@ YOUR DISTINCT EDITORIAL LENS & DIRECTIVES:
 - Focus on sensory richness, immersive world atmosphere, prose texture, and distinctive character voice.
 - Enhance emotional resonance, poetic cadence, and atmospheric mood across all 3 chapters.
 - Ensure the author's requested tone is fully realized in every scene, dialogue exchange, and description.
+- Impeccable sentence typography: ensure sensory depth and poetic cadence maintain flawless grammar, correct capitalization inside clauses, and zero duplicate punctuation.
 - Infuse sensory depth, resonant mood, and evocative atmospheric color into the revised prose.
 
 ${SHARED_EDITOR_DIRECTIVE}

@@ -2,6 +2,7 @@ import { join } from "node:path";
 import { orderedChapters, type Chapter } from "../../../contracts";
 import { draftChapterModel } from "../../writers";
 import { AnthropicWriteModel, type WriteModel, type WriteModelResponse } from "../model";
+import { cleanProseTypography } from "../runtime";
 import { SandboxTracer, type BibleRunTrace } from "./tracer";
 import { type MockBibleCase } from "../../../../tests/fixtures/mock-bibles";
 import { resolveSandboxPaths } from "./cleanup";
@@ -10,6 +11,14 @@ export interface SandboxExecutionOptions {
   model?: WriteModel;
   useLiveModel?: boolean;
   baseDir?: string;
+}
+
+function stripTerminal(s: string): string {
+  return s.trim().replace(/[.,;:!?\s]+$/, "");
+}
+
+function lowerFirst(s: string): string {
+  return s.length > 0 ? s.charAt(0).toLowerCase() + s.slice(1) : s;
 }
 
 /**
@@ -26,42 +35,49 @@ export function createSandboxSimulatedModel(bibleCase: MockBibleCase): WriteMode
 
       const role = call.role;
       const index = role === "chapter_writer_1" ? 1 : role === "chapter_writer_2" ? 2 : 3;
-      const beat = bibleCase.bible.beats.find((b) => b.chapterIndex === index)?.text ?? "";
+      const rawBeat = bibleCase.bible.beats.find((b) => b.chapterIndex === index)?.text ?? "";
+      const beat = stripTerminal(rawBeat);
 
       let text = "";
       if (index === 1) {
         // Beat 1: World grounding, tactile stakes, opening incident
-        text = `The air was sharp and laden with the grit of ${bibleCase.expectedToneNotes.toLowerCase()}. ` +
-          `The narrative grounded the physical setting where ${bibleCase.bible.facts[0].text} ` +
+        const fact0 = lowerFirst(stripTerminal(bibleCase.bible.facts[0].text));
+        text = `The air was sharp and laden with the grit of ${stripTerminal(bibleCase.expectedToneNotes).toLowerCase()}. ` +
+          `The narrative grounded the physical setting where ${fact0}. ` +
           `Without hesitation, the journey commenced under the shadows: ${beat}. ` +
           `Every stone and shadow echoed with the warning that the boundaries were shifting, ` +
           `leaving an open path for what was to follow.`;
       } else if (index === 2) {
         // Beat 2: Emotional depth, internal conflict, midpoint crisis
+        const fact1 = lowerFirst(stripTerminal(bibleCase.bible.facts[1]?.text ?? "the stakes had doubled"));
         text = `A lingering ache tightened in the chest as the initial excitement turned to dread. ` +
           `The narrative carried the continuity forward from the first encounter. ` +
-          `It became painfully clear that ${bibleCase.bible.facts[1]?.text ?? "the stakes had doubled"}. ` +
+          `It became painfully clear that ${fact1}. ` +
           `Facing the midpoint storm: ${beat}. ` +
           `Between tears and endurance, the crucible demanded everything before the night gave way.`;
       } else {
         // Beat 3: Climax, falling action, decisive resolution
+        const fact2 = lowerFirst(stripTerminal(bibleCase.bible.facts[2]?.text ?? "no thread could be abandoned"));
+        const desiredEnding = lowerFirst(stripTerminal(bibleCase.brief.desiredEnding));
         text = `The final hour arrived with the force of an unyielding tide. ` +
           `The story threads reached their decisive apex. ` +
-          `Remembering that ${bibleCase.bible.facts[2]?.text ?? "no thread could be abandoned"}, ` +
+          `Remembering that ${fact2}, ` +
           `the decisive action unfolded: ${beat}. ` +
-          `With the climax met and the danger subdued, ${bibleCase.brief.desiredEnding} ` +
+          `With the climax met and the danger subdued, ${desiredEnding}. ` +
           `Peace settled across the landscape, unbroken and complete.`;
       }
+
+      const cleanedText = cleanProseTypography(text);
 
       const precedingCount = Array.isArray((call.data as any)?.precedingChapters)
         ? (call.data as any).precedingChapters.length
         : 0;
       const promptTokens = 250 + precedingCount * 180;
-      const completionTokens = Math.round(text.length / 4);
+      const completionTokens = Math.round(cleanedText.length / 4);
 
       return {
         modelUsed: "sandbox-simulated-haiku",
-        value: { text },
+        value: { text: cleanedText },
         usage: { inputTokens: promptTokens, outputTokens: completionTokens },
       } satisfies WriteModelResponse;
     },
