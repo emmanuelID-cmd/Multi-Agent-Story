@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   orderedChapters,
   chapterSchema,
+  limits,
   type Chapter,
   type Bible,
 } from "../src/contracts";
@@ -10,6 +11,9 @@ import {
   draftChapterTwo,
   draftChapterThree,
 } from "../src/agents/writers";
+import { db } from "../src/server/db";
+import { runs, tasks, bibles, chapters } from "../src/server/db/schema";
+import { finishRun, writeChapter } from "../src/agents/graph";
 
 describe("J03: Chapter Write Barrier (orderedChapters)", () => {
   const version = 1;
@@ -214,5 +218,167 @@ describe("J03: Write Barrier Invariants & Recovery Lifecycle", () => {
     }
 
     expect(canCommitChapter(run)).toBe(false);
+  });
+});
+
+describe("J03: Direct finishRun and writeChapter Barrier Integration", () => {
+  interface MockStore {
+    run?: any;
+    tasks?: any[];
+    bible?: any;
+    chapters?: any[];
+    updates: Array<{ table: any; values: any }>;
+  }
+
+  function setupMockDb(store: MockStore) {
+    return vi.spyOn(db, "transaction").mockImplementation(async (callback: any) => {
+      const mockTx = {
+        select: () => ({
+          from: (table: any) => {
+            const query = {
+              where: (_cond: any) => {
+                const getRows = () => {
+                  if (table === runs) return store.run ? [store.run] : [];
+                  if (table === tasks) return store.tasks ?? [];
+                  if (table === bibles) return store.bible ? [store.bible] : [];
+                  if (table === chapters) return store.chapters ?? [];
+                  return [];
+                };
+                const rows = getRows();
+                const promise = Promise.resolve(rows);
+                return Object.assign(promise, {
+                  for: (_mode: string) => Promise.resolve(rows),
+                  limit: (_n: number) => Promise.resolve(rows.slice(0, _n)),
+                });
+              },
+            };
+            return query;
+          },
+        }),
+        update: (table: any) => ({
+          set: (values: any) => ({
+            where: async (_cond: any) => {
+              store.updates.push({ table, values });
+              if (table === runs && store.run) {
+                Object.assign(store.run, values);
+              }
+              return [];
+            },
+          }),
+        }),
+        insert: (_table: any) => ({
+          values: (_v: any) => ({
+            onConflictDoNothing: async () => [],
+          }),
+        }),
+      };
+      return callback(mockTx);
+    });
+  }
+
+  it("transitions runs.status to failed when stored chapters fail orderedChapters validation (missing chapter 3)", async () => {
+    const store: MockStore = {
+      run: { id: "run-barrier-1", bibleId: "b-1", status: "running", projectId: "p-1" },
+      tasks: [
+        { id: "t-1", runId: "run-barrier-1", chapterIndex: 1, status: "completed" },
+        { id: "t-2", runId: "run-barrier-1", chapterIndex: 2, status: "completed" },
+        { id: "t-3", runId: "run-barrier-1", chapterIndex: 3, status: "completed" },
+      ],
+      bible: { id: "b-1", version: 1, data: { facts: [], beats: [] } },
+      chapters: [
+        draftChapterOne(1),
+        draftChapterTwo(1, "normal"),
+        // Missing chapter 3
+      ],
+      updates: [],
+    };
+
+    const spy = setupMockDb(store);
+    try {
+      const res = await finishRun("run-barrier-1");
+      expect(res).toEqual({});
+      expect(store.run.status).toBe("failed");
+      expect(store.updates).toEqual(
+        expect.arrayContaining([{ table: runs, values: { status: "failed" } }])
+      );
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("transitions runs.status to failed when stored chapters have mismatched bibleVersion", async () => {
+    const store: MockStore = {
+      run: { id: "run-barrier-2", bibleId: "b-2", status: "running", projectId: "p-2" },
+      tasks: [
+        { id: "t-1", runId: "run-barrier-2", chapterIndex: 1, status: "completed" },
+        { id: "t-2", runId: "run-barrier-2", chapterIndex: 2, status: "completed" },
+        { id: "t-3", runId: "run-barrier-2", chapterIndex: 3, status: "completed" },
+      ],
+      bible: { id: "b-2", version: 1, data: { facts: [], beats: [] } },
+      chapters: [
+        draftChapterOne(1),
+        draftChapterTwo(999, "normal"), // Stale version
+        draftChapterThree(1),
+      ],
+      updates: [],
+    };
+
+    const spy = setupMockDb(store);
+    try {
+      await finishRun("run-barrier-2");
+      expect(store.run.status).toBe("failed");
+      expect(store.updates).toEqual(
+        expect.arrayContaining([{ table: runs, values: { status: "failed" } }])
+      );
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("transitions runs.status to failed when any task is incomplete", async () => {
+    const store: MockStore = {
+      run: { id: "run-barrier-3", bibleId: "b-3", status: "running", projectId: "p-3" },
+      tasks: [
+        { id: "t-1", runId: "run-barrier-3", chapterIndex: 1, status: "completed" },
+        { id: "t-2", runId: "run-barrier-3", chapterIndex: 2, status: "failed" }, // Failed task
+        { id: "t-3", runId: "run-barrier-3", chapterIndex: 3, status: "completed" },
+      ],
+      bible: { id: "b-3", version: 1, data: { facts: [], beats: [] } },
+      chapters: [],
+      updates: [],
+    };
+
+    const spy = setupMockDb(store);
+    try {
+      await finishRun("run-barrier-3");
+      expect(store.run.status).toBe("failed");
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("transitions runs.status to paused in writeChapter when token budget is exhausted", async () => {
+    const store: MockStore = {
+      run: {
+        id: "run-barrier-4",
+        bibleId: "b-4",
+        status: "running",
+        usedTokens: limits.tokens + 1, // Exceeded token limit
+        fixture: "normal",
+      },
+      updates: [],
+    };
+
+    const spy = setupMockDb(store);
+    try {
+      const res = await writeChapter("run-barrier-4", 1);
+      expect(res).toEqual({});
+      expect(store.run.status).toBe("paused");
+      expect(store.updates).toEqual(
+        expect.arrayContaining([{ table: runs, values: { status: "paused" } }])
+      );
+    } finally {
+      spy.mockRestore();
+    }
   });
 });

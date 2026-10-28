@@ -197,6 +197,9 @@ export class AnthropicWriteModel implements WriteModel {
 
     const parsed = envelope.safeParse(await boundedJson(response, call.signal));
     if (!parsed.success) throw new Error("MODEL_RESPONSE_INVALID");
+    if (parsed.data.stop_reason === "max_tokens") {
+      throw new Error("MODEL_RESPONSE_TRUNCATED");
+    }
     if (parsed.data.content.some(part => !["text", "thinking", "redacted_thinking"].includes(part.type))) {
       throw new Error("MODEL_RESPONSE_INVALID");
     }

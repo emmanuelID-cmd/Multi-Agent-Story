@@ -132,4 +132,28 @@ describe("WRITE Anthropic Boundary (J01)", () => {
       })
     ).rejects.toThrow();
   });
+
+  it("rejects truncated responses where stop_reason is max_tokens", async () => {
+    const fetcher: typeof fetch = async () =>
+      Response.json(makeReply({ stop_reason: "max_tokens" }));
+    const model = new AnthropicWriteModel("test-api-key", { fetcher });
+
+    await expect(model.complete(makeCall("chapter_writer_1"))).rejects.toThrow(
+      "MODEL_RESPONSE_TRUNCATED"
+    );
+  });
+
+  it("rejects unparseable JSON text blocks before returning", async () => {
+    const fetcher: typeof fetch = async () =>
+      Response.json({
+        content: [{ type: "text", text: "{ unclosed json text ..." }],
+        stop_reason: "end_turn",
+        usage: { input_tokens: 50, output_tokens: 25 },
+      });
+    const model = new AnthropicWriteModel("test-api-key", { fetcher });
+
+    await expect(model.complete(makeCall("chapter_writer_1"))).rejects.toThrow(
+      "MODEL_RESPONSE_INVALID"
+    );
+  });
 });

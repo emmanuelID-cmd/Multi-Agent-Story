@@ -49,6 +49,12 @@ export interface GenerateChapterInput {
   precedingChapters?: Chapter[];
 }
 
+export interface GenerateChapterResult extends Chapter {
+  chapter: Chapter;
+  usage: { inputTokens: number; outputTokens: number };
+  modelUsed: string;
+}
+
 export interface GenerateEditorialProposalInput {
   role: "critic_editor_a" | "critic_editor_b";
   bibleVersion: number;
@@ -66,7 +72,7 @@ export async function generateChapterProse(
   input: GenerateChapterInput,
   model: WriteModel,
   signal: AbortSignal = new AbortController().signal
-): Promise<Chapter> {
+): Promise<GenerateChapterResult> {
   const role: WriteAgentRole = `chapter_writer_${input.chapterIndex}` as WriteAgentRole;
   const { alias, systemPrompt } = getPromptForRole(role);
 
@@ -87,15 +93,22 @@ export async function generateChapterProse(
     approvedFacts: input.approvedBible.facts,
     brief: input.brief
       ? {
+          premise: input.brief.premise,
+          audience: input.brief.audience,
           genre: input.brief.genre,
           tone: input.brief.tone,
           desiredEnding: input.brief.desiredEnding,
         }
       : undefined,
-    precedingChapters: input.precedingChapters?.map((c) => ({
-      chapterIndex: c.chapterIndex,
-      text: c.text,
-    })),
+    precedingChapters: input.precedingChapters
+      ? input.precedingChapters
+          .filter((c) => c.chapterIndex < input.chapterIndex)
+          .sort((a, b) => a.chapterIndex - b.chapterIndex)
+          .map((c) => ({
+            chapterIndex: c.chapterIndex,
+            text: c.text,
+          }))
+      : undefined,
   };
 
   const response = await model.complete({
@@ -109,10 +122,16 @@ export async function generateChapterProse(
   const parsed = chapterProseWireSchema.parse(response.value);
 
   // Authoritatively construct the Chapter record bound to the exact input bibleVersion
-  return chapterSchema.parse({
+  const chapterRecord = chapterSchema.parse({
     chapterIndex: input.chapterIndex,
     bibleVersion: input.bibleVersion,
     text: parsed.text,
+  });
+
+  return Object.assign(chapterRecord, {
+    chapter: chapterRecord,
+    usage: response.usage,
+    modelUsed: response.modelUsed,
   });
 }
 

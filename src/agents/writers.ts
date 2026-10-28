@@ -1,6 +1,10 @@
 import { chapterSchema, type Chapter, type Fixture, type Bible, type Brief } from "../contracts";
 import type { WriteModel } from "./write/model";
-import { generateChapterProse, type GenerateChapterInput } from "./write/runtime";
+import {
+  generateChapterProse,
+  type GenerateChapterInput,
+  type GenerateChapterResult,
+} from "./write/runtime";
 
 export function draftChapterOne(bibleVersion: number): Chapter {
   return chapterSchema.parse({
@@ -64,7 +68,7 @@ export async function draftChapterModel(
   input: DraftChapterModelInput,
   model: WriteModel,
   signal?: AbortSignal
-): Promise<Chapter> {
+): Promise<GenerateChapterResult> {
   const chapterInput: GenerateChapterInput = {
     chapterIndex: input.index,
     bibleVersion: input.bibleVersion,

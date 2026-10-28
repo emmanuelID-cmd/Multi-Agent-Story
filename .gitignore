@@ -36,6 +36,7 @@ Desktop.ini
 
 # Project-local runtime and test artifacts.
 .tools/
+logs/
 test-results/
 playwright-report/
 *.tsbuildinfo

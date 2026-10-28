@@ -116,6 +116,123 @@ describe("WRITE Runtime Boundary (J01)", () => {
       expect(capturedPayload.precedingChapters[0].chapterIndex).toBe(1);
     });
 
+    it("passes premise and audience from brief into writer payload", async () => {
+      let capturedPayload: any;
+      const fetcher: typeof fetch = async (_url, init) => {
+        const body = JSON.parse(String(init?.body));
+        capturedPayload = JSON.parse(body.messages[0].content).storyContext;
+        return Response.json({
+          content: [{ type: "text", text: JSON.stringify({ text: "Grimm chapter text" }) }],
+          stop_reason: "end_turn",
+          usage: { input_tokens: 150, output_tokens: 75 },
+        });
+      };
+
+      const mockModel = new AnthropicWriteModel("test-key", { fetcher });
+      const brief = {
+        premise: "Mara follows a blue signal to rescue a missing sailor.",
+        genre: "Adventure",
+        audience: "Young Adult",
+        tone: "Atmospheric",
+        desiredEnding: "Safe rescue by boat.",
+      };
+
+      await generateChapterProse(
+        {
+          chapterIndex: 1,
+          bibleVersion: 1,
+          approvedBible: testBible,
+          brief,
+        },
+        mockModel
+      );
+
+      expect(capturedPayload.brief.premise).toBe("Mara follows a blue signal to rescue a missing sailor.");
+      expect(capturedPayload.brief.audience).toBe("Young Adult");
+      expect(capturedPayload.brief.genre).toBe("Adventure");
+      expect(capturedPayload.brief.tone).toBe("Atmospheric");
+      expect(capturedPayload.brief.desiredEnding).toBe("Safe rescue by boat.");
+    });
+
+    it("defensively filters future chapters and sorts preceding chapters in strict ascending order", async () => {
+      let capturedPayload: any;
+      const fetcher: typeof fetch = async (_url, init) => {
+        const body = JSON.parse(String(init?.body));
+        capturedPayload = JSON.parse(body.messages[0].content).storyContext;
+        return Response.json({
+          content: [{ type: "text", text: JSON.stringify({ text: "Chapter 2 prose" }) }],
+          stop_reason: "end_turn",
+          usage: { input_tokens: 110, output_tokens: 55 },
+        });
+      };
+
+      const mockModel = new AnthropicWriteModel("test-key", { fetcher });
+
+      // Pass scrambled chapters including future chapter 3 when generating Chapter 2
+      await generateChapterProse(
+        {
+          chapterIndex: 2,
+          bibleVersion: 1,
+          approvedBible: testBible,
+          precedingChapters: [baseChapters[2], baseChapters[0]], // ch3, ch1
+        },
+        mockModel
+      );
+
+      // Chapter 3 must be filtered out because 3 >= 2
+      expect(capturedPayload.precedingChapters).toHaveLength(1);
+      expect(capturedPayload.precedingChapters[0].chapterIndex).toBe(1);
+
+      // For Chapter 3, pass [ch2, ch1] scrambled
+      await generateChapterProse(
+        {
+          chapterIndex: 3,
+          bibleVersion: 1,
+          approvedBible: testBible,
+          precedingChapters: [baseChapters[1], baseChapters[0]], // ch2, ch1
+        },
+        mockModel
+      );
+
+      // Must be sorted [1, 2]
+      expect(capturedPayload.precedingChapters).toHaveLength(2);
+      expect(capturedPayload.precedingChapters[0].chapterIndex).toBe(1);
+      expect(capturedPayload.precedingChapters[1].chapterIndex).toBe(2);
+    });
+
+    it("returns model telemetry (usage and modelUsed) alongside chapter prose", async () => {
+      const mockModel = new AnthropicWriteModel("test-key", {
+        fetcher: async () =>
+          Response.json({
+            content: [{ type: "text", text: JSON.stringify({ text: "Telemetric chapter prose" }) }],
+            stop_reason: "end_turn",
+            usage: { input_tokens: 220, output_tokens: 110 },
+          }),
+      });
+
+      const result = await generateChapterProse(
+        {
+          chapterIndex: 1,
+          bibleVersion: 5,
+          approvedBible: testBible,
+        },
+        mockModel
+      );
+
+      // Direct Chapter properties
+      expect(result.chapterIndex).toBe(1);
+      expect(result.bibleVersion).toBe(5);
+      expect(result.text).toBe("Telemetric chapter prose");
+
+      // Direct telemetry properties
+      expect(result.usage).toEqual({ inputTokens: 220, outputTokens: 110 });
+      expect(result.modelUsed).toContain("claude");
+
+      // Backward-compatible chapter record
+      expect(result.chapter.chapterIndex).toBe(1);
+      expect(result.chapter.text).toBe("Telemetric chapter prose");
+    });
+
     it("throws if chapter beat is missing in approved bible", async () => {
       const emptyBible: Bible = { facts: [], beats: [] as any };
       const mockModel = new AnthropicWriteModel("test-key", {
