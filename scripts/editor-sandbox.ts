@@ -11,6 +11,7 @@ import {
   resolveEditorSandboxPaths,
 } from "../src/agents/write/sandbox/cleanup";
 import { executeEditorsInSandbox } from "../src/agents/write/sandbox/editor-runner";
+import { swimRuleApplies } from "../src/agents/write/sandbox/editorial-model";
 import { generateEditorConclusionsReport } from "../src/agents/write/sandbox/editor-conclusions";
 import { type EditorRunTrace } from "../src/agents/write/sandbox/editor-tracer";
 
@@ -53,7 +54,7 @@ async function main() {
   }
 
   console.log(`🎯 Mode: ${useLive ? `LIVE ANTHROPIC (${modelArg})` : "DETERMINISTIC SIMULATION"}`);
-  console.log(`🔄 End-to-End Writers Pre-Pass: ${endToEnd ? "ENABLED" : "Standard Base Chapters"}`);
+  console.log(`🔄 End-to-End Writers Pre-Pass: ${endToEnd ? "ENABLED" : "OFF (bible beats are the base)"}`);
   console.log(`⚠️ Adversarial Injection: ${adversarial ? "ENABLED" : "OFF"}`);
   console.log(`📚 Executing ${selectedCases.length} mock bible(s)...\n`);
 
@@ -66,9 +67,16 @@ async function main() {
     console.log(`   Genre: ${bibleCase.brief.genre} | Tone: ${bibleCase.brief.tone}`);
     console.log(`------------------------------------------------------------------`);
 
-    // Optionally inject adversarial contradiction if requested
-    let baseChaptersOverride = undefined;
-    if (adversarial && bibleCase.id === "lighthouse") {
+    const swimApplies = swimRuleApplies(bibleCase.bible.facts);
+    let baseChaptersOverride = endToEnd
+      ? undefined
+      : [1, 2, 3].map((chapterIndex) => ({
+          chapterIndex,
+          bibleVersion: bibleCase.bibleVersion,
+          text: bibleCase.bible.beats.find((beat) => beat.chapterIndex === chapterIndex)?.text
+            ?? `Chapter ${chapterIndex}.`,
+        }));
+    if (adversarial && swimApplies) {
       baseChaptersOverride = [
         {
           chapterIndex: 1,
@@ -86,7 +94,9 @@ async function main() {
           text: "Mara pulled the exhausted sailor into the boat and rowed back through the surge.",
         },
       ];
-      console.log(`  💉 Injected deliberate Chapter 2 contradiction ("Mara swam") into base chapters.`);
+      console.log(`  Injected a Chapter 2 swim contradiction because this bible has a cannot-swim fact.`);
+    } else if (adversarial) {
+      console.log(`  Swim injection is not applicable for ${bibleCase.id}. No cannot-swim fact is on this bible.`);
     }
 
     const tStart = Date.now();
@@ -94,7 +104,7 @@ async function main() {
       useLiveModel: useLive,
       liveModelId: modelArg,
       baseChapters: baseChaptersOverride,
-      endToEnd,
+      endToEnd: endToEnd && !baseChaptersOverride,
     });
     const elapsed = Date.now() - tStart;
     traces.push(trace);

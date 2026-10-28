@@ -23,6 +23,7 @@ import {
 import { generateWorkflowConclusionsReport } from "./workflow-conclusions";
 import { initWorkflowSandboxDirectories } from "./cleanup";
 import { AnthropicWriteModel, type WriteModel, type WriteModelCall } from "../model";
+import { createSandboxEditorialModel, swimRuleApplies } from "./editorial-model";
 
 export interface WorkflowRunnerOptions {
   model?: WriteModel;
@@ -48,7 +49,10 @@ function createSimulatedWorkflowModel(
       }
 
       const role = call.role;
-      const bibleId = bibleCase.id;
+
+      if (role === "critic_editor_a" || role === "critic_editor_b") {
+        return createSandboxEditorialModel(bibleCase).complete(call);
+      }
 
       if (role === "chapter_writer_1") {
         return {
@@ -61,7 +65,8 @@ function createSimulatedWorkflowModel(
       }
 
       if (role === "chapter_writer_2") {
-        const text = adversarial
+        const injectSwim = adversarial && swimRuleApplies(bibleCase.bible.facts);
+        const text = injectSwim
           ? `Mara swam into the dark channel toward the breakwater rocks, abandoning the boat. This deliberate action directly contradicts approved fact F1 and must be caught by consistency.`
           : `Mara pulled steadily on the oars, keeping the wooden skiff strictly within the sheltered lee of the breakwater. With the tide surging violently, she tracked the pulsing blue beacon through the sea mist, closing the distance to the outer ledge without ever leaving the safety of the hull.`;
         return {
@@ -78,72 +83,6 @@ function createSimulatedWorkflowModel(
           },
           usage: { inputTokens: 450, outputTokens: 85 },
           modelUsed: "mock-writer-perrault",
-        };
-      }
-
-      if (role === "critic_editor_a") {
-        // Fontaine: Continuity & Pacing
-        return {
-          value: {
-            rationale:
-              "Tightened transitional logic, clarified boat maneuvering, and enforced Fact F1 adherence.",
-            chapters: [
-              {
-                chapterIndex: 1,
-                text: `Mara observed the rhythmic blue signal from the lantern gallery and methodically readied the wooden skiff. Mindful that she could not swim, she ensured the boat was balanced before casting off into the outer harbor.`,
-              },
-              {
-                chapterIndex: 2,
-                text: `Maintaining strict boat discipline, Mara navigated through the fog toward the outer breakwater. Keeping securely inside the wooden craft, she aligned the bow with the pulsating blue beacon on the ledge.`,
-              },
-              {
-                chapterIndex: 3,
-                text: `Securing the survivor safely aboard the skiff, Mara turned the vessel and rowed in rhythm with the swell, reaching the stone pier safely.`,
-              },
-            ],
-            changesMade: [
-              {
-                chapterIndex: 2,
-                summary: "Reinforced boat discipline.",
-                justification: "Adheres to Fact F1 (Mara cannot swim).",
-              },
-            ],
-          },
-          usage: { inputTokens: 750, outputTokens: 280 },
-          modelUsed: "mock-editor-fontaine",
-        };
-      }
-
-      if (role === "critic_editor_b") {
-        // Lang: Voice & Atmosphere
-        return {
-          value: {
-            rationale:
-              "Deepened sensory maritime texture, cold brine spray, and evocative lantern amber.",
-            chapters: [
-              {
-                chapterIndex: 1,
-                text: `Salt spray stung Mara's eyes as the gale rattled the iron lantern gallery. Out across the churning outer ledge, an enigmatic cobalt pulse pierced the twilight every three minutes, calling her toward the waiting skiff.`,
-              },
-              {
-                chapterIndex: 2,
-                text: `Oarlocks groaned in rhythmic cadence against the black swells. Mara kept the wooden hull steady amidst the foam, tracking the eerie glow through blankets of thick Atlantic sea mist.`,
-              },
-              {
-                chapterIndex: 3,
-                text: `Warm amber lamps from the harbor pier pierced the damp murk as the skiff glided home, carrying both keeper and rescued mariner away from the cold, grasping depths.`,
-              },
-            ],
-            changesMade: [
-              {
-                chapterIndex: 1,
-                summary: "Heightened atmospheric texture.",
-                justification: "Immerses reader in coastal isolation.",
-              },
-            ],
-          },
-          usage: { inputTokens: 780, outputTokens: 310 },
-          modelUsed: "mock-editor-lang",
         };
       }
 

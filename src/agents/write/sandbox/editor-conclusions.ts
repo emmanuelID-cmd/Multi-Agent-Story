@@ -1,6 +1,48 @@
 import { writeFileSync } from "node:fs";
 import { type EditorRunTrace } from "./editor-tracer";
 
+/**
+ * Section 3 repeats only what this batch of traces recorded.
+ * A gate that did not run is left out, so the report cannot claim a pass it did not earn.
+ */
+function auditLines(traces: EditorRunTrace[]): string[] {
+  const steps = traces.flatMap((trace) => trace.steps);
+  const typographyDefects = steps.reduce((sum, step) => sum + step.typographyAudit.collisionsFound.length, 0);
+  const editorialDefects = steps.flatMap((step) => step.editorialAudit.violations);
+  const banners = editorialDefects.filter((item) => /banner/i.test(item)).length;
+  const setting = editorialDefects.filter((item) => /contamination/i.test(item)).length;
+  const midClause = editorialDefects.filter((item) => /mid-clause/i.test(item)).length;
+  const handoffsPassed = traces.filter((trace) => trace.handoffAudit.valid).length;
+  const envelopesPassed = steps.filter((step) => step.envelopeValid).length;
+  const names = steps.filter((step) => step.antiImitationAudit.passed).length;
+  const distinct = traces.filter((trace) => {
+    const fontaine = trace.steps.find((step) => step.role === "critic_editor_a");
+    const lang = trace.steps.find((step) => step.role === "critic_editor_b");
+    if (!fontaine || !lang) return false;
+    return fontaine.proposal.chapters.map((chapter) => chapter.text).join("\n")
+      !== lang.proposal.chapters.map((chapter) => chapter.text).join("\n");
+  }).length;
+
+  return [
+    "### Typographical & Grammatical Hygiene Audit",
+    `- Typography defects recorded on these proposals: ${typographyDefects}.`,
+    "- An unfinished fragment such as \"precision, .\" is left visible. It is not counted as a repaired sentence.",
+    "",
+    "### Setting Fidelity & Editorial Integrity Audit",
+    `- Setting-contamination notes: ${setting}. Revision banners in chapter text: ${banners}. Mid-clause article capitals: ${midClause}.`,
+    `- Runs whose two manuscripts differ: ${distinct} of ${traces.length}.`,
+    "",
+    "### S01: Reader Handoff Receiving Gate",
+    `- Handoff checks recorded as valid: ${handoffsPassed} of ${traces.length}. A failed check skips both proposals.`,
+    "",
+    "### S04: Cryptographic Manuscript Envelopes & Preservation",
+    `- Envelope checks that passed: ${envelopesPassed} of ${steps.length}.`,
+    "",
+    "### Anti-Imitation & Persona Boundaries",
+    `- Proposals with no Fontaine or Lang in the chapter text: ${names} of ${steps.length}.`,
+  ];
+}
+
 export function generateEditorConclusionsReport(
   traces: EditorRunTrace[],
   filepath?: string
@@ -73,31 +115,7 @@ export function generateEditorConclusionsReport(
     "",
     "## 3. PRD Invariants & Quality Audits",
     "",
-    "### Typographical & Grammatical Hygiene Audit",
-    "- All proposals passed mechanical typography inspection: 0 duplicate periods ('..'), 0 punctuation collisions (',.', '.,', ';;'), and 0 stray spaces before punctuation.",
-    "- Legitimate creative ellipses ('...') were preserved.",
-    "",
-    "### Setting Fidelity & Editorial Integrity Audit",
-    "- Setting integrity verified: zero maritime contamination in Clockwork or Orbital stories.",
-    "- Independent revisions verified: Fontaine and Lang generated distinct, non-identical chapter prose reflecting their respective lenses.",
-    "- Pure story prose verified: zero fixture or revision banners (e.g. '[Revised Version]') present in chapter texts.",
-    "- Syntactic fluency verified: zero mid-clause capitalized words following 'that' or 'where'.",
-    "",
-    "### S01: Reader Handoff Receiving Gate",
-    "- Both editors independently validated the 5-field handoff schema, coordinator authority match, and >=0.8 confidence threshold prior to model dispatch.",
-    "- Adversarial handoffs (low confidence, missing chapters) aborted immediately with `EditorialHandoffRejectionError` without incurring model calls.",
-    "",
-    "### S04: Cryptographic Manuscript Envelopes & Preservation",
-    "- Every revised manuscript was packaged into an immutable `ManuscriptEnvelope` with SHA-256 hashes binding base chapters, proposal prose, rationale, and baseVersion.",
-    "- Cryptographic integrity verification (`verifyManuscriptEnvelope`) passed for 100% of generated proposals.",
-    "",
-    "### Anti-Imitation & Persona Boundaries",
-    "- Verified that persona aliases ('Fontaine', 'Lang') served purely as internal operational emblems and craft lenses.",
-    "- Zero occurrences of authorial names were introduced into the story prose.",
-    "",
-    "### Tool Boundary Sandboxing (`ALLOWED_CRITIC_TOOLS`)",
-    "- Critic execution was strictly sandboxed to `read_story_state` and `propose_story_update` via `executeCriticTool`.",
-    "- Disallowed tool calls (e.g. `execute_sql`, `publish_story`) threw `AGENT_TOOL_DENIED` immediately.",
+    ...auditLines(traces),
     "",
     "---",
     "",

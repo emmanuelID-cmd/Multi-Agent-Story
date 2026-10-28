@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { chapterSchema, type Chapter, type Bible, type Brief } from "../../contracts";
+import { chapterSchema, orderedChapters, type Chapter, type Bible, type Brief } from "../../contracts";
 import { assertAgentTool } from "../../contracts/input-policy";
 import type { ReaderToEditorHandoff } from "../handoff";
 
@@ -199,12 +199,16 @@ export function executeCriticTool(
       throw new Error("Missing chapters in proposal update.");
     }
 
-    const validatedChapters = rawChapters.map((ch) =>
-      chapterSchema.parse({
-        chapterIndex: ch.chapterIndex,
-        bibleVersion: parsed.bibleVersion,
-        text: ch.text,
-      })
+    // A critic proposal is the whole manuscript. One chapter or a repeated index is not accepted.
+    const validatedChapters = orderedChapters(
+      rawChapters.map((ch) =>
+        chapterSchema.parse({
+          chapterIndex: ch.chapterIndex,
+          bibleVersion: parsed.bibleVersion,
+          text: ch.text,
+        })
+      ),
+      parsed.bibleVersion
     );
 
     return {

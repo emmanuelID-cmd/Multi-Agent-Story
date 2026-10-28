@@ -17,14 +17,11 @@ function stripTerminal(s: string): string {
   return s.trim().replace(/[.,;:!?\s]+$/, "");
 }
 
-function lowerFirst(s: string): string {
-  return s.length > 0 ? s.charAt(0).toLowerCase() + s.slice(1) : s;
-}
-
 /**
  * Creates a deterministic narrative simulator that outputs rich,
  * genre-tailored prose adhering to the role prompts (Grimm, Andersen, Perrault)
  * without consuming Anthropic API credits.
+ * Fact and beat names keep the capital letters stored on the bible.
  */
 export function createSandboxSimulatedModel(bibleCase: MockBibleCase): WriteModel {
   return {
@@ -41,7 +38,7 @@ export function createSandboxSimulatedModel(bibleCase: MockBibleCase): WriteMode
       let text = "";
       if (index === 1) {
         // Beat 1: World grounding, tactile stakes, opening incident
-        const fact0 = lowerFirst(stripTerminal(bibleCase.bible.facts[0].text));
+        const fact0 = stripTerminal(bibleCase.bible.facts[0].text);
         text = `The air was sharp and laden with the grit of ${stripTerminal(bibleCase.expectedToneNotes).toLowerCase()}. ` +
           `The narrative grounded the physical setting where ${fact0}. ` +
           `Without hesitation, the journey commenced under the shadows: ${beat}. ` +
@@ -49,7 +46,7 @@ export function createSandboxSimulatedModel(bibleCase: MockBibleCase): WriteMode
           `leaving an open path for what was to follow.`;
       } else if (index === 2) {
         // Beat 2: Emotional depth, internal conflict, midpoint crisis
-        const fact1 = lowerFirst(stripTerminal(bibleCase.bible.facts[1]?.text ?? "the stakes had doubled"));
+        const fact1 = stripTerminal(bibleCase.bible.facts[1]?.text ?? "the stakes had doubled");
         text = `A lingering ache tightened in the chest as the initial excitement turned to dread. ` +
           `The narrative carried the continuity forward from the first encounter. ` +
           `It became painfully clear that ${fact1}. ` +
@@ -57,13 +54,13 @@ export function createSandboxSimulatedModel(bibleCase: MockBibleCase): WriteMode
           `Between tears and endurance, the crucible demanded everything before the night gave way.`;
       } else {
         // Beat 3: Climax, falling action, decisive resolution
-        const fact2 = lowerFirst(stripTerminal(bibleCase.bible.facts[2]?.text ?? "no thread could be abandoned"));
-        const desiredEnding = lowerFirst(stripTerminal(bibleCase.brief.desiredEnding));
+        const fact2 = stripTerminal(bibleCase.bible.facts[2]?.text ?? "no thread could be abandoned");
+        const desiredEnding = stripTerminal(bibleCase.brief.desiredEnding);
         text = `The final hour arrived with the force of an unyielding tide. ` +
           `The story threads reached their decisive apex. ` +
           `Remembering that ${fact2}, ` +
           `the decisive action unfolded: ${beat}. ` +
-          `With the climax met and the danger subdued, ${desiredEnding}. ` +
+          `With the climax met and the danger subdued. ${desiredEnding}. ` +
           `Peace settled across the landscape, unbroken and complete.`;
       }
 

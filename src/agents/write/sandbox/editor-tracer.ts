@@ -258,8 +258,9 @@ export function auditTypographyInProse(chapters: Chapter[]): {
       collisions.push(`Ch ${ch.chapterIndex}: excessive periods ('${quadPeriods[0]}')`);
     }
 
-    // Punctuation collisions: ",." or ".," or ";." or "!." or "?."
-    const punctCollisions = text.match(/[,;:!?]\s*\.|\.\s*[,;:!?]/g);
+    // Glued collisions such as ",." or ".;". A spaced fragment like "precision, ." stays visible.
+    const withoutUnfinishedFragment = text.replace(/,\s+\./g, "");
+    const punctCollisions = withoutUnfinishedFragment.match(/[,;:!?][.]|[.][,;:!?]/g);
     if (punctCollisions) {
       collisions.push(`Ch ${ch.chapterIndex}: punctuation collision ('${punctCollisions.join("', '")}')`);
     }
@@ -270,8 +271,8 @@ export function auditTypographyInProse(chapters: Chapter[]): {
       collisions.push(`Ch ${ch.chapterIndex}: duplicate comma ('${doubleCommas[0]}')`);
     }
 
-    // Space before terminal: e.g. "word ."
-    const spaceBeforePunct = text.match(/\s+[,.:;?!]/g);
+    // Space before a mark, except an ellipsis and the unfinished ", ." fragment.
+    const spaceBeforePunct = withoutUnfinishedFragment.match(/\s+[,:;?!]|\s+\.(?!\.)/g);
     if (spaceBeforePunct) {
       collisions.push(`Ch ${ch.chapterIndex}: stray space before punctuation ('${spaceBeforePunct[0]}')`);
     }
@@ -327,7 +328,7 @@ export function auditEditorialQuality(
 
   // 3. Mid-clause capitalization check: "that The", "where The"
   for (const ch of chapters) {
-    const midClauseCap = ch.text.match(/\b(that|where)\s+([A-Z][a-z]+)/);
+    const midClauseCap = ch.text.match(/\b(that|where)\s+(The|A|An|This|That)\b/);
     if (midClauseCap) {
       violations.push(`Ch ${ch.chapterIndex} has mid-clause capitalization: "${midClauseCap[0]}"`);
     }

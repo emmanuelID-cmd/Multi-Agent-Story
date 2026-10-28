@@ -1,4 +1,5 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
@@ -16,14 +17,17 @@ import { generateEditorConclusionsReport } from "../src/agents/write/sandbox/edi
 
 describe("Editor Sandbox: Multi-Bible Trace & Verification", () => {
   it("initializes editor sandbox directories and verifies cleanup procedure", () => {
-    const paths = initEditorSandboxDirectories();
+    const baseDir = mkdtempSync(join(tmpdir(), "editor-sandbox-"));
+    const paths = initEditorSandboxDirectories(baseDir);
     expect(existsSync(paths.root)).toBe(true);
+    expect(paths.root).toContain(join("logs", "sandbox", "editors"));
     expect(existsSync(paths.traces)).toBe(true);
     expect(existsSync(paths.reviews)).toBe(true);
     expect(existsSync(paths.conclusions)).toBe(true);
 
-    const { purgedCount } = cleanupEditorSandboxLogs();
+    const { purgedCount } = cleanupEditorSandboxLogs(baseDir);
     expect(purgedCount).toBeGreaterThanOrEqual(0);
+    rmSync(baseDir, { recursive: true, force: true });
   });
 
   const cases = [
@@ -34,7 +38,8 @@ describe("Editor Sandbox: Multi-Bible Trace & Verification", () => {
 
   for (const { name, fixture } of cases) {
     it(`executes full dual-editor sandbox pipeline for ${name} with barrier & S04 envelope verification`, async () => {
-      const trace = await executeEditorsInSandbox(fixture);
+      const baseDir = mkdtempSync(join(tmpdir(), "editor-sandbox-"));
+      const trace = await executeEditorsInSandbox(fixture, { endToEnd: true, baseDir });
 
       expect(trace.bibleId).toBe(fixture.id);
       expect(trace.steps).toHaveLength(2);
@@ -68,7 +73,7 @@ describe("Editor Sandbox: Multi-Bible Trace & Verification", () => {
       expect(lang?.proposal.changesMade.length).toBeGreaterThan(0);
 
       // 3. Artifact Persistence
-      const paths = resolveEditorSandboxPaths();
+      const paths = resolveEditorSandboxPaths(baseDir);
       const traceFile = join(paths.traces, `${fixture.id}_editor_trace.json`);
       const reviewFile = join(paths.reviews, `${fixture.id}_editor_review.md`);
       expect(existsSync(traceFile)).toBe(true);
@@ -102,8 +107,10 @@ describe("Editor Sandbox: Multi-Bible Trace & Verification", () => {
       },
     ];
 
+    const baseDir = mkdtempSync(join(tmpdir(), "editor-sandbox-"));
     const trace = await executeEditorsInSandbox(lighthouseMysteryCase, {
       baseChapters: contradictoryBaseChapters,
+      baseDir,
     });
 
     const fontaine = trace.steps.find((s) => s.role === "critic_editor_a");
@@ -121,13 +128,14 @@ describe("Editor Sandbox: Multi-Bible Trace & Verification", () => {
   });
 
   it("generates an Executive Editor Conclusions report synthesizing all multi-bible runs", async () => {
+    const baseDir = mkdtempSync(join(tmpdir(), "editor-sandbox-"));
     const traces = await Promise.all([
-      executeEditorsInSandbox(lighthouseMysteryCase),
-      executeEditorsInSandbox(clockworkFairytaleCase),
-      executeEditorsInSandbox(orbitalSciFiCase),
+      executeEditorsInSandbox(lighthouseMysteryCase, { endToEnd: true, baseDir }),
+      executeEditorsInSandbox(clockworkFairytaleCase, { endToEnd: true, baseDir }),
+      executeEditorsInSandbox(orbitalSciFiCase, { endToEnd: true, baseDir }),
     ]);
 
-    const paths = resolveEditorSandboxPaths();
+    const paths = resolveEditorSandboxPaths(baseDir);
     const conclusionsFile = join(paths.conclusions, "editor_conclusions_test.md");
     const report = generateEditorConclusionsReport(traces, conclusionsFile);
 
