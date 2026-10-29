@@ -90,8 +90,12 @@ Summary file: PROJECT-HANDOFF.md
 - Prepared for the app repository's `shared/phase-3-durable-execution-recovery`
   branch and PR target `developer`. Verified remote `developer` baseline:
   `ad4e90d0d360966d6ff77bec24167fe4227e0164`; GitHub reported no open PRs.
-  The completion commits and final push SHA are not available yet; this is
-  preparation time, not a verified push time.
+  Work commits: `0965c211e3bc753a1eee09f5b0bdcf60e4bcc8e0` (app AGENTS
+  registry-reference clarification) and
+  `b2ed16f345597d59cd82ab03e1ff2cb85415f242` (Shared Phase 3). Reviewed
+  project range: `ad4e90d0d360966d6ff77bec24167fe4227e0164..b2ed16f345597d59cd82ab03e1ff2cb85415f242`.
+  Final push SHA is not available yet; this is preparation time, not a verified
+  push time. A handoff wording correction is included in the final review.
 - Outgoing Git author: Emmanuel De Jesus (Manny), verified from Git config.
   Activity: Shared Phase 3 implementation and evidence closeout; separate app
   `AGENTS.md` wording clarification for the external skill registry.
@@ -102,7 +106,7 @@ Summary file: PROJECT-HANDOFF.md
   isolated synthetic PostgreSQL 17 recovery scenarios, and SECURITY/REVIEWER
   approval. See `PROJECT-HANDOFF.md` for evidence and limits.
 - [ ] Not completed: Shared 5.3 must revalidate recovery behavior as later
-  connectors are added; Shared Phases 4–5 and the remaining product checklist
+  connectors are added; Shared Phases 4 and 5 and the remaining product checklist
   items are outside this phase.
 - [ ] Not completed: No live provider recovery, hard-kill during an in-flight
   provider request, database migration, Justin WRITE change, or full-circle
