@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { bibleSchema, orderedChapters, type Chapter } from "../contracts";
 import { readSnapshotSchema, type ReadSnapshot } from "../agents/read/contracts";
@@ -5,7 +6,7 @@ import { proposalDigest, runReader, runConsistency, sha256, type ReadDependencie
 import { revisedManuscriptSchema, hashManuscriptContent, verifyManuscriptEnvelope } from "../agents/write/runtime";
 import { validateEditorReceivingHandoff, type ReaderToEditorHandoff } from "../agents/handoff";
 import {
-  connectionId, readAssignmentSchema, readRequestSchema, readOperationSchema, readerResultSchema,
+  connectionId, readAssignmentSchema, readRequestSchema, readOperationSchema, recoveryDecisionSchema, readerResultSchema,
   consistencyResultSchema, receiptSchema, ReadConnectionError,
   type ReadAssignment, type ReadRequest, type ReadOperation, type ConnectionSnapshot,
   type ConnectionWriter, type ConnectionRow, type ReadConnectionRepository, type ResolvedReadTarget,
@@ -90,8 +91,34 @@ async function save(s:ConnectionSnapshot,w:ConnectionWriter,data:ReadRequest|Rea
     kind:data.kind,status:isRequest?"recorded":data.status,data});
 }
 function assertIntent(op:ReadOperation,intent:string){if(op.intentFingerprint!==intent)throw new ReadConnectionError("OPERATION_INTENT_MISMATCH");}
-const operationUsage=(op:ReadOperation)=>[...op.readerResults,...(op.consistencyResult?[op.consistencyResult]:[])].reduce((u,r)=>
-  ({inputTokens:u.inputTokens+r.usage.inputTokens,outputTokens:u.outputTokens+r.usage.outputTokens}),{inputTokens:0,outputTokens:0});
+function retryEligible(op:ReadOperation){
+  if(op.recoveryDecisions.length||!op.budgetReservation||op.budgetReservation.settled||
+    !["running","blocked","partial","failed","unavailable"].includes(op.status))return false;
+  const last=op.agent==="reader"?op.readerResults.at(-1):op.consistencyResult;
+  return !last||(!last.output&&last.attempts>0&&last.status!=="canceled");
+}
+/** Owner-scoped recovery inventory returns metadata only; it never dispatches a model call. */
+export async function listReadRecoveryOperations(ownerId:string,projectId:string,runId:string,repository?:ReadConnectionRepository){
+  const repo=repository??(await import("./read-connection-storage")).dbReadConnectionRepository;
+  return repo.locked(ownerId,projectId,runId,async(s)=>{
+    owned(s,ownerId,projectId,runId);
+    return s.rows.filter(row=>row.kind==="read_operation"&&row.projectId===projectId).flatMap(row=>{
+      const op=readOperationSchema.safeParse(row.data);if(!op.success)return [];
+      if(op.data.ownerId!==ownerId||op.data.projectId!==projectId)return [];
+      const requestRow=s.rows.find(item=>item.id===requestKey(projectId,op.data.requestId));
+      const requestData=readRequestSchema.safeParse(requestRow?.data);if(!requestData.success)return [];
+      if(requestData.data.ownerId!==ownerId||requestData.data.projectId!==projectId||
+        requestData.data.assignment.runId!==runId)return [];
+      const assignment=requestData.data.assignment;
+      const result=op.data.agent==="reader"?op.data.readerResults.at(-1):op.data.consistencyResult;
+      return [{agent:op.data.agent,operationId:op.data.operationId,status:op.data.status,reasonCode:op.data.reasonCode,
+        savedResultStatus:result?.status??(op.data.status==="running"?"dispatch outcome unknown":"no result saved"),
+        dependencyVersions:{projectState:assignment.stateVersion,approvedBible:assignment.bibleVersion,
+          draft:assignment.draftVersion,request:assignment.requestVersion,editorialRound:assignment.editorialRound},
+        retryAvailable:retryEligible(op.data)}];
+    });
+  });
+}
 /** Pure downstream gate: invoke only inside the same source-locked transaction as advancement. */
 export function assertCurrentReadConsistency(s:ConnectionSnapshot,proposalId:string){
   const selected=proposal(s,proposalId);
@@ -152,22 +179,52 @@ export function createReadConnections(options:ReadConnectionOptions){
     let tokens=0,cost=0;
     for(const row of s.rows.filter(row=>row.kind==="read_operation")){
       const parsed=readOperationSchema.safeParse(row.data);if(!parsed.success)throw new ReadConnectionError("BUDGET_LEDGER_UNREADABLE");
-      const op=parsed.data;if(op.operationId===operationId)continue;
-      const reservation=op.budgetReservation;
+      const op=parsed.data;
       const recorded=s.rows.find(row=>row.id===requestKey(s.project.id,op.requestId));
       const parsedRequest=readRequestSchema.safeParse(recorded?.data);
       if(!parsedRequest.success)throw new ReadConnectionError("BUDGET_LEDGER_UNREADABLE");
       const assignment=parsedRequest.data.assignment;
       if((assignment.targetRunId??assignment.runId)!==targetRunId)continue;
-      if(!reservation&&!['running'].includes(op.status)){
-        const u=operationUsage(op);tokens+=u.inputTokens+u.outputTokens;
-        cost+=(u.inputTokens*options.runtime.budget.inputUsdPerMillion+u.outputTokens*options.runtime.budget.outputUsdPerMillion)/1_000_000;
-      }else if(!reservation)throw new ReadConnectionError("BUDGET_OUTCOME_UNSETTLED");
-      else if(!reservation.settled){tokens+=reservation.maxTokens;cost+=reservation.maxCostUsd;}
-      else{const u=operationUsage(op);tokens+=u.inputTokens+u.outputTokens;
-        cost+=(u.inputTokens*reservation.inputUsdPerMillion+u.outputTokens*reservation.outputUsdPerMillion)/1_000_000;}
+      const attempts=[...op.budgetHistory,{generation:op.generation,reservation:op.budgetReservation,
+        result:op.agent==="reader"?op.readerResults.at(-1):op.consistencyResult}];
+      for(const attempt of attempts){
+        const reservation=attempt.reservation;
+        if(!reservation){
+          if(op.status==="running")throw new ReadConnectionError("BUDGET_OUTCOME_UNSETTLED");
+          const usage=attempt.result?.usage??{inputTokens:0,outputTokens:0};tokens+=usage.inputTokens+usage.outputTokens;
+          cost+=(usage.inputTokens*options.runtime.budget.inputUsdPerMillion+usage.outputTokens*options.runtime.budget.outputUsdPerMillion)/1_000_000;
+          continue;
+        }
+        if(!reservation.settled){tokens+=reservation.maxTokens;cost+=reservation.maxCostUsd;}
+        else{const usage=attempt.result?.usage??{inputTokens:0,outputTokens:0};tokens+=usage.inputTokens+usage.outputTokens;
+          cost+=(usage.inputTokens*reservation.inputUsdPerMillion+usage.outputTokens*reservation.outputUsdPerMillion)/1_000_000;}
+      }
     }
-    const maxTokens=Math.max(0,options.runtime.budget.maxTokens-tokens),maxCostUsd=Math.max(0,options.runtime.budget.maxCostUsd-cost);
+    const remainingTokens=Math.max(0,options.runtime.budget.maxTokens-tokens),remainingCostUsd=Math.max(0,options.runtime.budget.maxCostUsd-cost);
+    const maxTokens=Math.min(30_000,remainingTokens),maxCostUsd=Math.min(1.5,remainingCostUsd);
+    if(!maxTokens||!maxCostUsd)throw new ReadConnectionError("TARGET_READ_BUDGET_EXHAUSTED");
+    return {targetRunId,...options.runtime.budget,maxTokens,maxCostUsd,settled:false};
+  }
+  function reserveRetryBudget(s:ConnectionSnapshot,r:ReadRequest,op:ReadOperation,targetRunId:string){
+    let tokens=0,cost=0;
+    for(const row of s.rows.filter(row=>row.kind==="read_operation")){
+      const parsed=readOperationSchema.safeParse(row.data);if(!parsed.success)throw new ReadConnectionError("BUDGET_LEDGER_UNREADABLE");
+      const current=parsed.data,recorded=s.rows.find(item=>item.id===requestKey(s.project.id,current.requestId));
+      const parsedRequest=readRequestSchema.safeParse(recorded?.data);
+      if(!parsedRequest.success)throw new ReadConnectionError("BUDGET_LEDGER_UNREADABLE");
+      if((parsedRequest.data.assignment.targetRunId??parsedRequest.data.assignment.runId)!==targetRunId)continue;
+      const attempts=[...current.budgetHistory,{generation:current.generation,reservation:current.budgetReservation,
+        result:current.agent==="reader"?current.readerResults.at(-1):current.consistencyResult}];
+      for(const attempt of attempts){
+        const reservation=attempt.reservation;
+        if(!reservation)continue;
+        if(!reservation.settled){tokens+=reservation.maxTokens;cost+=reservation.maxCostUsd;}
+        else{const usage=attempt.result?.usage??{inputTokens:0,outputTokens:0};tokens+=usage.inputTokens+usage.outputTokens;
+          cost+=(usage.inputTokens*reservation.inputUsdPerMillion+usage.outputTokens*reservation.outputUsdPerMillion)/1_000_000;}
+      }
+    }
+    const maxTokens=Math.min(30_000,Math.max(0,options.runtime.budget.maxTokens-tokens));
+    const maxCostUsd=Math.min(1.5,Math.max(0,options.runtime.budget.maxCostUsd-cost));
     if(!maxTokens||!maxCostUsd)throw new ReadConnectionError("TARGET_READ_BUDGET_EXHAUSTED");
     return {targetRunId,...options.runtime.budget,maxTokens,maxCostUsd,settled:false};
   }
@@ -221,6 +278,37 @@ export function createReadConnections(options:ReadConnectionOptions){
     });
     if(!prepared.dispatch)return prepared.op;
     return dispatchReader(ownerId,projectId,runId,prepared.op,prepared.r,prepared.source.snapshot);
+  }
+  async function retryUncertain(ownerId:string,projectId:string,runId:string,operationId:string,duplicateProviderCallAcknowledged:boolean){
+    connectionId.parse(operationId);
+    if(duplicateProviderCallAcknowledged!==true)throw new ReadConnectionError("RETRY_CONFIRMATION_REQUIRED","human_review",400);
+    const prepared=await locked(ownerId,projectId,runId,async(s,w)=>{
+      const op=operation(s,operationId);if(!op)throw new ReadConnectionError("OPERATION_UNAVAILABLE","retrieval_recovery",404);
+      const r=request(s,op.requestId),source=exact(s,r),targetRunId=await validatedTarget(s,w,r.assignment);
+      if(op.recoveryDecisions.length)return {op,r,source,dispatch:false};
+      if(op.status==="canceled"||op.status==="ready_for_review"||op.status==="exhausted"||
+        !op.budgetReservation||op.budgetReservation.settled)throw new ReadConnectionError("RETRY_NOT_ELIGIBLE");
+      const priorResult=op.agent==="reader"?op.readerResults.at(-1):op.consistencyResult;
+      if(priorResult&&(priorResult.output||priorResult.attempts===0||priorResult.status==="canceled"))
+        throw new ReadConnectionError("RETRY_NOT_ELIGIBLE");
+      const decision=recoveryDecisionSchema.parse({
+        decision:"retry_once",decisionId:randomUUID(),duplicateProviderCallAcknowledged:true,
+        authorizedAt:new Date().toISOString(),priorGeneration:op.generation,
+        priorStatus:op.status,priorReasonCode:op.reasonCode,priorResult,
+        priorBudgetReservation:op.budgetReservation,
+        dependency:{requestVersion:r.assignment.requestVersion,stateVersion:s.project.version,bibleVersion:s.bible.version,sourceFingerprint:source.fingerprint},
+      });
+      const next=readOperationSchema.parse({...op,generation:op.generation+1,recoveryDecisions:[decision],
+        budgetHistory:op.budgetReservation?[...op.budgetHistory,{generation:op.generation,reservation:op.budgetReservation,result:priorResult}]:op.budgetHistory,status:"running",
+        reasonCode:op.agent==="reader"?"READER_RETRY_RESERVED":"CONSISTENCY_RETRY_RESERVED",
+        route:op.agent==="reader"?"reader_correction":"human_review",
+        budgetReservation:reserveRetryBudget(s,r,op,targetRunId)});
+      await save(s,w,next);return {op:next,r,source,dispatch:true};
+    });
+    if(!prepared.dispatch)return prepared.op;
+    if(prepared.op.agent==="reader")
+      return dispatchReader(ownerId,projectId,runId,prepared.op,prepared.r,prepared.source.snapshot);
+    return dispatchConsistency(ownerId,projectId,runId,prepared.op,prepared.r,prepared.source.snapshot,prepared.op.proposalBinding!);
   }
   async function dispatchReader(ownerId:string,projectId:string,runId:string,op:ReadOperation,r:ReadRequest,snapshot:ReadSnapshot,
     correction?:z.infer<typeof import("./read-connection-contracts").rejectionSchema>){
@@ -277,6 +365,7 @@ export function createReadConnections(options:ReadConnectionOptions){
       if(op.repairUsed){next={...next,status:"exhausted",reasonCode:"READER_REPAIR_EXHAUSTED",route:"human_review"};
         await save(s,w,next);return {op:next,r,source,dispatch:false};}
       next={...next,generation:2,repairUsed:true,status:"running",reasonCode:"READER_REPAIR_RESERVED",route:"reader_correction",
+        budgetHistory:next.budgetReservation?[...next.budgetHistory,{generation:next.generation,reservation:next.budgetReservation,result:next.readerResults.at(-1)}]:next.budgetHistory,
         budgetReservation:reserveBudget(s,r,op.operationId,targetRunId)};
       await save(s,w,next);return {op:next,r,source,dispatch:true,correction:receipt.rejection};
     });
@@ -307,20 +396,24 @@ export function createReadConnections(options:ReadConnectionOptions){
       await save(s,w,op);return {op,r,source,binding,dispatch:true};
     });
     if(!prepared.dispatch)return prepared.op;
-    const a=prepared.r.assignment,b=prepared.binding;
+    return dispatchConsistency(ownerId,projectId,runId,prepared.op,prepared.r,prepared.source.snapshot,prepared.binding);
+  }
+  async function dispatchConsistency(ownerId:string,projectId:string,runId:string,op:ReadOperation,r:ReadRequest,snapshot:ReadSnapshot,
+    binding:NonNullable<ReadOperation["proposalBinding"]>){
+    const a=r.assignment,b=binding;
     const result=consistencyResultSchema.parse(await runConsistency({authority:{runId,projectId,ownerId,
-      taskId:a.requestId,operationId,stateVersion:a.stateVersion,requestVersion:a.requestVersion,prdVersion:"v4-draft"},
+      taskId:a.requestId,operationId:op.operationId,stateVersion:a.stateVersion,requestVersion:a.requestVersion,prdVersion:"v4-draft"},
       versions:options.versions,bibleVersion:a.bibleVersion,draftVersion:a.draftVersion,
       proposalId:b.proposalId,proposalVersion:b.proposalVersion,proposalSha256:b.readDigest},
-      {...options.runtime,budget:prepared.op.budgetReservation??options.runtime.budget,readSnapshot:async()=>prepared.source.snapshot}));
+      {...options.runtime,budget:op.budgetReservation??options.runtime.budget,readSnapshot:async()=>snapshot}));
     return locked(ownerId,projectId,runId,async(s,w)=>{
-      const latest=operation(s,operationId);
-      if(!latest||latest.status!=="running")throw new ReadConnectionError("DISPATCH_NO_LONGER_CURRENT");
+      const latest=operation(s,op.operationId);
+      if(!latest||latest.generation!==op.generation||latest.status!=="running")throw new ReadConnectionError("DISPATCH_NO_LONGER_CURRENT");
       let next:ReadOperation={...latest,status:["MODEL_UNAVAILABLE","DEPENDENCY_UNAVAILABLE","SNAPSHOT_RESOLVER_UNAVAILABLE"].includes(result.reasonCode)?"unavailable":result.status,
         budgetReservation:latest.budgetReservation?{...latest.budgetReservation,
           settled:result.attempts===0||Boolean(result.output&&["ready_for_review","partial"].includes(result.status))}:undefined,
         reasonCode:result.reasonCode,consistencyResult:result};
-      try{const fresh=request(s,requestId);if(digest(fresh)!==digest(prepared.r))throw new ReadConnectionError("REQUEST_CHANGED");exact(s,fresh);await validatedTarget(s,w,fresh.assignment);
+      try{const fresh=request(s,r.assignment.requestId);if(digest(fresh)!==digest(r))throw new ReadConnectionError("REQUEST_CHANGED");exact(s,fresh);await validatedTarget(s,w,fresh.assignment);
         if(options.runtime.signal?.aborted)throw new ReadConnectionError("CANCELED");
       }catch(e){next=failed(next,e);}
       await save(s,w,next);return next;
@@ -346,5 +439,5 @@ export function createReadConnections(options:ReadConnectionOptions){
       const next=readOperationSchema.parse({...op,editorExecutions:[...op.editorExecutions,entry],editorOutputs});await save(s,w,next);return next;
     });
   }
-  return {recordRequest,prepareReader,receiveReader,checkConsistency,recordEditorExecution};
+  return {recordRequest,prepareReader,receiveReader,checkConsistency,retryUncertain,recordEditorExecution};
 }

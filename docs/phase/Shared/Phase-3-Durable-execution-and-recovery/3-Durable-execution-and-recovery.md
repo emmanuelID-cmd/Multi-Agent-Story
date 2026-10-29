@@ -1,8 +1,8 @@
 # Shared Phase 3: Durable execution and recovery
 
-Owner: Shared; execution owner assigned before implementation.
+Owner: Shared; execution lead: Manny (assigned October 29, 2026).
 
-Status: planned. Parent completes only after every required sub-phase is verified; conditionally unnecessary SQL work needs an explicit reuse/N/A record.
+Status: complete (October 29, 2026; synthetic persistence and recovery validation only). All required sub-phases 3.1–3.3 are complete; Shared 5.3 rechecks behavior against later connectors.
 
 Keep this approved phase order and folder setup. Changes to scope/order need an explicit plan update.
 
