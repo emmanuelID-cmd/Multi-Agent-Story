@@ -81,17 +81,20 @@ remote ref.
 
 These assignments do not permit one contributor to overwrite another's work or
 grant a product agent additional permissions. The full proposed v2 roster has
-12 instances: Manny's 3 READ, Justin's 5 WRITE, 3 Bible roles with planning
-ownership unassigned, and 1 shared Coordinator / Showrunner. Stable IDs are
+12 instances: Manny's 3 READ and 3 Bible-planning roles, Justin's 5 WRITE, and
+1 shared Coordinator / Showrunner. Stable IDs are
 `coordinator`, `research`, `bible_a`, `bible_b`, `bible_c`, `chapter_writer_1`,
 `chapter_writer_2`, `chapter_writer_3`, `reader`, `critic_editor_a`,
 `critic_editor_b`, and `consistency`. Coordinator and Showrunner are the same
 instance; each Critic/Editor is one combined instance. Intake adds no agent.
-One merged bible versus three candidates and one editorial proposal versus two
-full alternatives remain product decisions; these labels are not 12 implemented
-agents. READ produces analysis, not creative canon; planning produces proposals,
-not chapter prose. Critic/Editors annotate and propose; application code commits
-only an authenticated writer's accepted proposal against its current base version.
+Three separately versioned Bible candidates are presented for human selection;
+they do not merge automatically. One editorial proposal versus two full
+alternatives remains a product decision; these labels are not 12 implemented
+agents. Bible A/B/C share one confirmed-input and accepted-Research snapshot.
+Manny owns READ and Bible Planning; Justin owns WRITE. READ produces analysis,
+not creative canon; planning produces proposals, not chapter prose.
+Critic/Editors annotate and propose; application code commits only an
+authenticated writer's accepted proposal against its current base version.
 Keep [the team handoff](docs/TEAM-REFERENCE.md) current under the Team Reference skill.
 
 ## Product invariants
@@ -215,7 +218,7 @@ directories or placeholder modules to imply setup is done.
 | --- | --- |
 | `src/app/` | Story interface and server endpoints; ownership unassigned |
 | `src/contracts/` | Shared validation schemas and types; Manny and Justin coordinate before use |
-| `src/agents/` | LangGraph roles and orchestration; Manny owns read behavior, Justin owns writing/revision proposals |
+| `src/agents/` | LangGraph roles and orchestration; Manny owns READ and Bible Planning, Justin owns writing/revision proposals |
 | `src/worker/` | Durable background execution; ownership unassigned |
 | `src/server/db/` | Data access and schema definitions; ownership unassigned |
 | `src/server/auth/` | Authentication/session boundaries; ownership unassigned |

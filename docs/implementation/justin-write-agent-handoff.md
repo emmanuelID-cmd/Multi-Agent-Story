@@ -24,9 +24,17 @@ Local commits on `j04`, oldest first:
 | `ecd92ff` | Sandbox harness, runtime payload changes, barrier tests |
 | `8ed4d3e` | PRD v4 section 7k: Justin owns `bible_a`, `bible_b`, and `bible_c` |
 
-## What Justin owns
+## Current ownership direction
 
-Justin owns Chapter Writers 1/2/3, Critic/Editors A/B, and, as of section 7k, the three story-bible agents. Manny still owns Research, Reader, and Consistency. Coordinator / Showrunner stays shared. Bible agents may run only after both NYT Books and Gutendex outcomes are recorded and a dossier version is accepted. Their output is a proposal until a person approves an exact `bibleVersion`. Older PRD sections still mention one merged bible versus three candidates. Section 7k assigns the three roles to Justin. Do not treat that sentence as a decision to delete the merged-bible option until Justin says so.
+The October 28 section 7k assignment was superseded on October 29 by PRD
+Section 7m after Justin deferred Bible planning to Manny. Justin owns Chapter
+Writers 1/2/3 and Critic/Editors A/B (five WRITE roles). Manny owns Research,
+Reader, Consistency, and Bible A/B/C planning. Coordinator / Showrunner stays
+shared. The Bible roles return three separately versioned proposals against the
+same confirmed intent and accepted dossier; the writer selects one exact
+candidate, with no automatic merge. This updates ownership and the shared
+contract only; it does not modify Justin's writer/editor behavior, and it does
+not claim that the Bible agents are live or built.
 
 J01 through J03 are implemented on this branch and are not checked off in the canonical checklist unless a later edit did that with test counts, files, and a named reviewer. Confirm `docs/implementation/weaver-mvp-build-checklist.md` before claiming they are complete. Live chapter runs still wait on Shared 4.1. `writeChapter` in `src/agents/graph.ts` still drafts with the Mara fixtures.
 

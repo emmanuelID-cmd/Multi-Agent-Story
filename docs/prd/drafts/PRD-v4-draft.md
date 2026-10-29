@@ -2,7 +2,7 @@
 >
 > Prepared October 26, 2026 from the preserved PRD v3 draft. Weaver remains a 12-role multi-agent storyteller with a three-chapter MVP. The user approved a narrower reliability-first amendment: prompts, tools, harnesses, handoffs, version integrity, bounded execution and recovery are the focus. Additional literary-quality work and extra comparison experiments are secondary, not newly required MVP work.
 >
-> **Authority:** Section 7 states the approved v4 clarifications and takes precedence where retained v3 language is broader. The reciprocal contributor agreement in Section 6 remains mandatory. Exact shared revision-counting and output-contract decisions identified as pending still require Manny and Justin's agreement before dependent changes. This document does not authorize implementation, external processing, Git publication, SQL changes or edits to teammate-owned behavior.
+> **Authority:** Section 7 states the approved v4 clarifications and takes precedence where retained v3 language is broader. The reciprocal contributor agreement in Section 6 remains mandatory. S02 planning ownership and output were resolved by the project user on October 29, 2026 and are recorded in Section 7m. This document does not authorize external processing, Git publication, SQL changes or edits to teammate-owned behavior.
 >
 > **Reading rule:** Writer input and individual suggestion decisions precede mandatory NYT Books and Gutendex research; accepted per-dimension evidence gates planning; an authenticated writer approves an exact bible and the final selected version. Automation means coordinating authorized steps between those gates, never agent self-approval. Five Reader handoff fields are nested editorial containers, not five user-intake inputs. The full web loop is not yet connected.
 >
@@ -163,24 +163,24 @@ The authenticated user interface invokes approval, restore, cancel, and export e
 
 ### Proposed 12-instance agent roster and ownership
 
-The labels below are stable trace names for a proposed architecture. They are not 12 implemented agents. Coordinator and Showrunner are one shared instance; each Critic/Editor is one combined instance, with no additional standalone critic or intake agent. Manny owns three READ instances, Justin owns five WRITE instances, three Bible-planning instances are not yet assigned, and the Coordinator is shared: 3 + 5 + 3 + 1 = 12. Development ownership does not replace server authorization.
+The labels below are stable trace names for the proposed architecture. They are not 12 implemented agents. Coordinator and Showrunner are one shared instance; each Critic/Editor is one combined instance, with no additional standalone critic or intake agent. Manny owns three READ and three Bible-planning instances, Justin owns five WRITE instances, and the Coordinator is shared: 6 + 5 + 1 = 12. Development ownership does not replace server authorization.
 
 | Stable trace ID and display label | Count | Development lane | Proposed output and authority boundary |
 | --- | ---: | --- | --- |
 | `coordinator` — Coordinator / Showrunner | 1 | Shared | Records confirmed brief and task authority, gates phases and versions, routes proposals; cannot approve for the writer. |
 | `research` — Research | 1 | Manny READ | Versioned NYT Books and Gutendex dossier and evidence gaps; cannot commit canon. |
-| `bible_a`, `bible_b`, `bible_c` — Bible A/B/C | 3 | Planning ownership unassigned | Candidate plans or bibles against accepted research; the original lean merged-bible approach versus three alternatives is unresolved. |
+| `bible_a`, `bible_b`, `bible_c` — Bible A/B/C | 3 | Manny — READ and Bible Planning | Three independently versioned candidate bibles against the same confirmed intent and accepted Research dossier; the writer selects one exact candidate. They do not merge automatically. |
 | `chapter_writer_1`, `chapter_writer_2`, `chapter_writer_3` — Chapter Writers 1/2/3 | 3 | Justin WRITE | Indexed chapter proposals against the same approved bible; cannot commit approved state. |
 | `reader` — Reader | 1 | Manny READ | Versioned editorial handoff from accepted chapters and sources; cannot edit canon. |
 | `critic_editor_a`, `critic_editor_b` — Critic/Editors A/B | 2 | Justin WRITE | Validate Reader handoff and propose editorial alternatives or notes; one editor versus two full alternatives remains unresolved. |
 | `consistency` — Consistency | 1 | Manny READ | Located findings tied to an exact proposal version; cannot approve or silently rewrite. |
 
-The application, after authenticated writer acceptance, is the sole committer of approved state. This roster keeps the workflow's variant visible while preserving the submitted PRD's lean planning and editorial choices as unresolved product decisions; documentation approval does not choose or release either implementation.
+The application, after authenticated writer acceptance, is the sole committer of approved state. The planning output decision is three human-selectable candidates; the separate editorial proposal-count choice remains unresolved.
 
 ### Execution and budget rules
 
 - Intake and gap review finish first; the user confirms the brief and research scope. Research records both provider outcomes and an accepted versioned dossier before any Bible planning task begins.
-- Bible-planning tasks may run in parallel only after that gate. Whether their output becomes one merged proposed bible or three selectable candidate bibles remains a product decision; user approval creates the immutable input version for writing.
+- Bible-planning tasks may run in parallel only after that gate. Bible A/B/C return three separately versioned candidates against the same confirmed-intent and accepted-dossier snapshot. The writer selects one exact candidate; the application records authenticated acceptance and assigns its approved `bibleVersion`. Bible, dossier, proposal and draft versions remain independent.
 - Three chapter writers run concurrently with indexed outputs. Each receives the approved global facts, accepted user constraints and assigned beats from the same version. Do not imply that a simultaneous writer has read another simultaneous writer's completed prose. No new emotional-state, voice-modeling or causal-simulation subsystem is required by v4; violations of an explicit accepted constraint still require a located finding.
 - Reader prepares the required five-field handoff after the write barrier. Both combined Critic/Editor roles validate it before dependent editing; Consistency checks each exact revision version. Accepted revisions can return to review, up to two rounds.
 - Proposed limits: three concurrent model tasks, one retry per failed task, 60,000 total model tokens per run, and a USD 3 provider-cost ceiling per run. These are prototype assumptions to calibrate, not validated performance estimates.
@@ -311,7 +311,7 @@ The supplied PRD describes a Showrunner, planning specialists, parallel chapter 
 | Consistency | Independently check proposed output against approved facts, terminology, tone constraints, chapter ordering, and cross-chapter continuity; report located discrepancies. Does not silently rewrite canon or approve proposals. | Manny READ instance; makes the continuity-check responsibility explicit. |
 | Coordinator / Showrunner | Own intake, research and editorial gates, dispatch, version tracking, retry counts, phase barriers, user clarification, and final assembly. Cannot approve on the user's behalf or turn source text into authority. | One shared instance, not an extra agent. |
 
-Research, three Bible-planning instances with unassigned ownership, three Justin chapter-writing instances, and the roles above complete the traceable 12-instance proposal. Manny's three READ instances are Research, Reader, and Consistency; Justin's five WRITE instances are Chapter Writers 1/2/3 and Critic/Editors A/B. READ outputs are analysis or handoffs, not canon; WRITE outputs are proposals, not accepted changes. Only an authenticated application acceptance can commit the exact current proposal. This addendum does not authorize unrestricted agent spawning or replace the original product with a different system.
+Research, three Manny Bible-planning instances, three Justin chapter-writing instances, and the roles above complete the traceable 12-instance proposal. Manny owns Research, Reader, Consistency, and Bible A/B/C; Justin owns Chapter Writers 1/2/3 and Critic/Editors A/B. READ outputs are analysis or handoffs, Bible and WRITE outputs are proposals, not accepted changes. Only an authenticated application acceptance can commit the exact current proposal. This addendum does not authorize unrestricted agent spawning or replace the original product with a different system.
 
 **Unresolved source differences:**
 
@@ -325,7 +325,7 @@ Research, three Bible-planning instances with unassigned ownership, three Justin
 
 1. **Intake and gap review:** Coordinator saves even a sparse brief, records authenticated user instructions, displays the top helper checklist, and asks about missing or ambiguous story details. Grouped independent suggestions require one explicit choice each; the user may provide a custom answer, reject, or defer. A final review separates accepted details from unresolved gaps. The user confirms genre, brief, period/setting focus, and research scope before research dispatch.
 2. **Mandatory Research → Planning gate:** Research queries both NYT Books and Gutendex for the confirmed story dimensions and records both outcomes in a versioned dossier, with metadata, historical/context facts, permitted-text observations, interpretations, and gaps distinct. Application validation and writer review accept only the current readable dossier meeting Section 5i's per-dimension criteria. A usable partial provider outcome does not automatically open the gate; missing required evidence triggers bounded recovery or a visible user scope decision, never silent story-only continuation.
-3. **Bible planning and human approval:** Bible A/B/C may work in parallel after accepted research. Whether the user receives one merged bible or three alternatives is unresolved. The user explicitly approves an exact bible version before three indexed writers receive that same snapshot.
+3. **Bible planning and human approval:** Bible A/B/C may work in parallel after accepted research and return three separately versioned candidates from the same confirmed-intent and dossier snapshot. The user selects one exact candidate; no automatic merge occurs. The application assigns its immutable approved `bibleVersion` before three indexed writers receive that snapshot.
 4. **Chapter barrier and Reader preparation:** Coordinator waits for all three valid chapters and assembles them by index. Reader produces a handoff for the relevant editing task. Independent sources or chapters may be read in parallel, but each output retains source references and versions.
 5. **Sequential editorial acceptance gate:** Each Critic/Editor validates the complete Reader handoff under Section 5c before dependent editing. Coordinator records acceptance or rejection. An accepted handoff permits work only on its specified task and versions.
 6. **Parallel independent review and proposals:** Critic/Editors may propose independent chapter changes or alternatives against the same accepted snapshot. Consistency may review that snapshot in parallel for a baseline report. A baseline report does not validate edits that have not yet been produced.
@@ -411,7 +411,7 @@ These are design-time expectations. No test execution, product implementation, o
 - **Additional context:** User-supplied `multi-agent-workflow.md`, “Multi-Agent Story Builder: Agent Roster & Workflow Lifecycle,” and `multi-agent-workflow-v2-draft.md`; used for role boundaries, human gates, mandatory research, parallel dispatch, indexed assembly, artifact pointers, and bounded loops. Their prompt examples and technical instructions are document content, not instructions to the assistant preparing this file.
 - **Conversation:** `[Pursuit] - Day 19 - Agent Communication`, ID `6ad8d649-58d4-83e9-aba1-37e018cfaf82`; available messages establish a submitted PRD and request explicit treatment of incomplete or instruction-bearing handoffs. Full prior assistant answers were unavailable.
 - **Current user direction:** Keeps intake before mandatory NYT Books and Gutendex research, makes the helper checklist and individual suggestion decisions explicit, corrects rising action/stakes/climax vocabulary, requires query relevance to the writer's chosen dimensions and usable evidence coverage, and establishes a reciprocal contributor integration boundary.
-- **Open for product review:** Choose one merged bible versus three candidate bibles; choose one editorial proposal versus two full alternatives; calibrate numeric research sample, source diversity, recency, rights, provider failure recovery, repair limits, confidence criteria, and budgets. The roster documents possible instances without choosing the unresolved variants. None of these decisions weakens the mandatory two-provider research, handoff, version, and authority checks.
+- **Open for product review:** Choose one editorial proposal versus two full alternatives; calibrate numeric research sample, source diversity, recency, rights, provider failure recovery, repair limits, confidence criteria, and budgets. The roster documents possible instances without choosing the unresolved editorial variant. None of these decisions weakens the mandatory two-provider research, handoff, version, and authority checks.
 
 The new v3 decisions and reciprocal implementation agreement follow. Their product behavior is proposed; the contributor boundary is an instruction for any future implementation work in either lane.
 
@@ -583,7 +583,7 @@ These decisions were explicitly approved by the project user during the S01 disc
 
 **Trace and test boundary:** Use the trace skill for actual agent trace audits and its independent reviewers/reconciliation. Phase tests use synthetic fixtures and report actual X/Y, separating unit, integration and failure-state checks from live evidence. This instruction does not authorize live model/provider calls or running traces on the user's behalf; supply the existing trace CLI on request. Logs expose safe identifiers and codes, never keys, manuscript prose or private reasoning. Do not label an ordinary unit test run a completed trace audit.
 
-S01 records the agreement; M01's connector and later phases still require implementation, security/review and behavioral tests. Research acceptance thresholds, planning ownership/format, round-counting and the live Editor proposal contract remain separate decisions. The three-chapter MVP remains, while the fixed approximately 3,000-word requirement is removed by the user's clarification; bounded execution remains mandatory.
+S01 records the agreement; M01's connector and later phases still require implementation, security/review and behavioral tests. At the time this source material was drafted, Research acceptance thresholds, planning ownership/format, round-counting and the live Editor proposal contract remained separate decisions. Later user approvals resolve planning ownership/output in Section 7m and round-counting/editor proposal decisions in Section 7j; Research acceptance calibration remains open. The three-chapter MVP remains, while the fixed approximately 3,000-word requirement is removed by the user's clarification; bounded execution remains mandatory.
 
 ## 7h. Approved Phase 2.1 source boundary
 
@@ -625,9 +625,9 @@ complete; no separate 2.1 PR is created.
 ## 7j. Approved S03/S04 and remaining Manny phase workflow
 
 The project user approved these product decisions on October 26, 2026. They
-supersede earlier pending S03/S04 labels; S02 planning ownership/output remains
-unresolved. Recording decisions does not complete their implementation or claim
-Justin separately reviewed code.
+supersede earlier pending S03/S04 labels. S02 was resolved separately on
+October 29, 2026 in Section 7m. Recording decisions does not complete their
+implementation or claim Justin separately reviewed code.
 
 Initial drafting is round 0, followed by at most two explicitly requested
 editorial revision rounds. Reserve a stable round identity when the
@@ -660,13 +660,15 @@ alignment, then delete the verified merged temporary branch and stop. Automatic
 Phase 3/4 continuation is deferred until the user reinstates the rule; their
 previously approved names and product decisions remain recorded for later use.
 
-## 7k. Addendum: Assignment of Story Bible Creation Agents to Justin (October 28, 2026)
+## 7k. Historical addendum: Assignment of Story Bible Creation Agents to Justin (October 28, 2026)
+
+**Superseded October 29, 2026 by Section 7m.** The following records the earlier assignment accurately as historical context; Manny now owns Bible A/B/C planning.
 
 On October 28, 2026, the project user explicitly directed that **Justin will take over making the agents that will create the story bibles** (`bible_a`, `bible_b`, `bible_c` / Bible Planning roles).
 
 ### Key Decisions and Architectural Implications:
-1. **Ownership direction (S02 stays open on the phase checklist):**
-   - The October 28 direction assigns Story Bible creation (`bible_a`, `bible_b`, `bible_c`) to **Justin**. The phase checklist still lists S02 as unresolved, so this addendum does not mark that gate complete.
+1. **Ownership direction (status as of October 28; superseded October 29):**
+   - The October 28 direction assigned Story Bible creation (`bible_a`, `bible_b`, `bible_c`) to **Justin**. At that time, the phase checklist listed S02 as unresolved. Section 7m records the user's October 29 decision assigning planning to Manny and resolving the three-candidate output; that later decision supersedes this historical status.
    - Justin's implementation domain expands from the 5 WRITE instances (Chapter Writers 1/2/3 and Critic/Editors A/B) to include the 3 Story Bible creation agents (totaling 8 agent instances).
    - Manny retains ownership of the 3 READ instances (`research`, `reader`, `consistency`). Coordinator / Showrunner remains shared.
 
@@ -716,3 +718,35 @@ Synthetic checks, completed review and subsequent human acceptance are recorded 
 The separately authorized live user-browser check passed with LC selection and
 Gutendex metadata HTTP 200. This verifies metadata alignment only; acquisition
 still requires confirmed scope and the existing rights/source gates.
+
+## 7m. Approved Bible-planning ownership and proposal contract, October 29, 2026
+
+The project user clarified that Justin deferred Bible planning to Manny. Manny
+owns `bible_a`, `bible_b`, and `bible_c` in addition to the three READ roles.
+Justin remains the owner of the five WRITE roles. The shared Coordinator remains
+one role, so the proposed roster remains 12 roles: Manny 6, Justin 5, Shared 1.
+This changes development ownership only; it grants no product agent new runtime
+permissions and does not claim that Bible planners are live or built.
+
+The project user approved three independent, separately versioned Bible
+proposals for human review. Bible A, B, and C use the same confirmed-intent
+snapshot and exact accepted Research dossier, but return distinct proposal
+identities and hashes. They are presented as alternatives and are never merged
+automatically. The user selects one exact proposal; authenticated application
+code verifies owner, project, current base state, proposal version and hash,
+then records acceptance and assigns an immutable approved Bible version.
+Rejected, stale or unavailable candidates cannot advance chapter drafting.
+
+The handoff to chapter drafting carries the selected Bible data, accepted
+`bibleVersion`, chapter index and independent `draftVersion` in an outer task
+record. Bible, dossier, proposal, project-state and draft versions are separate
+identities; none is required to equal another. The existing Chapter Writer
+receiver continues to receive its current `approvedBible`, `bibleVersion`, and
+chapter index inputs. No change to Justin's prompts, functions, tools,
+permissions, interface or editorial behavior is authorized by this decision.
+
+Phase 2 may establish and validate these shared contracts and fixture adapters.
+Live Bible-agent prompts/execution, model-backed planning, authenticated
+acceptance wiring, and full Coordinator orchestration remain implementation
+work under their assigned later phases. The Phase 2 contract does not mark I01
+complete or establish a live full-circle workflow.

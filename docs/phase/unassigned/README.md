@@ -1,5 +1,5 @@
 # Unassigned decisions
 
-[Decision register](Deferred-unassigned-Decisions-before-dependent-connections.md) records S01's approved product decisions and keeps S02-S04 deferred until agreed. Deferred means unresolved, not waived. Independent work may continue without guessing an interface; S01 approval does not complete its implementation tasks.
+[Decision register](Deferred-unassigned-Decisions-before-dependent-connections.md) preserves the S01-S04 product decisions. S01-S04 are now resolved; S02 assigns Bible Planning to Manny and specifies three independently versioned candidates for human selection. The register is retained as history, not as an active unassigned implementation assignment. Product decisions do not complete their implementation phases.
 
 [Master phase index](../README.md)

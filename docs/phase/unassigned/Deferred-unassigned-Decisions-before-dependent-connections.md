@@ -1,6 +1,6 @@
 # Deferred unassigned phase: decisions before dependent connections
 
-Status: S01, S03 and S04 product decisions approved October 26, 2026; S02 remains unresolved. Execution ownership is not assigned by placing decisions here.
+Status: S01-S04 product decisions are approved. S02 was assigned to Manny and resolved October 29, 2026; this file remains the historical decision register, not an active unassigned implementation lane.
 
 Do not implement dependent wiring until its decision is agreed and recorded. Discovery and independent fixture work may proceed within authorized scope. Keep unresolved decision checkboxes open; approving a decision does not complete its implementation assignments.
 
@@ -23,17 +23,17 @@ Resolution: approved by the project user in the October 26, 2026 S01 discussion,
 - Minimal versioned adapters may touch peer files only to connect existing components; preserve Justin's functions, functionality, permissions, prompts, tools and design. Behavioral changes still need owner approval.
 - Apply the trace skill for actual audits; use synthetic unit/integration/failure-state tests with X/Y. No live agents/providers or trace execution under this test authorization; provide the user's CLI on request. Ordinary logs omit prose, secrets and private reasoning.
 
-S01 completes a product decision only; M01 and later assignments need their own implementation evidence. S02 and numeric pilot evidence calibration remain unresolved. S03/S04 resolutions below authorize their bounded connections, not silent changes to shared execution behavior.
+S01-S04 complete product decisions only; their implementation assignments need separate evidence. Numeric pilot evidence calibration remains unresolved. S03/S04 resolutions below authorize their bounded connections, not silent changes to shared execution behavior.
 
-## S02: Planning ownership and merged versus alternative bibles
+## S02: Bible planning ownership and independent alternatives
 
-Decision participants: Planning execution owner unassigned; shared product decision.
+Decision participants: Project user; Manny accepts Bible A/B/C planning ownership.
 
 Required decision: Assign Bible A/B/C ownership and choose merged output versus alternatives while preserving the twelve-role roster and exact human approval gate.
 
-Dependent work: Shared Phase 2 and 4.1; do not allocate planning to Manny or Justin by assumption.
+Dependent work: Shared Phase 2 contracts and Shared 4.1 planning implementation.
 
-Resolution record: pending; record agreed contract/version, rationale, participating owners, approval evidence/date and affected phase links. Documentation of a question is not its resolution.
+Resolution: project user assigned Bible A/B/C to Manny after Justin deferred the work, and approved three separately versioned candidates for human review with no automatic merge on October 29, 2026. Each candidate binds the same confirmed-intent and accepted-dossier snapshot. The writer chooses one exact candidate; authenticated application code verifies and records that acceptance. Bible, dossier, proposal and draft versions remain independent. See [PRD Section 7m](../../prd/drafts/PRD-v4-draft.md#7m-approved-bible-planning-ownership-and-proposal-contract-october-29-2026) and [Shared Phase 2](../Shared/Phase-2-Agreed-integration-contracts/2-Agreed-integration-contracts.md). This decision does not claim the planners are live or complete implementation.
 
 ## S03: Revision counting
 

@@ -175,9 +175,10 @@ remain historical references where they differ from this intake/research correct
    gap with options to broaden scope or provide an eligible reference. Exact
    numeric minimums are not set until evaluated against provider coverage and
    rights limits.
-5. Plan plot, character, and world against the accepted dossier. The v2 roster
-   includes three Bible roles; one merged bible versus three candidate bibles
-   remains a product decision.
+5. Plan plot, character, and world against the accepted dossier. Bible A/B/C
+   return three separately versioned proposals against the same confirmed
+   intent and accepted research. The writer selects one exact candidate; they
+   are not merged automatically.
 6. Wait for the writer to approve the exact story-bible version and three beats.
 7. Dispatch three indexed chapter writers against the same approved version.
 8. Validate every chapter, assemble by index, and have Reader prepare the
@@ -203,8 +204,8 @@ clear recovery actions. This is a design specification, not a new interface.
 
 ### Proposed agent roster
 
-The full v2 architecture has **12 proposed instances**, including unresolved
-planning and editorial alternatives. These are trace labels, not 12 implemented
+The full v2 architecture has **12 proposed instances**, including an unresolved
+editorial proposal-count choice. These are trace labels, not 12 implemented
 live agents. Coordinator and Showrunner name one agent; each Critic/Editor is
 one combined agent. Intake belongs to Coordinator, not an extra agent.
 
@@ -212,9 +213,9 @@ one combined agent. Intake belongs to Coordinator, not an extra agent.
 | --- | --- | --- |
 | `coordinator` | Coordinator / Showrunner | Shared |
 | `research` | Research | Manny READ |
-| `bible_a` | Bible A — plot / mystery | Planning ownership unassigned |
-| `bible_b` | Bible B — character / emotion | Planning ownership unassigned |
-| `bible_c` | Bible C — world / atmosphere | Planning ownership unassigned |
+| `bible_a` | Bible A — plot / mystery | Manny — Bible Planning |
+| `bible_b` | Bible B — character / emotion | Manny — Bible Planning |
+| `bible_c` | Bible C — world / atmosphere | Manny — Bible Planning |
 | `chapter_writer_1` | Chapter Writer 1 | Justin WRITE |
 | `chapter_writer_2` | Chapter Writer 2 | Justin WRITE |
 | `chapter_writer_3` | Chapter Writer 3 | Justin WRITE |
@@ -223,10 +224,12 @@ one combined agent. Intake belongs to Coordinator, not an extra agent.
 | `critic_editor_b` | Critic / Editor B — voice / atmosphere | Justin WRITE |
 | `consistency` | Consistency | Manny READ |
 
-Counts: Manny 3 READ + Justin 5 WRITE + 3 unassigned planning + 1 shared = 12.
+Counts: Manny 3 READ + 3 Bible Planning + Justin 5 WRITE + 1 shared = 12.
 READ agents return analysis and handoffs; WRITE agents return proposals. Both
 Critic/Editors validate Reader inputs. Only authenticated application acceptance
-commits approved story state; ownership labels grant no runtime permissions.
+commits approved story state. The three Bible outputs remain separate until the
+writer selects one exact candidate. Ownership labels grant no runtime
+permissions, and these roles are not claimed to be live.
 
 Proposed scope: one English-language story of approximately 3,000 words, one
 writer per project, three concurrent model tasks, one retry per failed task,
@@ -259,6 +262,7 @@ All project-scoped references must belong to the same authorized project.
 | MemoryHandoff | id, project_id, bible_version_id, chapter_index, fact_ids, summary, planned_events, unresolved_threads | Compression cannot replace canonical facts; parallel writers receive planned handoffs without requiring another writer's finished prose |
 | Critique | id, project_id, run_id, draft_version_refs, dimension, availability, score?, notes [{chapter_index, passage_ref, severity, rationale, fact_ids, evidence_ids, proposed_edit}] | Critics wait for all valid chapters; scores 1 through 5 only when available; actionable notes have locations |
 | Proposal | id, project_id, base_state_version, kind, diff, affected_fact_ids, chapter_version_refs, validation_issues, status, decided_at | Pending, accepted, rejected, or stale; application commits acceptance atomically only against current base version |
+| BiblePlanningTask / BibleProposal | Confirmed original and dimensions; accepted dossier ID/version/hash/acceptance; both provider outcomes, evidence and gaps; three independent proposal IDs/versions/hashes; exact human-selected candidate | All candidates share the same confirmed-intent and accepted-dossier snapshot; no automatic merge; authenticated acceptance is required before drafting |
 | ResearchEvidence | id, project_id, provider, provider_record_id?, title?, authors[], isbns[], source_url, fetched_at?, provider_published_at?, availability, permitted_use_status, match_confidence, missing_fields[], signals, text_reference?, passage_locator?, rights_basis?, observations[], inferences[] | Separate metadata from permitted-text observations and inference; unknown fields null; retain failures separately from empty results |
 | ResearchDossier | id, project_id, version, brief_version, confirmed_scope, provider_outcomes[], evidence_ids[], craft_profiles[], character_observations[], required_criteria, gaps[], status, accepted_at? | Both provider outcomes recorded; readable current evidence meets agreed criteria before planning; a partial provider outcome alone is insufficient; brief/scope changes invalidate affected acceptance |
 
@@ -269,8 +273,10 @@ Availability values: available, empty, unavailable, rate_limited, not_requested.
 Match confidence: confirmed, tentative, unmatched; title alone cannot confirm identity.
 Dossier gate states are proposed as pending, blocked, or accepted. A provider's
 `not_requested` outcome never satisfies the mandatory research gate. There is
-no `research_enabled` bypass in the v2 design. These additions are conceptual;
-the current runtime schema and SQL have not been extended by this documentation.
+no `research_enabled` bypass in the v2 design. The table is conceptual, not
+SQL. The executable planning handoff contract is in `src/contracts/planning.ts`;
+`proposals.data` can retain its candidate envelope without a migration. Live
+planner execution and approval wiring remain future work.
 Permitted-use status: unverified, allowed, restricted; activate collection only
 after provider-use review. Optional fields marked `?` may be null.
 An intake draft may omit these optional fields. Genre and confirmed scope become
@@ -404,7 +410,7 @@ tests/               # contract, integration, and browser checks
 | --- | --- |
 | `src/contracts/` | Manny and Justin jointly agree schemas before either lane depends on them |
 | `src/server/research/` | Manny owns research retrieval, validation, attribution, and unavailable states |
-| `src/agents/` | Manny owns authorized read behavior; Justin owns writing and revision proposals; coordinate orchestration interfaces |
+| `src/agents/` | Manny owns READ and Bible Planning; Justin owns writing and revision proposals; coordinate orchestration interfaces |
 | `src/app/`, `src/worker/`, `src/server/db/`, `src/server/auth/`, `drizzle/`, `tests/` | Implemented foundation areas; contributor ownership remains unassigned |
 
 ### Current local runtime
