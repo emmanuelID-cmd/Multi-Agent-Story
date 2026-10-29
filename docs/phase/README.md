@@ -19,7 +19,7 @@ Every numbered phase has its own folder named `Phase-<integer>-<phase-title>`, i
 
 Preserve each approved owner's phase order. Justin may adjust his own reference plan under his own rules; those rules override this organization for him, while shared contracts and product gates remain binding. Shared execution ownership must be assigned before implementation.
 
-Resolve each applicable S01-S04 decision before its dependent wiring. S01, S03 and S04 product decisions were approved October 26, 2026 (decision register and PRD Sections 7g/7j); S02 remains unresolved. Agreed fixture adapters allow component development before full web integration; they never authorize production dispatch on fixture evidence. Tests accompany each component phase. Later reliability phases close remaining gaps.
+Resolve each applicable S01-S04 decision before its dependent wiring. S01, S03 and S04 product decisions were approved October 26, 2026 (decision register and PRD Sections 7g/7j). On October 29, the user assigned Bible planning to Manny and approved three separately versioned Bible proposals for human review, with no automatic merge; the decision register and PRD ownership addendum must record this before dependent implementation. Agreed fixture adapters allow component development before full web integration; they never authorize production dispatch on fixture evidence. Tests accompany each component phase. Later reliability phases close remaining gaps.
 
 Shared 3.1 reviews existing storage first; SQL is conditional. Shared 3.2 closes I03 only after that review and durable atomic state work are complete. Shared 3.3 recovery coverage must be rechecked for every later connector. Shared 4.1 waits for accepted Research and a planning-owner decision. Shared 4.2 establishes graph boundaries; I02 remains open until Shared 5.2 supplies and verifies its export connector. Shared 5.1/5.2 may use the established graph foundation without waiting for I02 final check-off. This separates development dependencies from final acceptance and avoids a circular prerequisite.
 
@@ -99,9 +99,9 @@ work. Justin controls his own WRITE phase organization and implementation.
 
 ## SQL ownership and lane identity
 
-SQL is shared: either contributor may work on approved database tasks. Canonical lane: sql-foundation, based on developer, with PRs to developer. Manny's non-SQL READ work stays on manny/read-agents. Switch out of the SQL lane for non-SQL work; check dirty worktrees, fresh tips, ancestry and unique commits before switching/fast-forwarding. Stop with evidence and safe recommendations if alignment is unsafe. Never fast-forward main to align lanes.
+SQL is shared: either contributor may work on approved database tasks. The canonical local and remote lane is `sql-foundation`, based on `developer`, with PRs to `developer`. Manny's non-SQL READ work stays on `manny/read-agents`. Switch out of the SQL lane for non-SQL work; check dirty worktrees, fresh tips, ancestry and unique commits before switching/fast-forwarding. Stop with evidence and safe recommendations if alignment is unsafe. Never fast-forward main to align lanes.
 
-Existing local/remote legacy ref manny/sql-foundation is not renamed or deleted by documentation. Shared 1.2 remains pending until the separately authorized, verified Git transition is complete. Preserve historical handoff references.
+Shared 1.2 completed October 29, 2026: local and remote refs and upstream tracking use `sql-foundation`; the prior `manny/sql-foundation` remote ref was removed after matching-tip verification. Historical handoff entries retain the prior name for accuracy.
 
 ## Primary completion map: all 26 items
 
@@ -138,4 +138,4 @@ Each ID appears once below at its primary completion location; supporting phases
 
 ## Current boundary
 
-The initial documentation system, branding and PRD v4 were integrated in PR #13. The user subsequently approved Manny phase execution and the temporary phase lifecycle. S01's product decisions are approved; consult the canonical checklist and each phase record for actual implementation status. SQL, live provider enablement, durable history, WRITE behavior and unresolved S02-S04 decisions are not silently included in Manny Phase 1.
+The initial documentation system, branding and PRD v4 were integrated in PR #13. Manny Phase 4 was merged to `developer` in PR #21. Shared Phase 1.2 has now completed the approved SQL lane name transition. S01-S04 product decisions are approved; the October 29 S02 ownership and output-format decision still needs its formal PRD/decision-register record before dependent implementation. Consult the canonical checklist and each phase record for implementation evidence. Live provider enablement, durable history and WRITE behavior remain bounded by their respective phases and ownership.
