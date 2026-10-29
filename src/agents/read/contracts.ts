@@ -136,8 +136,10 @@ export type ConsistencyAnalysis = z.infer<typeof consistencyAnalysisSchema>;
 
 export type TraceEvent = {
   runId: string; taskId: string; operationId: string; agentId: "research" | "reader" | "consistency";
-  eventId: string; at: string; event: "started" | "tool_dispatch" | "tool_completed" | "model_dispatch" | "model_completed" | "validation_failed" | "blocked" | "completed" | "failed" | "canceled";
+  traceId: string; eventId: string; at: string; event: "started" | "tool_dispatch" | "tool_completed" | "model_dispatch" | "model_completed" | "validation_failed" | "blocked" | "completed" | "failed" | "canceled";
   attempt: number; durationMs?: number; code?: string; versions: ReadVersions; stateVersion: number;
+  round?: number; sourceIds?: string[]; proposalId?: string;
+  artifactVersions?: { briefVersion?: number; scopeVersion?: number; criteriaVersion?: number; bibleVersion?: number; draftVersion?: number; proposalVersion?: number };
 };
 export type ReadResult<T> = {
   status: "ready_for_review" | "blocked" | "partial" | "failed" | "canceled";

@@ -37,9 +37,14 @@ No step may invent an unresolved contract. Deferred decisions remain gates for t
 
 Current user direction, October 28, 2026: Manny Phase 2 was completed and
 integrated. The user then expressly reinstated execution of Manny Phase 3 on
-`manny/phase-3-reader-consistency`; Phase 3 is now complete and its publication
-and safe cleanup are in progress. Do not infer authorization to begin Phase 4
-from this Phase 3 completion; wait for the user's next direction.
+`manny/phase-3-reader-consistency`; Phase 3 and Manny Phase 4 are now complete
+within their reviewed scopes. Phase 4.1/M07 and 4.2/M08 were approved October
+29, 2026, with typecheck passed, READ checks of 141/141 across 11 files before
+the final targeted privacy assertion fix plus that assertion passing 1/1
+afterward, and presentation checks 5/5. Validation used synthetic/mocked
+inputs; no live model/provider calls or production reliability claim. Do not
+infer authorization for any later phase from Phase 4 completion; wait for the
+user's direction.
 
 For Manny Phase 2, the October 26, 2026 user update requires one PR for the whole
 phase: retain `manny/phase-2-1-provider-retrieval` through 2.1 and 2.2, verify
@@ -52,13 +57,14 @@ Use the parent phase as the PR, integration and cleanup boundary. The required
 order is complete/review, commit/push, PR to `developer`, safe merge, verify the
 tree and remote refs, safe non-main alignment, then deletion of the verified
 merged temporary branch. Recheck the tree after pushing; preserve unique or
-dirty work. The user explicitly reinstated Phase 3; Phase 4 still needs user
-direction. This does not authorize Justin implementation or advancing `main`.
+dirty work. The user explicitly reinstated Phase 3 and subsequently approved
+Phase 4. Both are now complete. This does not authorize Justin implementation,
+another phase, or advancing `main`.
 
-Exact remaining parent-phase branch names approved October 26, 2026:
-`manny/phase-3-reader-consistency` and `manny/phase-4-read-reliability`. Create
-each only when its prior parent phase has completed integration/cleanup and
-fresh tree, remote-tip and prerequisite checks pass.
+Exact temporary parent-phase branch names approved October 26, 2026:
+`manny/phase-3-reader-consistency` and `manny/phase-4-read-reliability`. Both
+phases are complete; any remaining publication or cleanup follows the approved
+phase lifecycle and fresh tree, remote-tip and prerequisite checks.
 
 For Manny's authorized builds, create one temporary branch for the active phase
 from the latest fetched, verified `developer`. Obtain approval of the exact
@@ -123,8 +129,8 @@ Each ID appears once below at its primary completion location; supporting phases
 | M04 | Manny | [3.1](Manny/Phase-3-Reader-and-Consistency-connections/3.1-Actual-Reader-snapshots.md) |
 | M05 | Manny | [3.2](Manny/Phase-3-Reader-and-Consistency-connections/3.2-Rejection-and-bounded-repair.md) |
 | M06 | Manny | [3.3](Manny/Phase-3-Reader-and-Consistency-connections/3.3-Exact-proposal-Consistency.md) |
-| M07 | Manny | [4.1](Manny/Phase-4-READ-reliability-evidence/4.1-Failure-freshness-and-recovery-coverage.md) |
-| M08 | Manny | [4.2](Manny/Phase-4-READ-reliability-evidence/4.2-Safe-diagnostics-and-documentation-corrections.md) |
+| M07 | Manny | [4.1](Manny/Phase-4-READ-reliability-evidence/4.1-Failure-freshness-and-recovery-coverage.md) — complete October 29, 2026; synthetic/mocked; reviewer approved |
+| M08 | Manny | [4.2](Manny/Phase-4-READ-reliability-evidence/4.2-Safe-diagnostics-and-documentation-corrections.md) — complete October 29, 2026; synthetic/mocked; reviewer approved |
 | S01 | unassigned | [deferred](unassigned/Deferred-unassigned-Decisions-before-dependent-connections.md) |
 | S02 | unassigned | [deferred](unassigned/Deferred-unassigned-Decisions-before-dependent-connections.md) |
 | S03 | unassigned | [deferred](unassigned/Deferred-unassigned-Decisions-before-dependent-connections.md) |

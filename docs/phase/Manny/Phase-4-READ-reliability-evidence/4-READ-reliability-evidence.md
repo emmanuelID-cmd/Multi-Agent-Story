@@ -2,7 +2,7 @@
 
 Owner: Manny.
 
-Status: planned. Parent completes only after every required sub-phase is verified; conditionally unnecessary SQL work needs an explicit reuse/N/A record.
+Status: complete — October 29, 2026. Both required sub-phases passed review; no SQL change was required.
 
 Keep this approved phase order and folder setup. Changes to scope/order need an explicit plan update.
 
@@ -13,6 +13,6 @@ Keep this approved phase order and folder setup. Changes to scope/order need an 
 
 ## Boundaries and completion
 
-Run relevant tests during each sub-phase; later reliability phases consolidate gaps rather than postpone verification. Record evidence in the canonical checklist and do not check a spanning item before all its criteria pass. No product implementation is authorized by this documentation.
+M07 and M08 are complete and checked in the canonical checklist. Validation used synthetic/mocked inputs; no live model/provider calls were made. Results and limitations are recorded in each sub-phase and the checklist. No production reliability claim is made.
 
 [Completion rules](../../README.md#completion-and-accountability) | [Commit groups](../../COMMIT-GROUPS.md)

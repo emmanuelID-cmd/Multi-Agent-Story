@@ -118,7 +118,7 @@ export function validateEditorReceivingHandoff(
       rejection: {
         failedChecks,
         missingItems,
-        requestedCorrection: "Supply all five required fields matching the v2 handoff schema.",
+        requestedCorrection: "Supply all five required fields in the current Reader-to-Editor handoff.",
       },
     };
   }
@@ -208,7 +208,7 @@ export function validateHandoff(
       rejection: {
         failedChecks: ["SCHEMA_CONFORMANCE_FAILED"],
         missingItems: missing,
-        requestedCorrection: "Supply all five required fields matching the v2 handoff schema.",
+        requestedCorrection: "Supply all five required fields in the current Reader-to-Editor handoff.",
       },
     };
   }

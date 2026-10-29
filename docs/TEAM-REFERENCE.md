@@ -83,6 +83,17 @@ Verified move hashes:
 
 # Handoffs prepared for push
 
+## 2026-10-29T03:43:34-04:00
+
+Summary file: PROJECT-HANDOFF.md
+
+- Prepared for push from `manny/phase-4-read-reliability` to `developer`; this entry does not claim publication. Verified remote baseline: `origin/developer` at `2805784bf1ed621916abd7f8629ee333da3f6dd3`. No open PRs were returned by the connected GitHub search.
+- Outgoing commit author: Emmanuel De Jesus (Manny). Activity: `873ab4922992b528ef2a8cd9927c058e96ff497a` completed Phase 4.1/M07 coverage evidence; `c7526fc9fb233be13a7462b351768e9037919d4f` completed Phase 4.2/M08 safe diagnostics, runtime/presentation corrections, and parent completion. Reviewed range: `2805784bf1ed621916abd7f8629ee333da3f6dd3..c7526fc9fb233be13a7462b351768e9037919d4f`.
+- [x] Done: Manny Phase 4.1/M07 READ failure, freshness, and recovery coverage; existing synthetic boundary tests were audited and accepted.
+- [x] Done: Manny Phase 4.2/M08 safe trace correlation, stale handoff wording, and accurate runtime/presentation status. Justin's WRITE implementation was preserved.
+- [ ] Not completed: Shared Phases 1–5; this Phase 4 push does not include them.
+- Validation: typecheck passed; READ regression 141/141 across 11 files, then focused privacy assertion 1/1 (22 skipped); presentation checks 5/5; Markdown whitespace/fences and `git diff --check` passed. No live model/provider calls; no production reliability claim.
+
 ## 2026-10-28T21:05:30-04:00
 
 Summary file: PROJECT-HANDOFF.md

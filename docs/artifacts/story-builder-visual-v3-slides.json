@@ -10,7 +10,7 @@
       "blue": "#76a8ff",
       "amber": "#f4bc6c"
     },
-    "statusCaption": "Workflow illustration · not live activity"
+    "statusCaption": "Illustrative route | not live activity | READ CLI live model opt-in | twelve-role app route is not live"
   },
   "slides": [
     {
@@ -34,7 +34,7 @@
         "export"
       ],
       "visualType": "hero-flow",
-      "notes": "The 12 are proposed agent instances, including the shared Coordinator / Showrunner. This is an architecture illustration, not a live product run."
+      "notes": "The 12 are proposed agent instances, including the shared Coordinator / Showrunner. The animation is illustrative. The READ CLI can run its three READ agents with an opt-in live model; this does not establish a live twelve-instance product run."
     },
     {
       "number": 2,
@@ -57,7 +57,7 @@
         "export"
       ],
       "visualType": "animated-architecture",
-      "notes": "The animated light is an illustration. Human gates pause the route. Current implementation does not establish a fully live twelve-instance flow."
+      "notes": "The animated light is an illustration. Human gates pause the proposed route. The READ CLI supports opt-in live-model calls for Research, Reader, and Consistency; the complete twelve-role application route is not live."
     },
     {
       "number": 3,
@@ -132,7 +132,7 @@
       "title": "One structured handoff",
       "subtitle": "Reader grounds editorial work in the ordered draft and accepted sources.",
       "bullets": [
-        "Five required fields",
+        "Five handoff groups—not intake questions",
         "Editors validate before editing",
         "One bounded content repair"
       ],
@@ -140,7 +140,7 @@
         "reader"
       ],
       "visualType": "handoff-schema",
-      "notes": "Top-level fields are task, userInstructions, sourceReferences, completeness, and version. A semantic rejection allows one Reader content repair; unresolved failure pauses the branch."
+      "notes": "Reader returns task, userInstructions, sourceReferences, completeness, and version to the Editors. These five groups describe the downstream Reader-to-Editor contract; they are not the user intake fields or the intake helper. A semantic rejection allows one Reader content repair; unresolved failure pauses the branch."
     },
     {
       "number": 8,
