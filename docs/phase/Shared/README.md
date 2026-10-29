@@ -2,9 +2,9 @@
 
 Keep this approved phase order and folder setup. Changes to scope/order need an explicit plan update.
 
-Status: Phase 1 complete October 29, 2026. Later Shared phases remain planned and require their listed prerequisites.
+Status: Shared Phases 1 and 2 complete October 29, 2026. Shared Phases 3–5 remain planned and require their listed prerequisites.
 
-Shared 1.1 completed the owner structure, phase mapping and commit groups on October 26, 2026. Shared 1.2 renamed the existing local/remote SQL lane to `sql-foundation`, verified matching history and tracking, and removed the old remote ref on October 29, 2026. See each completion record for evidence. The canonical 26-item checklist remains authoritative for product implementation status.
+Shared 1.1 completed the owner structure, phase mapping and commit groups on October 26, 2026. Shared 1.2 renamed the existing local/remote SQL lane to `sql-foundation`, verified matching history and tracking, and removed the old remote ref on October 29, 2026. Shared Phase 2 established the typed Manny Bible-planning contract and checked it against the existing WRITE receiver; it does not complete I01 or claim live planners, authenticated approval wiring, or a full-circle run. See each completion record for evidence. The canonical 26-item checklist remains authoritative for product implementation status.
 
 [Master phase index](../README.md) | [Commit groups](../COMMIT-GROUPS.md)
 
