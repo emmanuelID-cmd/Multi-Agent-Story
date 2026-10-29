@@ -74,3 +74,13 @@ committed, pushed, or merged; the earlier PR #22 merge is already complete.
 Branch `manny/phase-3-reader-consistency`; verified remote developer baseline `d7763182219816a6c60b8be5f11727820b295baa`. M04/M05/M06 are complete in synthetic implementation scope. Final remediation validation: 135/135 affected tests across 10 files and typecheck passed; 435/435 full-suite result predates final security remediation. Targeted SECURITY check was clear and independent REVIEWER approved.
 
 Feature remains opt-in. There are no live Writer/Editor producers, provider calls, live PostgreSQL contention, or user request/resume UI. M07/M08 and Phase 4 remain untouched; main is unchanged; historical docs and temporary traces are preserved. Next: verify the remote, commit and push this branch, open a PR to developer, merge only if safe, then fast-forward eligible non-main branches and delete this merged phase branch. Do not start Phase 4.
+
+## 2026-10-29 — Shared Phase 3 completion / pre-push
+
+Shared Phase 3 is complete and approved for publication on `shared/phase-3-durable-execution-recovery`, based on `origin/developer` at `ad4e90d0d360966d6ff77bec24167fe4227e0164`; no PRs are open. Keep `main` untouched and exclude the pre-existing untracked `docs/temp/`.
+
+I03 atomically records state and dependencies. I04 adds worker recovery and idempotency, plus an owner-only READ recovery panel and action. No migration or Justin-owned behavior change was required. A separate `AGENTS.md` wording correction clarifies that the skills registry is read from external `C:\Users\Github\AGENTS`, not copied into this app repository.
+
+Validation: 144/144 affected unit tests passed across 12 files (READ 118, postgres-target guard 14, task-attempt 12); typecheck and isolated synthetic PostgreSQL 17 recovery scenarios passed. Earlier I03 validation passed six isolated PostgreSQL scenarios. SECURITY and REVIEWER cleared/approved the work.
+
+Limits: dependency and recovery tests were synthetic; no live provider call or real external billing verification was performed. Duplicate Anthropic usage remains possible and acknowledged. Recovery covered orderly restart and simulated interrupted state, not a hard kill during a provider call. Next: prepare the TEAM-REFERENCE pointer and complete the authorized publication workflow, preserving these limits.

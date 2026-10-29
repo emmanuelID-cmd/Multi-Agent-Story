@@ -9,6 +9,7 @@ import { enqueue } from "../worker/queue";
 import type { RevisedManuscript } from "../agents/editors";
 import { verifyManuscriptEnvelope } from "../agents/write/runtime";
 import { assertCurrentReadConsistency } from "./read-connections";
+import { taskAttemptInputHash } from "./task-attempt";
 
 export class AppError extends Error { constructor(public status: number, message: string, public fields?: Record<string,string[]>) { super(message); } }
 export async function ownedProject(ownerId: string, id: string) {
@@ -311,7 +312,8 @@ export async function startRun(ownerId: string, id: string, input: unknown, disp
   const parsed = runInput.parse(input);
   await ownedProject(ownerId,id);
   const run = await db.transaction(async tx=>{
-    const [project] = await tx.select().from(projects).where(eq(projects.id,id)).for("update");
+    const [project] = await tx.select().from(projects).where(and(eq(projects.id,id),eq(projects.ownerId,ownerId))).for("update");
+    if (!project) throw new AppError(404,"Project not found.");
     const [bible] = await tx.select().from(bibles).where(and(eq(bibles.projectId,id),eq(bibles.version,project.version)));
     if (!bible) throw new AppError(409,"Approve a story bible before drafting.");
     const active = await tx.select().from(runs).where(eq(runs.projectId,id));
@@ -361,19 +363,30 @@ export async function cancelRun(ownerId: string, id: string) {
   });
 }
 export async function retryRun(ownerId: string, id: string, dispatch=true) {
-  await ownedProject(ownerId,id);
-  const [run]=await db.select().from(runs).where(eq(runs.projectId,id)).orderBy(desc(runs.createdAt)).limit(1);
-  if(!run)throw new AppError(409,"No run to retry.");
-  await db.transaction(async tx=>{const [locked]=await tx.select().from(runs).where(eq(runs.id,run.id)).for("update");
+  let runId: string | undefined;
+  await db.transaction(async tx=>{
+    const [project]=await tx.select().from(projects).where(and(eq(projects.id,id),eq(projects.ownerId,ownerId))).for("update");
+    if(!project)throw new AppError(404,"Project unavailable.");
+    const [locked]=await tx.select().from(runs).where(eq(runs.projectId,id)).orderBy(desc(runs.createdAt)).limit(1).for("update");
+    if(!locked)throw new AppError(409,"No run to retry.");
     if(locked.status!=="failed")throw new AppError(409,"Only a failed run can be retried.");
-    const all=await tx.select().from(tasks).where(eq(tasks.runId,run.id));
+    const [bible]=await tx.select().from(bibles).where(and(eq(bibles.id,locked.bibleId),eq(bibles.projectId,id)));
+    if(!bible||bible.version!==project.version)throw new AppError(409,"The approved Bible changed. Review the current plan before retrying.");
+    const all=await tx.select().from(tasks).where(eq(tasks.runId,locked.id));
     const eligible=all.filter(t=>t.status!=="completed"&&t.attempts<2);
     if(!eligible.length)throw new AppError(409,"The one-retry limit has been reached. Completed outputs are preserved.");
+    for(const task of eligible){
+      const saved=task.savedInput as {version?:unknown;brief?:unknown;bible?:unknown}|null;
+      if(!saved||saved.version!==bible.version||taskAttemptInputHash(saved.brief)!==taskAttemptInputHash(project.brief)||taskAttemptInputHash(saved.bible)!==taskAttemptInputHash(bible.data))
+        throw new AppError(409,"Saved task dependencies changed. Start a new run from the current approved plan.");
+    }
     for(const task of eligible)await tx.update(tasks).set({status:"pending",error:null,updatedAt:new Date()}).where(eq(tasks.id,task.id));
-    await tx.update(runs).set({status:"pending"}).where(eq(runs.id,run.id));
+    await tx.update(runs).set({status:"pending"}).where(eq(runs.id,locked.id));
+    runId=locked.id;
   });
-  if(dispatch)await dispatchRun(run.id);
-  return run.id;
+  if(!runId)throw new AppError(409,"No run to retry.");
+  if(dispatch)await dispatchRun(runId);
+  return runId;
 }
 export async function exportProject(ownerId: string, id: string) {
   const state = await projectState(ownerId, id);

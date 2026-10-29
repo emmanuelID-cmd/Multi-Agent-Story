@@ -43,11 +43,21 @@ const resultBase = z.strictObject({status:z.enum(["ready_for_review","blocked","
   attempts:z.number().int().nonnegative().max(2),traceId:connectionId});
 export const readerResultSchema=resultBase.extend({output:readerOutputSchema.optional()});
 export const consistencyResultSchema=resultBase.extend({output:consistencyOutputSchema.optional()});
+const budgetReservationSchema=z.strictObject({targetRunId:connectionId,maxTokens:z.number().int().nonnegative(),maxCostUsd:z.number().nonnegative(),
+  inputUsdPerMillion:z.number().positive(),outputUsdPerMillion:z.number().positive(),settled:z.boolean()});
+export const recoveryDecisionSchema=z.strictObject({decision:z.literal("retry_once"),decisionId:connectionId,
+  duplicateProviderCallAcknowledged:z.literal(true),
+  authorizedAt:z.string().datetime(),priorGeneration:version,priorStatus:z.enum(["running","blocked","partial","failed","unavailable"]),
+  priorReasonCode:z.string().max(100),priorResult:z.union([readerResultSchema,consistencyResultSchema]).optional(),
+  priorBudgetReservation:budgetReservationSchema.optional(),
+  dependency:z.strictObject({requestVersion:version,stateVersion:version,bibleVersion:version,sourceFingerprint:hash})});
 export const readOperationSchema=z.strictObject({
   schemaVersion:z.literal(1),kind:z.literal("read_operation"),ownerId:connectionId,projectId:connectionId,
   operationId:connectionId,requestId:connectionId,agent:z.enum(["reader","consistency"]),
   intentFingerprint:hash,sourceFingerprint:hash,versions:readVersionsSchema,
-  generation:z.number().int().min(1).max(2),repairUsed:z.boolean(),
+  generation:z.number().int().min(1).max(3),repairUsed:z.boolean(),recoveryDecisions:z.array(recoveryDecisionSchema).max(1).default([]),
+  budgetHistory:z.array(z.strictObject({generation:version,reservation:budgetReservationSchema,
+    result:z.union([readerResultSchema,consistencyResultSchema]).optional()})).max(3).default([]),
   status:z.enum(["running","ready_for_review","blocked","partial","failed","canceled","unavailable","exhausted"]),
   reasonCode:z.string().max(100),route:z.enum(["editor","reader_correction","writer_recovery","retrieval_recovery","human_review"]),
   origin:z.enum(["unverified","synthetic"]),verifiedLiveProducer:z.literal(false),
@@ -56,11 +66,10 @@ export const readOperationSchema=z.strictObject({
   editorExecutions:z.array(z.strictObject({editorId:z.enum(["critic_editor_a","critic_editor_b"]),
     handoffHash:hash,generation:version,status:z.enum(["accepted_for_execution","output_produced","failed"]),
     modelUsed:z.string().min(1).max(128).optional(),producerOrigin:z.enum(["unverified","synthetic"]).default("unverified")})).max(8).default([]),
-  budgetReservation:z.strictObject({targetRunId:connectionId,maxTokens:z.number().int().nonnegative(),maxCostUsd:z.number().nonnegative(),
-    inputUsdPerMillion:z.number().positive(),outputUsdPerMillion:z.number().positive(),settled:z.boolean()}).optional(),
+  budgetReservation:budgetReservationSchema.optional(),
   editorOutputs:z.array(z.strictObject({editorId:z.enum(["critic_editor_a","critic_editor_b"]),handoffHash:hash,generation:version,
     proposal:revisedManuscriptSchema,usage:resultBase.shape.usage,modelUsed:z.string().min(1).max(128)})).max(4).default([]),
-  readerResults:z.array(readerResultSchema).max(2),consistencyResult:consistencyResultSchema.optional(),
+  readerResults:z.array(readerResultSchema).max(3),consistencyResult:consistencyResultSchema.optional(),
   proposalBinding:z.strictObject({proposalId:connectionId,proposalVersion:version,writeDigest:hash,
     readDigest:hash,rowDigest:hash,bibleDigest:hash,baseDigest:hash}).optional(),
 });

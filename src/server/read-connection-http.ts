@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { limits } from "../contracts";
 import { AnthropicReadModel } from "../agents/read/model";
-import { createReadConnections, type ReadConnectionOptions } from "./read-connections";
+import { createReadConnections, listReadRecoveryOperations, type ReadConnectionOptions } from "./read-connections";
 import { connectionId, readAssignmentSchema, ReadConnectionError } from "./read-connection-contracts";
 
 export const readConnectionActionSchema=z.discriminatedUnion("action",[
@@ -10,6 +10,7 @@ export const readConnectionActionSchema=z.discriminatedUnion("action",[
   z.strictObject({action:z.literal("receive_reader"),runId:connectionId,operationId:connectionId,
     editorId:z.enum(["critic_editor_a","critic_editor_b"])}),
   z.strictObject({action:z.literal("resume_revision"),runId:connectionId}),
+  z.strictObject({action:z.literal("retry_uncertain"),runId:connectionId,operationId:connectionId,confirmDuplicateProviderCall:z.literal(true)}),
 ]);
 
 /** Trusted server configuration only. Construction never dispatches a model call. */
@@ -29,8 +30,14 @@ export async function executeReadConnectionAction(ownerId:string,projectId:strin
   const action=readConnectionActionSchema.parse(input);
   if(action.action==="resume_revision")return (await import("./read-revision-resume")).resumeReadRevision(ownerId,projectId,action.runId);
   const service=createReadConnections(options);
+  if(action.action==="retry_uncertain")return service.retryUncertain(ownerId,projectId,action.runId,action.operationId,action.confirmDuplicateProviderCall);
   if(action.action==="record_request")return service.recordRequest(ownerId,projectId,action.assignment);
   if(action.action==="receive_reader")return service.receiveReader(ownerId,projectId,action.runId,action.operationId,action.editorId);
   return action.action==="reader"?service.prepareReader(ownerId,projectId,action.runId,action.requestId,action.operationId):
     service.checkConsistency(ownerId,projectId,action.runId,action.requestId,action.operationId);
+}
+
+/** Owner-authenticated inventory endpoint. Does not construct a model adapter. */
+export async function getReadRecoveryOperations(ownerId:string,projectId:string,runId:string){
+  return {operations:await listReadRecoveryOperations(ownerId,projectId,runId)};
 }

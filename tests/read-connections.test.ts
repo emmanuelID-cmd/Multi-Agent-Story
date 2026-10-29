@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { createReadConnections, resolveReadSource } from "../src/server/read-connections";
+import { createReadConnections, listReadRecoveryOperations, resolveReadSource } from "../src/server/read-connections";
 import { ReadConnectionError, type ConnectionSnapshot, type ReadConnectionRepository, type ReadAssignment } from "../src/server/read-connection-contracts";
 import { validateEditorReceivingHandoff } from "../src/agents/handoff";
 import type { ReadModel, ModelCall } from "../src/agents/read/model";
 import { buildManuscriptEnvelope, type RevisedManuscript } from "../src/agents/write/runtime";
-import { executeReadConnectionAction } from "../src/server/read-connection-http";
+import { executeReadConnectionAction, readConnectionActionSchema } from "../src/server/read-connection-http";
 
 const assignment=():ReadAssignment=>({schemaVersion:1,requestId:"request",requestVersion:1,runId:"run",stateVersion:2,
   bibleVersion:2,draftVersion:5,editorialRound:1,editorialTask:{action:"revise",scope:[1,2,3],expectedOutput:"Two full proposals."},
@@ -99,6 +99,105 @@ describe("Phase 3.2 durable receiving rejection and repair",()=>{
     const received=await h.service.receiveReader("owner","project","run","reader","critic_editor_a");
     expect(received).toEqual(original);expect(received.repairUsed).toBe(false);
     expect(received.receipts).toEqual([]);expect(h.calls).toHaveLength(1);
+  });
+  it("splits the run cap, preserves the uncertain Reader attempt, and allows one owner-authorized retry",async()=>{
+    const h=harness();h.options.runtime.budget.maxTokens=60_000;h.options.runtime.budget.maxCostUsd=3;
+    await h.service.recordRequest("owner","project",assignment());
+    h.setResponse(async()=>{throw new Error("TIMEOUT");});
+    const uncertain=await h.service.prepareReader("owner","project","run","request","reader-retry");
+    expect(uncertain.budgetReservation).toMatchObject({maxTokens:30_000,maxCostUsd:1.5,settled:false});
+    expect((await listReadRecoveryOperations("owner","project","run",h.repo))[0]).toMatchObject({
+      agent:"reader",operationId:"reader-retry",retryAvailable:true,
+      dependencyVersions:{projectState:2,approvedBible:2,draft:5,request:1,editorialRound:1}});
+    await expect(h.service.retryUncertain("owner","project","run","reader-retry",false))
+      .rejects.toMatchObject({code:"RETRY_CONFIRMATION_REQUIRED"});
+    expect(h.calls).toHaveLength(1);
+    h.setResponse(async call=>{const source=(call.data as {snapshot:{chapters:{chapterIndex:number;sourceId:string;text:string}[]}}).snapshot;
+      return {findings:source.chapters.map(c=>({chapterIndex:c.chapterIndex,sourceId:c.sourceId,quote:c.text,factId:"fact",observation:"The character stays aboard."})),missingItems:[],confidence:1};});
+    const retried=await h.service.retryUncertain("owner","project","run","reader-retry",true);
+    expect(retried).toMatchObject({generation:2,status:"ready_for_review",recoveryDecisions:[{decision:"retry_once",
+      duplicateProviderCallAcknowledged:true,priorGeneration:1,
+      priorStatus:"partial",priorBudgetReservation:{maxTokens:30_000,maxCostUsd:1.5,settled:false}}]});
+    expect(retried.readerResults).toHaveLength(2);expect(retried.budgetHistory).toHaveLength(1);
+    expect(retried.budgetReservation).toMatchObject({maxTokens:30_000,maxCostUsd:1.5,settled:true});
+    expect(h.calls).toHaveLength(2);
+    expect((await h.service.retryUncertain("owner","project","run","reader-retry",true)).readerResults).toHaveLength(2);
+    expect(h.calls).toHaveLength(2);
+    expect((await listReadRecoveryOperations("owner","project","run",h.repo))[0].retryAvailable).toBe(false);
+  });
+  it("uses a successful first attempt once and keeps recovery inventory owner-scoped and content-free",async()=>{
+    const h=harness();h.options.runtime.budget.maxTokens=60_000;h.options.runtime.budget.maxCostUsd=3;
+    await h.service.recordRequest("owner","project",assignment());
+    const reader=await h.service.prepareReader("owner","project","run","request","successful-reader");
+    expect(reader.budgetReservation).toMatchObject({maxTokens:30_000,maxCostUsd:1.5,settled:true});
+    expect((await listReadRecoveryOperations("owner","project","run",h.repo))[0].retryAvailable).toBe(false);
+    await expect(listReadRecoveryOperations("stranger","project","run",h.repo)).rejects.toMatchObject({code:"PROJECT_UNAVAILABLE"});
+    const serialized=JSON.stringify(await listReadRecoveryOperations("owner","project","run",h.repo));
+    expect(serialized).not.toContain("Mara holds the boat");
+    expect(()=>readConnectionActionSchema.parse({action:"retry_uncertain",runId:"run",operationId:"successful-reader",confirmDuplicateProviderCall:false}))
+      .toThrow();
+    addProposal(h,"budget-proposal","manuscript_a");
+    const nextRequest=proposalAssignment("budget-proposal");
+    await h.service.recordRequest("owner","project",nextRequest);
+    const consistency=await h.service.checkConsistency("owner","project","run",nextRequest.requestId,"budget-consistency");
+    expect(consistency.budgetReservation).toMatchObject({maxTokens:30_000,maxCostUsd:1.5});
+  });
+  it("fences a late first Reader result and makes simultaneous retry submissions idempotent",async()=>{
+    const h=harness();h.options.runtime.budget.maxTokens=60_000;h.options.runtime.budget.maxCostUsd=3;
+    await h.service.recordRequest("owner","project",assignment());
+    let finishFirst!:(value:unknown)=>void;
+    h.setResponse(call=>h.calls.length===1?new Promise(resolve=>{finishFirst=resolve;}):
+      Promise.reject(new Error("TIMEOUT")));
+    const first=h.service.prepareReader("owner","project","run","request","reader-race");
+    while(!finishFirst)await new Promise(resolve=>setTimeout(resolve,0));
+    const failedDispatch=h.service.retryUncertain("owner","project","run","reader-race",true);
+    const retryResult=await failedDispatch;
+    expect(retryResult).toMatchObject({generation:2,status:"partial",recoveryDecisions:[{decision:"retry_once"}]});
+    const source=(h.calls[0].data as {snapshot:{chapters:{chapterIndex:number;sourceId:string;text:string}[]}}).snapshot;
+    finishFirst({findings:source.chapters.map(c=>({chapterIndex:c.chapterIndex,sourceId:c.sourceId,quote:c.text,factId:"fact",observation:"The character stays aboard."})),missingItems:[],confidence:1});
+    await expect(first).rejects.toMatchObject({code:"DISPATCH_NO_LONGER_CURRENT"});
+    expect(h.calls).toHaveLength(2);
+    const duplicate=await Promise.all([h.service.retryUncertain("owner","project","run","reader-race",true),
+      h.service.retryUncertain("owner","project","run","reader-race",true)]);
+    expect(duplicate.every(result=>result.generation===2)).toBe(true);expect(h.calls).toHaveLength(2);
+  });
+  it("rechecks owner and dependency versions before a retry and keeps uncertain Consistency retry bounded",async()=>{
+    const stale=harness();stale.options.runtime.budget.maxTokens=60_000;stale.options.runtime.budget.maxCostUsd=3;
+    await stale.service.recordRequest("owner","project",assignment());stale.setResponse(async()=>{throw new Error("TIMEOUT");});
+    await stale.service.prepareReader("owner","project","run","request","stale-reader");
+    await expect(stale.service.retryUncertain("intruder","project","run","stale-reader",true)).rejects.toMatchObject({code:"PROJECT_UNAVAILABLE"});
+    stale.state.project.version++;
+    await expect(stale.service.retryUncertain("owner","project","run","stale-reader",true)).rejects.toMatchObject({code:"SOURCE_VERSION_CHANGED"});
+
+    const h=harness();h.options.runtime.budget.maxTokens=60_000;h.options.runtime.budget.maxCostUsd=3;addProposal(h,"retry-proposal","manuscript_a");
+    await h.service.recordRequest("owner","project",proposalAssignment("retry-proposal"));
+    h.setResponse(async()=>{throw new Error("MODEL_UNAVAILABLE");});
+    const first=await h.service.checkConsistency("owner","project","run","request-retry-proposal","consistency-retry");
+    expect(first).toMatchObject({agent:"consistency",status:"unavailable",budgetReservation:{maxTokens:30_000,maxCostUsd:1.5,settled:false}});
+    h.setResponse(async()=>({findings:[],unresolvedIssues:[],checkedFactIds:["fact"],checkedChapterIndexes:[1,2,3]}));
+    const retried=await h.service.retryUncertain("owner","project","run","consistency-retry",true);
+    expect(retried).toMatchObject({generation:2,status:"ready_for_review",recoveryDecisions:[{decision:"retry_once",priorStatus:"unavailable",
+      priorResult:{reasonCode:"MODEL_UNAVAILABLE"},priorBudgetReservation:{settled:false}}],consistencyResult:{status:"ready_for_review"}});
+    expect(retried.budgetHistory).toHaveLength(1);expect(h.calls.map(call=>call.agent)).toEqual(["consistency","consistency","consistency"]);
+    await h.service.retryUncertain("owner","project","run","consistency-retry",true);
+    expect(h.calls.map(call=>call.agent)).toHaveLength(3);
+  });
+  it("prevents a late Consistency result from replacing an explicitly retried generation",async()=>{
+    const h=harness();h.options.runtime.budget.maxTokens=60_000;h.options.runtime.budget.maxCostUsd=3;
+    addProposal(h,"late-consistency","manuscript_a");
+    const request=proposalAssignment("late-consistency");
+    await h.service.recordRequest("owner","project",request);
+    let finishFirst!:(value:unknown)=>void;
+    h.setResponse(()=>h.calls.length===1?new Promise(resolve=>{finishFirst=resolve;}):Promise.reject(new Error("MODEL_UNAVAILABLE")));
+    const first=h.service.checkConsistency("owner","project","run",request.requestId,"late-consistency-op");
+    while(!finishFirst)await new Promise(resolve=>setTimeout(resolve,0));
+    const retried=await h.service.retryUncertain("owner","project","run","late-consistency-op",true);
+    expect(retried).toMatchObject({generation:2,status:"unavailable",recoveryDecisions:[{decision:"retry_once"}]});
+    finishFirst({findings:[],unresolvedIssues:[],checkedFactIds:["fact"],checkedChapterIndexes:[1,2,3]});
+    await expect(first).rejects.toMatchObject({code:"DISPATCH_NO_LONGER_CURRENT"});
+    const saved=h.state.rows.find(row=>row.kind==="read_operation"&&(row.data as {operationId:string}).operationId==="late-consistency-op")?.data as {
+      generation:number;consistencyResult:{reasonCode:string}};
+    expect(saved).toMatchObject({generation:2,consistencyResult:{reasonCode:"MODEL_UNAVAILABLE"}});
   });
   it("reserves one repair across concurrent receiving, restart and changed operation IDs",async()=>{
     const h=harness();await h.service.recordRequest("owner","project",assignment());

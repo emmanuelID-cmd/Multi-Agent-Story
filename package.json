@@ -5,7 +5,7 @@
     "dev": "next dev --hostname 127.0.0.1", "build": "next build", "start": "next start --hostname 127.0.0.1",
     "worker": "tsx --env-file=.env src/worker/index.ts", "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx --env-file=.env scripts/migrate.ts", "typecheck": "tsc --noEmit",
-    "test": "vitest run", "test:integration": "tsx --env-file=.env scripts/integration.ts", "test:e2e": "playwright test",
+    "test": "vitest run", "test:integration": "tsx --env-file=.env scripts/integration.ts", "test:recovery": "tsx scripts/recovery.ts", "test:e2e": "playwright test",
     "agents:read": "tsx --env-file=.env scripts/read-harness.ts", "agents:trace": "tsx scripts/read-trace.ts"
   },
   "dependencies": {
