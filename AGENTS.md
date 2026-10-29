@@ -14,8 +14,10 @@ and implementation. Do not silently resolve a requirements conflict.
 This project follows the external [AGENTS repository](https://github.com/emmanuelID-cmd/AGENTS).
 On this workstation its verified root is `C:\Users\Github\AGENTS`.
 Read that directory's `AGENTS.md`, `README.md`, and relevant linked instructions;
-read `agents/planner.md` first. Read `SKILLS-REFERENCE.md` for applicable local skills.
-If the directory or any required document is unavailable, stop and report it.
+read `agents/planner.md` first. For applicable skills, use the external
+registry at `C:\Users\Github\AGENTS\SKILLS-REFERENCE.md`. This app repo
+does not require or keep its own `SKILLS-REFERENCE.md` copy. If the external
+directory or a required document there is unavailable, stop and report it.
 Do not create substitute instructions or assume another machine has this path.
 
 ## Development workflow
