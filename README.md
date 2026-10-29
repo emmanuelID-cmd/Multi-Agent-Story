@@ -512,10 +512,9 @@ branch deletion remain subject to the approved plan and external AGENTS gates.
 
 ## Phase accountability
 
-Current phase boundary (October 28, 2026): Manny Phase 3 implementation and
-review are complete on `manny/phase-3-reader-consistency`; publication to
-`developer`, safe non-main alignment and verified temporary-branch cleanup are
-in progress. Phase 4 has not started and awaits further user direction.
+Current phase boundary (October 29, 2026): Manny Phase 4 (M07/M08) is complete
+after review, with synthetic/mocked validation only. No live model/provider
+calls or production reliability are claimed.
 
 Follow the [owner phase plans](docs/phase/README.md),
 [26-item checklist](docs/implementation/weaver-mvp-build-checklist.md) and

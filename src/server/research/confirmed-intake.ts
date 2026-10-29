@@ -171,13 +171,14 @@ export async function runConfirmedResearch(request: ConfirmedResearchRequest, de
     const status = reasonCode === "CANCELED" ? "canceled" : reasonCode === "TIMEOUT" ? "partial" :
       reasonCode === "STALE_CONFIRMED_INTAKE" || reasonCode === "PROJECT_UNAVAILABLE" ? "blocked" : "failed";
     if (result?.status === "canceled" && reasonCode === "CANCELED") return { ...result, acquisition };
+    const traceId = result?.traceId ?? randomUUID();
     try { dependencies.onTrace?.({ runId: request.authority.runId, taskId: request.authority.taskId,
-      operationId: request.authority.operationId, agentId: "research", eventId: randomUUID(),
+      operationId: request.authority.operationId, agentId: "research", traceId, eventId: randomUUID(),
       at: new Date().toISOString(), event: status === "partial" || status === "blocked" ? "blocked" : status,
       attempt: result?.attempts ?? 0, code: reasonCode,
       versions: request.versions, stateVersion: request.authority.stateVersion }); } catch { /* telemetry cannot alter outcome */ }
     return { status, reasonCode, output: undefined, usage: result?.usage ?? { inputTokens: 0, outputTokens: 0 },
-      attempts: result?.attempts ?? 0, traceId: result?.traceId ?? randomUUID(), acquisition };
+      attempts: result?.attempts ?? 0, traceId, acquisition };
   } finally {
     clearTimeout(timeout);
     dependencies.signal?.removeEventListener("abort", cancel);

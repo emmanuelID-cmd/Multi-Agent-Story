@@ -112,10 +112,11 @@ function ensureUsage(value: unknown): asserts value is { inputTokens: number; ou
 type Context = {
   deps: ReadDependencies; authority: ResearchAuthority; versions: TraceEvent["versions"];
   agent: TraceEvent["agentId"]; controller: AbortController; traceId: string;
+  round?: number; sourceIds?: string[]; proposalId?: string; artifactVersions?: TraceEvent["artifactVersions"];
   usage: { inputTokens: number; outputTokens: number }; attempts: number; start: number;
   stop: () => void;
 };
-function begin(agent: Context["agent"], input: { authority: ResearchAuthority; versions: TraceEvent["versions"] }, deps: ReadDependencies): Context {
+function begin(agent: Context["agent"], input: { authority: ResearchAuthority; versions: TraceEvent["versions"] }, deps: ReadDependencies, traceDetails: Pick<TraceEvent, "round" | "sourceIds" | "proposalId" | "artifactVersions"> = {}): Context {
   const authority = (agent === "research" ? researchAuthoritySchema : authoritySchema).parse(input.authority);
   assertModelVersion(deps.model, input.versions);
   const controller = new AbortController();
@@ -123,12 +124,12 @@ function begin(agent: Context["agent"], input: { authority: ResearchAuthority; v
   const external = () => controller.abort("CANCELED");
   deps.signal?.addEventListener("abort", external, { once: true });
   if (deps.signal?.aborted) external();
-  const ctx: Context = { deps, authority, versions: input.versions, agent, controller, traceId: randomUUID(), usage: { inputTokens: 0, outputTokens: 0 }, attempts: 0, start: Date.now(), stop: () => { clearTimeout(timer); deps.signal?.removeEventListener("abort", external); } };
+  const ctx: Context = { ...traceDetails, deps, authority, versions: input.versions, agent, controller, traceId: randomUUID(), usage: { inputTokens: 0, outputTokens: 0 }, attempts: 0, start: Date.now(), stop: () => { clearTimeout(timer); deps.signal?.removeEventListener("abort", external); } };
   emit(ctx, "started");
   return ctx;
 }
 function emit(ctx: Context, event: TraceEvent["event"], code?: string, durationMs?: number): void {
-  trace(ctx.deps, { runId: ctx.authority.runId, taskId: ctx.authority.taskId, operationId: ctx.authority.operationId, agentId: ctx.agent, attempt: ctx.attempts, versions: ctx.versions, stateVersion: ctx.authority.stateVersion }, event, code, durationMs);
+  trace(ctx.deps, { runId: ctx.authority.runId, taskId: ctx.authority.taskId, operationId: ctx.authority.operationId, agentId: ctx.agent, traceId: ctx.traceId, attempt: ctx.attempts, versions: ctx.versions, stateVersion: ctx.authority.stateVersion, round: ctx.round, sourceIds: ctx.sourceIds, proposalId: ctx.proposalId, artifactVersions: ctx.artifactVersions }, event, code, durationMs);
 }
 function canceled(ctx: Context): boolean { return ctx.controller.signal.aborted; }
 async function bounded<T>(ctx: Context, action: (signal: AbortSignal) => Promise<T>): Promise<T> {
@@ -200,7 +201,7 @@ function validateLocated(findings: ReaderAnalysis["findings"] | ConsistencyAnaly
 
 export async function runResearch(input: ResearchInput, deps: ReadDependencies): Promise<ReadResult<ResearchDossier>> {
   const parsed = researchInputSchema.parse(input);
-  const ctx = begin("research", parsed, deps);
+  const ctx = begin("research", parsed, deps, { artifactVersions: { briefVersion: parsed.briefVersion, scopeVersion: parsed.scopeVersion, criteriaVersion: parsed.criteriaVersion }, sourceIds: parsed.eligibleSources.map(source => source.sourceId) });
   try {
     if (!parsed.scopeConfirmed) return result(ctx, "blocked", "BLOCKED_INTAKE");
     if (parsed.confirmedIntake) {
@@ -331,7 +332,7 @@ export async function runReader(input: ReaderInput, deps: ReadDependencies): Pro
   const retries = deps.readerContentRetries ?? limits.retries;
   if (retries !== 0 && retries !== 1) throw new Error("INVALID_RETRY_LIMIT");
   const parsed = readerInputSchema.parse(input);
-  const ctx = begin("reader", parsed, deps);
+  const ctx = begin("reader", parsed, deps, { round: parsed.revision, artifactVersions: { bibleVersion: parsed.bibleVersion, draftVersion: parsed.draftVersion } });
   try {
     if (new Set(parsed.editorialTask.scope).size !== parsed.editorialTask.scope.length) return result(ctx, "blocked", "EDITORIAL_SCOPE_INVALID");
     if (!deps.readSnapshot) throw new Error("SNAPSHOT_RESOLVER_UNAVAILABLE");
@@ -340,6 +341,7 @@ export async function runReader(input: ReaderInput, deps: ReadDependencies): Pro
       emit(ctx, "tool_dispatch", "READ_STORY_SNAPSHOT");
       const started = Date.now();
       snapshot = validateSnapshot(await bounded(ctx, signal => deps.readSnapshot!(parsed.authority, signal)), parsed.authority, parsed.bibleVersion, parsed.draftVersion);
+      ctx.sourceIds = snapshot.chapters.map(chapter => chapter.sourceId);
       emit(ctx, "tool_completed", "READ_STORY_SNAPSHOT", Date.now() - started);
       try {
         const analysis = await modelCall(ctx, { readerTask: { action: "prepare_evidence_handoff", scope: parsed.editorialTask.scope, expectedOutput: "One source-grounded Reader analysis for all assigned chapters, not revised manuscripts." }, downstreamEditorialTask: parsed.editorialTask, recordedRequest: parsed.recordedRequest, snapshot, receivingFeedback: deps.readerCorrection, correction: attempt ? "Previous findings lacked exact source passages or covered too few assigned chapters. Recheck the current snapshot." : undefined }, readerAnalysisSchema);
@@ -373,12 +375,13 @@ export async function runReader(input: ReaderInput, deps: ReadDependencies): Pro
 export type ConsistencyOutput = { proposalId: string; proposalVersion: number; proposalSha256: string; bibleVersion: number; status: "complete" | "partial"; findings: ConsistencyAnalysis["findings"]; unresolvedIssues: string[]; checkedSourceRefs: string[] };
 export async function runConsistency(input: ConsistencyInput, deps: ReadDependencies): Promise<ReadResult<ConsistencyOutput>> {
   const parsed = consistencyInputSchema.parse(input);
-  const ctx = begin("consistency", parsed, deps);
+  const ctx = begin("consistency", parsed, deps, { proposalId: parsed.proposalId, artifactVersions: { bibleVersion: parsed.bibleVersion, draftVersion: parsed.draftVersion, proposalVersion: parsed.proposalVersion } });
   try {
     if (!deps.readSnapshot) throw new Error("SNAPSHOT_RESOLVER_UNAVAILABLE");
     emit(ctx, "tool_dispatch", "READ_STORY_SNAPSHOT");
     const started = Date.now();
     const snapshot = validateSnapshot(await bounded(ctx, signal => deps.readSnapshot!(parsed.authority, signal)), parsed.authority, parsed.bibleVersion, parsed.draftVersion);
+    ctx.sourceIds = snapshot.chapters.map(chapter => chapter.sourceId);
     emit(ctx, "tool_completed", "READ_STORY_SNAPSHOT", Date.now() - started);
     if (snapshot.proposalId !== parsed.proposalId || snapshot.proposalVersion !== parsed.proposalVersion || proposalDigest(snapshot.chapters) !== parsed.proposalSha256) return result(ctx, "blocked", "PROPOSAL_VERSION_MISMATCH");
     let analysis: ConsistencyAnalysis | undefined;

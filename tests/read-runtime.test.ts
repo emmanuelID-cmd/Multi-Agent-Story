@@ -152,6 +152,24 @@ describe("live READ runtime with injected synthetic dependencies", () => {
     expect(model.calls).toEqual([]);
   });
 
+  it("correlates Reader trace events with the exact round and source IDs without manuscript text", async () => {
+    const snapshot = fixtureSnapshot(authority, fixtureChapters("normal"));
+    const serializedManuscript = snapshot.chapters.map(chapter => chapter.text).join(" ");
+    const events: import("../src/agents/read/contracts").TraceEvent[] = [];
+    const result = await runReader({ ...readerInput(), revision: 1 }, {
+      ...deps(), readSnapshot: async () => snapshot, onTrace: event => events.push(event),
+    });
+    expect(result.status).toBe("ready_for_review");
+    expect(events.length).toBeGreaterThan(0);
+    expect(events.every(event => event.traceId === result.traceId && event.round === 1)).toBe(true);
+    const afterSnapshot = events.find(event => event.event === "tool_completed");
+    expect(afterSnapshot?.sourceIds).toEqual(snapshot.chapters.map(chapter => chapter.sourceId));
+    expect(afterSnapshot?.artifactVersions).toEqual({ bibleVersion: 1, draftVersion: 1 });
+    const serializedTrace = JSON.stringify(events);
+    expect(serializedTrace).not.toContain(serializedManuscript);
+    expect(serializedTrace).not.toContain(recordedRequest);
+  });
+
   it("rejects unsupported Reader quotations after a bounded repair", async () => {
     const inner = new FixtureReadModel();
     const model: ReadModel = { modelId: inner.modelId, complete: async (call: ModelCall): Promise<ModelResponse> => {
@@ -261,6 +279,11 @@ describe("live READ runtime with injected synthetic dependencies", () => {
     expect(Object.values(report.consistency).every(item => item.status === "ready_for_review")).toBe(true);
     expect(report.proposalHashes.manuscript_a).not.toBe(report.proposalHashes.manuscript_b);
     const combined = readFileSync(join(path, "events.jsonl"), "utf8");
+    const traceEvents = combined.split("\n").filter(Boolean).map(line => JSON.parse(line) as Record<string, unknown>);
+    const readerEvents = traceEvents.filter(event => event.agentId === "reader");
+    expect(readerEvents.length).toBeGreaterThan(0);
+    expect(readerEvents.every(event => event.traceId === report.reader?.traceId && event.round === 0)).toBe(true);
+    expect(readerEvents.some(event => Array.isArray(event.sourceIds) && event.sourceIds.length === 3 && event.artifactVersions !== undefined)).toBe(true);
     expect(combined).toContain('"agentId":"research"');
     expect(combined).toContain('"agentId":"reader"');
     expect(combined).toContain('"agentId":"consistency"');

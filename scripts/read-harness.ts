@@ -70,9 +70,11 @@ function taskAuthority(runId: string, taskId: string, stateVersion = 1): ReadAut
 function safeTrace(event: TraceEvent): Record<string, unknown> {
   return {
     runId: event.runId, taskId: event.taskId, operationId: event.operationId,
-    agentId: event.agentId, eventId: event.eventId, timestamp: event.at,
+    agentId: event.agentId, traceId: event.traceId, eventId: event.eventId, timestamp: event.at,
     event: event.event, attempt: event.attempt, durationMs: event.durationMs,
     code: event.code, versions: event.versions, stateVersion: event.stateVersion,
+    round: event.round, sourceIds: event.sourceIds, proposalId: event.proposalId,
+    artifactVersions: event.artifactVersions,
   };
 }
 
