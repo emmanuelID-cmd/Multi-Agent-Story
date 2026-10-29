@@ -236,8 +236,9 @@ After an assignment is verified complete, check it off and explain the completed
 work, acceptance evidence, actual tests X/Y, date and reviewer. Planning files do
 not complete implementation items. Preserve the approved Manny/Shared order;
 Justin may adjust his own plan under his rules. Deferred decisions remain gates.
-The canonical SQL lane is shared `sql-foundation`; its legacy local/remote name
-transition is tracked in Shared 1.2 and is not performed by documentation edits.
+The canonical SQL lane is shared `sql-foundation`. Shared 1.2 completed the
+local and remote ref transition on October 29, 2026; historical handoff entries
+retain the prior branch name where it describes earlier work.
 S01's approved connection decisions are in PRD v4 Section 7g and the decision
 register. Research receives the full saved original and confirmed decisions;
 the short premise cannot replace it. Coordinator routes rejections to the actual

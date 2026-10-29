@@ -2,9 +2,9 @@
 
 Keep this approved phase order and folder setup. Changes to scope/order need an explicit plan update.
 
-Status: planning documentation; implementation tasks are not completed by creating these files.
+Status: Phase 1 complete October 29, 2026. Later Shared phases remain planned and require their listed prerequisites.
 
-Documentation milestone 1.1 completed October 26, 2026: owner structure, phase mapping and commit groups verified; unit suite 131/131. All 26 implementation items remain pending. Shared 1.2's actual SQL ref transition remains pending; Phase 1 as a whole is not complete.
+Shared 1.1 completed the owner structure, phase mapping and commit groups on October 26, 2026. Shared 1.2 renamed the existing local/remote SQL lane to `sql-foundation`, verified matching history and tracking, and removed the old remote ref on October 29, 2026. See each completion record for evidence. The canonical 26-item checklist remains authoritative for product implementation status.
 
 [Master phase index](../README.md) | [Commit groups](../COMMIT-GROUPS.md)
 
