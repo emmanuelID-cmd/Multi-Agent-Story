@@ -52,6 +52,16 @@ export async function writeChapter(runId: string, index: number, delayMs = (4-in
   return {};
 }
 export async function finishRun(runId: string) {
+  if(process.env.READ_CONNECTIONS_ENABLED==="true"){
+    const watch=watchRevisionCancel(runId);
+    try{await (await import("../server/read-revision-workflow")).executeReadConnectedRun(runId,fixtureEditorialModel(),fixtureEditorialModel(),watch.signal);return {};}
+    catch(error){
+      if(error instanceof Error&&error.message==="EXPLICIT_AUTHENTICATED_READ_REQUEST_REQUIRED"){
+        await db.update(runs).set({status:"paused"}).where(and(eq(runs.id,runId),eq(runs.status,"running")));return {};
+      }throw error;
+    }
+    finally{watch.stop();}
+  }
   return db.transaction(async tx=>{
     const [run]=await tx.select().from(runs).where(eq(runs.id,runId)).for("update");
     if(!run||run.canceledAt||run.status==="paused"||run.status==="completed")return {};
@@ -279,6 +289,10 @@ async function executeRequestedRevision(
   const saved = runTasks[0]?.savedInput;
   const cancelWatch = watchRevisionCancel(run.id);
   try {
+  if(process.env.READ_CONNECTIONS_ENABLED==="true"){
+    await (await import("../server/read-revision-workflow")).executeReadConnectedRun(run.id,fixtureEditorialModel(),fixtureEditorialModel(),cancelWatch.signal);
+    return;
+  }
   // Count this attempt before the editors run, so a failed revision uses the one-retry limit.
   for (const task of runTasks) {
     const [row] = await db.select().from(tasks).where(eq(tasks.id, task.id));
@@ -441,6 +455,9 @@ async function executeRequestedRevision(
       throw new Error("This revision stopped before it was saved.");
     }
   } catch (error) {
+    if(process.env.READ_CONNECTIONS_ENABLED==="true"&&error instanceof Error&&error.message==="EXPLICIT_AUTHENTICATED_READ_REQUEST_REQUIRED"){
+      await db.update(runs).set({status:"paused"}).where(and(eq(runs.id,run.id),eq(runs.status,"running")));return;
+    }
     await markRevisionFailed(run.id);
     throw error;
   } finally {

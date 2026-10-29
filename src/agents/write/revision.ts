@@ -38,6 +38,10 @@ export interface ConsistencyCheckResult {
 }
 
 export interface RevisionCycleInput {
+  /** Optional READ connection only; legacy generation and prompts remain unchanged. */
+  readConnection?:{edit:(editorId:"critic_editor_a"|"critic_editor_b",chapters:Chapter[],model:WriteModel)=>Promise<{
+    handoff:ReaderToEditorHandoff;result:import("./runtime").GenerateEditorialProposalResult}>};
+  proposalIds?:[string,string];
   runId: string;
   projectId: string;
   bibleVersion: number;
@@ -228,7 +232,7 @@ export async function executeRevisionCycle(
   }
 
   // Round 0 is the initial draft. Only rounds 1 and 2 are revisions.
-  if (input.revisionRound < 1) {
+  if (input.revisionRound < (input.readConnection?0:1)) {
     throw new Error("Revision round must be at least 1.");
   }
   if (input.revisionRound > limits.revisionRounds) {
@@ -264,6 +268,7 @@ export async function executeRevisionCycle(
     hasAdditionalInstructions
   );
 
+  if(!input.readConnection){
   const validationA = validateEditorReceivingHandoff({
     handoff,
     expectedRecordedRequest: input.editorialInstructions,
@@ -295,8 +300,14 @@ export async function executeRevisionCycle(
     throwIfHandoffRecheckFailed(recheckA);
     throwIfHandoffRecheckFailed(recheckB);
   }
+  }
 
-  const [resA, resB] = await Promise.all([
+  const connected=input.readConnection?[
+    await input.readConnection.edit("critic_editor_a",readingA,input.modelA),
+    await input.readConnection.edit("critic_editor_b",readingB,input.modelB),
+  ]:undefined;
+  if(connected)handoff=connected[0].handoff;
+  const [resA, resB] = connected?connected.map(c=>c.result):await Promise.all([
     generateEditorialProposal(
       {
         role: "critic_editor_a",
@@ -354,8 +365,8 @@ export async function executeRevisionCycle(
     envelope: envelopeB,
   };
 
-  const proposalIdA = randomUUID();
-  const proposalIdB = randomUUID();
+  const proposalIdA = input.proposalIds?.[0]??randomUUID();
+  const proposalIdB = input.proposalIds?.[1]??randomUUID();
 
   // 8. Exact Consistency check bound to proposals
   const [consistencyA, consistencyB] = await Promise.all([

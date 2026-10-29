@@ -512,10 +512,10 @@ branch deletion remain subject to the approved plan and external AGENTS gates.
 
 ## Phase accountability
 
-Current stopping boundary (October 27, 2026): complete Manny Phase 2, PR and
-safely merge to `developer`, verify eligible non-main branch alignment and
-delete the merged temporary branch, then stop. Further phase execution awaits
-the user's reinstatement of automatic continuation.
+Current phase boundary (October 28, 2026): Manny Phase 3 implementation and
+review are complete on `manny/phase-3-reader-consistency`; publication to
+`developer`, safe non-main alignment and verified temporary-branch cleanup are
+in progress. Phase 4 has not started and awaits further user direction.
 
 Follow the [owner phase plans](docs/phase/README.md),
 [26-item checklist](docs/implementation/weaver-mvp-build-checklist.md) and

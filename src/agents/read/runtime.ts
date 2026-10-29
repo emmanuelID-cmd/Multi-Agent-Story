@@ -42,6 +42,10 @@ export const providerSchema = z.object({
 function cleanUrl(value: string): boolean { const url = new URL(value); return url.protocol === "https:" && !url.username && !url.password && ![...url.searchParams.keys()].some(k => /key|token|secret|credential/i.test(k)); }
 export type ReadDependencies = {
   model: ReadModel;
+  /** Application coordinator owns the single durable content repair when set to zero. */
+  readerContentRetries?: 0 | 1;
+  /** Validated receiving-Editor feedback, supplied as data by the application coordinator. */
+  readerCorrection?: { failedChecks: string[]; missingItems: string[]; requestedCorrection: string };
   readBenchmarks?: (request: BenchmarkRequest, signal: AbortSignal) => Promise<ProviderEvidence[]>;
   beforeResearchModel?: () => Promise<void>;
   readSnapshot?: (authority: ReadAuthority, signal: AbortSignal) => Promise<ReadSnapshot>;
@@ -324,19 +328,21 @@ export async function runResearch(input: ResearchInput, deps: ReadDependencies):
 
 export type ReaderOutput = { handoff: ReaderToEditorHandoff; findings: ReaderAnalysis["findings"]; sourceHashes: Record<string, string> };
 export async function runReader(input: ReaderInput, deps: ReadDependencies): Promise<ReadResult<ReaderOutput>> {
+  const retries = deps.readerContentRetries ?? limits.retries;
+  if (retries !== 0 && retries !== 1) throw new Error("INVALID_RETRY_LIMIT");
   const parsed = readerInputSchema.parse(input);
   const ctx = begin("reader", parsed, deps);
   try {
     if (new Set(parsed.editorialTask.scope).size !== parsed.editorialTask.scope.length) return result(ctx, "blocked", "EDITORIAL_SCOPE_INVALID");
     if (!deps.readSnapshot) throw new Error("SNAPSHOT_RESOLVER_UNAVAILABLE");
     let snapshot: ReadSnapshot | undefined;
-    for (let attempt = 0; attempt <= limits.retries; attempt++) {
+    for (let attempt = 0; attempt <= retries; attempt++) {
       emit(ctx, "tool_dispatch", "READ_STORY_SNAPSHOT");
       const started = Date.now();
       snapshot = validateSnapshot(await bounded(ctx, signal => deps.readSnapshot!(parsed.authority, signal)), parsed.authority, parsed.bibleVersion, parsed.draftVersion);
       emit(ctx, "tool_completed", "READ_STORY_SNAPSHOT", Date.now() - started);
       try {
-        const analysis = await modelCall(ctx, { readerTask: { action: "prepare_evidence_handoff", scope: parsed.editorialTask.scope, expectedOutput: "One source-grounded Reader analysis for all assigned chapters, not revised manuscripts." }, downstreamEditorialTask: parsed.editorialTask, recordedRequest: parsed.recordedRequest, snapshot, correction: attempt ? "Previous findings lacked exact source passages or covered too few assigned chapters. Recheck the current snapshot." : undefined }, readerAnalysisSchema);
+        const analysis = await modelCall(ctx, { readerTask: { action: "prepare_evidence_handoff", scope: parsed.editorialTask.scope, expectedOutput: "One source-grounded Reader analysis for all assigned chapters, not revised manuscripts." }, downstreamEditorialTask: parsed.editorialTask, recordedRequest: parsed.recordedRequest, snapshot, receivingFeedback: deps.readerCorrection, correction: attempt ? "Previous findings lacked exact source passages or covered too few assigned chapters. Recheck the current snapshot." : undefined }, readerAnalysisSchema);
         validateLocated(analysis.findings, snapshot);
         const covered = new Set(analysis.findings.map(f => f.chapterIndex));
         const missing = [...analysis.missingItems, ...parsed.editorialTask.scope.filter(i => !covered.has(i)).map(i => `chapter_${i}_analysis`)];
@@ -349,14 +355,14 @@ export async function runReader(input: ReaderInput, deps: ReadDependencies): Pro
         });
         const validation = validateHandoff(handoff, parsed.recordedRequest);
         const output = { handoff, findings: analysis.findings, sourceHashes: Object.fromEntries(snapshot.chapters.map(c => [c.sourceId, c.sha256])) };
-        if (!validation.valid && attempt < limits.retries) {
+        if (!validation.valid && attempt < retries) {
           emit(ctx, "validation_failed", "HANDOFF_INCOMPLETE");
           continue;
         }
         return result(ctx, validation.valid ? "ready_for_review" : "partial", validation.valid ? "HANDOFF_CANDIDATE" : "HANDOFF_INCOMPLETE", output);
       } catch (error) {
         emit(ctx, "validation_failed", failureCode(error));
-        if (attempt === limits.retries || canceled(ctx) || failureCode(error) === "BUDGET_EXHAUSTED") throw error;
+        if (attempt === retries || canceled(ctx) || failureCode(error) === "BUDGET_EXHAUSTED") throw error;
       }
     }
     throw new Error("HANDOFF_INVALID");

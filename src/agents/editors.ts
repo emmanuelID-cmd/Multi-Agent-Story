@@ -192,6 +192,8 @@ export function criticEditorB(
 }
 
 export interface CriticEditorModelInput {
+  sourceAssignment?: import("./handoff").EditorReceivingValidationInput["sourceAssignment"];
+  onReceivingValidated?:()=>Promise<void>;
   bibleVersion: number;
   handoff: ReaderToEditorHandoff;
   baseChapters: Chapter[];
@@ -220,12 +222,14 @@ export async function criticEditorAModel(
     expectedRecordedRequest: expectedRequest,
     baseChapters: input.baseChapters,
     approvedBibleVersion: input.bibleVersion,
+    sourceAssignment:input.sourceAssignment,
   });
 
   if (!validation.valid && validation.rejection) {
     throw new EditorialHandoffRejectionError(validation.rejection);
   }
 
+  await input.onReceivingValidated?.();
   const result = await generateEditorialProposal(
     {
       role: "critic_editor_a",
@@ -272,12 +276,14 @@ export async function criticEditorBModel(
     expectedRecordedRequest: expectedRequest,
     baseChapters: input.baseChapters,
     approvedBibleVersion: input.bibleVersion,
+    sourceAssignment:input.sourceAssignment,
   });
 
   if (!validation.valid && validation.rejection) {
     throw new EditorialHandoffRejectionError(validation.rejection);
   }
 
+  await input.onReceivingValidated?.();
   const result = await generateEditorialProposal(
     {
       role: "critic_editor_b",

@@ -35,11 +35,11 @@ No step may invent an unresolved contract. Deferred decisions remain gates for t
 
 ## Phase branch lifecycle
 
-Current user override, October 27, 2026: finish Manny Phase 2 and its reviewed
-PR/merge to `developer`, verify safe non-main alignment, and delete the verified
-merged temporary branch. Then stop. Automatic continuation into Phase 3 or 4
-is deferred until the user reinstates that rule; the approved branch names
-remain recorded without authorizing their creation during this pause.
+Current user direction, October 28, 2026: Manny Phase 2 was completed and
+integrated. The user then expressly reinstated execution of Manny Phase 3 on
+`manny/phase-3-reader-consistency`; Phase 3 is now complete and its publication
+and safe cleanup are in progress. Do not infer authorization to begin Phase 4
+from this Phase 3 completion; wait for the user's next direction.
 
 For Manny Phase 2, the October 26, 2026 user update requires one PR for the whole
 phase: retain `manny/phase-2-1-provider-retrieval` through 2.1 and 2.2, verify
@@ -52,10 +52,8 @@ Use the parent phase as the PR, integration and cleanup boundary. The required
 order is complete/review, commit/push, PR to `developer`, safe merge, verify the
 tree and remote refs, safe non-main alignment, then deletion of the verified
 merged temporary branch. Recheck the tree after pushing; preserve unique or
-dirty work. Subject to the current user override above, continue to the next
-approved Manny phase after cleanup, pausing for an unresolved decision, required
-exact branch-name approval or unsafe Git condition. This does not authorize
-Justin implementation or advancing `main`.
+dirty work. The user explicitly reinstated Phase 3; Phase 4 still needs user
+direction. This does not authorize Justin implementation or advancing `main`.
 
 Exact remaining parent-phase branch names approved October 26, 2026:
 `manny/phase-3-reader-consistency` and `manny/phase-4-read-reliability`. Create

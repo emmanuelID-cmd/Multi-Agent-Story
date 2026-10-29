@@ -83,6 +83,16 @@ Verified move hashes:
 
 # Handoffs prepared for push
 
+## 2026-10-28T21:05:30-04:00
+
+Summary file: PROJECT-HANDOFF.md
+
+- Prepared for push from `manny/phase-3-reader-consistency` to `developer`; this entry does not claim publication. Verified remote baseline: `origin/developer` at `d7763182219816a6c60b8be5f11727820b295baa`. No open pull requests were returned by the connected GitHub search. Commit author configured for the outgoing work: Emmanuel De Jesus (`emmanuel.dejesus@pursuit.org`).
+- **Done:** M04 connects the gated application worker to `runReader` with owned assigned snapshots and saved request; M05 routes actual Editor receiving rejection into one durable Reader repair; M06 requires separate exact-proposal Consistency reports at advancement and human approval. Phase 3 parent and sub-phases 3.1–3.3 are complete in synthetic scope. Existing JSONB is reused; no SQL migration was needed.
+- **Validation:** Post-remediation affected READ/WRITE suite: 135/135 across 10 files; `npm.cmd run typecheck` passed; targeted SECURITY recheck cleared; independent REVIEWER approved. The 435/435 full-suite result predates the final security remediation. No live model/provider calls or trace runs occurred.
+- **Not completed:** No unfinished acceptance criterion remains within the approved Phase 3 scope. Live Writer/Editor provenance, deployed authentication, live PostgreSQL contention, provider execution and user-facing request/resume controls were not verified; dispatch remains opt-in. M07/M08 and Phase 4 are outside this push.
+- **Boundaries and next:** Justin's Writer/Editor defaults and human approval remain preserved; `main`, the SQL lane, Justin's implementation and historical `docs/temp` traces were not changed or staged. Next, review and merge the Phase 3 PR into `developer` only if safe, fast-forward eligible non-main branches, then delete this merged temporary branch. Phase 4 awaits further user direction.
+
 ## 2026-10-28T18:35:00-04:00
 
 Summary file: PROJECT-HANDOFF.md
