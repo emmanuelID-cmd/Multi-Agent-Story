@@ -8,6 +8,7 @@ import { newIntakeRequestSchema } from "../contracts/intake";
 import { enqueue } from "../worker/queue";
 import type { RevisedManuscript } from "../agents/editors";
 import { verifyManuscriptEnvelope } from "../agents/write/runtime";
+import { assertCurrentReadConsistency } from "./read-connections";
 
 export class AppError extends Error { constructor(public status: number, message: string, public fields?: Record<string,string[]>) { super(message); } }
 export async function ownedProject(ownerId: string, id: string) {
@@ -187,6 +188,20 @@ export async function approveManuscriptProposal(ownerId: string, id: string, pro
       throw new AppError(409, `Manuscript envelope verification failed: ${verification.error}`);
     }
 
+    if(process.env.READ_CONNECTIONS_ENABLED==="true"){
+      // No model work here: the exact current report is verified under the acceptance transaction's locks.
+      const [readRun]=await tx.select().from(runs).where(eq(runs.id,data.envelope.runId)).for("update");
+      if(!readRun)throw new AppError(409,"The current READ sources are unavailable.");
+      const [readBible]=await tx.select().from(bibles).where(and(eq(bibles.id,readRun.bibleId),eq(bibles.projectId,id))).for("share");
+      const readChapters=await tx.select().from(chapters).where(eq(chapters.runId,readRun.id)).orderBy(chapters.chapterIndex).for("share");
+      const readRows=await tx.select().from(proposals).where(and(eq(proposals.projectId,id),
+        inArray(proposals.kind,["read_request","read_operation","manuscript_a","manuscript_b"]))).orderBy(proposals.id).limit(201).for("update");
+      if(!readBible||readRows.length>200||readRun.projectId!==id||readRun.canceledAt||readRun.status!=="completed")
+        throw new AppError(409,"The current READ sources are unavailable.");
+      try{assertCurrentReadConsistency({project,run:readRun,bible:readBible,chapters:readChapters,rows:readRows,origin:"unverified"},proposalId);}
+      catch{throw new AppError(409,"Exact current READ Consistency is required before accepting this proposal.");}
+    }
+
     // Reject all other pending manuscript proposals for this project (excluding the accepted one)
     await tx.update(proposals).set({ status: "rejected" }).where(and(
       eq(proposals.projectId, id),
@@ -246,6 +261,19 @@ export async function rewriteRun(ownerId: string, id: string, feedback?: string,
     const active = await tx.select().from(runs).where(eq(runs.projectId, id));
     if (active.some(r => ["pending", "running"].includes(r.status))) throw new AppError(409, "A run is already active.");
 
+    let readSourceProposalIds:string[]|undefined;
+    if(process.env.READ_CONNECTIONS_ENABLED==="true"){
+      if(completedRun.bibleId!==bible.id)throw new AppError(409,"The revision source must use the approved Bible.");
+      if(nextRound===2){
+        const sourceProposals=await tx.select().from(proposals).where(and(eq(proposals.projectId,id),eq(proposals.status,"pending"),
+          inArray(proposals.kind,["manuscript_a","manuscript_b"]))).orderBy(desc(proposals.createdAt));
+        const a=sourceProposals.find(p=>p.kind==="manuscript_a"),b=sourceProposals.find(p=>p.kind==="manuscript_b");
+        if(!a||!b||(a.data as RevisedManuscript).envelope?.runId!==completedRun.id||(b.data as RevisedManuscript).envelope?.runId!==completedRun.id)
+          throw new AppError(409,"The previous Editor pair is required for this revision.");
+        readSourceProposalIds=[a.id,b.id];
+      }
+    }
+
     // Leave the current proposals pending until the revision that replaces them is saved.
     // A failed enqueue must not throw away the pair the writer can still review.
 
@@ -264,6 +292,7 @@ export async function rewriteRun(ownerId: string, id: string, feedback?: string,
         version: bible.version,
         brief: project.brief,
         revisionRound: nextRound,
+        ...(process.env.READ_CONNECTIONS_ENABLED==="true"?{readSourceRunId:completedRun.id,readSourceProposalIds}:{}),
         editorialInstructions,
         hasAdditionalInstructions,
         userInstructions: {
@@ -301,6 +330,7 @@ export async function startRun(ownerId: string, id: string, input: unknown, disp
         version:bible.version,
         brief:project.brief,
         revisionRound:0,
+        ...(process.env.READ_CONNECTIONS_ENABLED==="true"?{readSourceRunId:created.id}:{}),
         editorialInstructions: "",
         hasAdditionalInstructions: false,
         userInstructions: {

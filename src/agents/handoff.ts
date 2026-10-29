@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { createHash } from "node:crypto";
+import type { ReadSnapshot } from "./read/contracts";
 import { chapterIndex, orderedChapters, type Chapter } from "../contracts";
 
 export const handoffTaskSchema = z.object({
@@ -77,6 +79,8 @@ export interface EditorReceivingValidationInput {
   expectedRecordedRequest: string;
   baseChapters: Chapter[];
   approvedBibleVersion: number;
+  /** Optional READ connection: exact independently versioned stored source assignment. */
+  sourceAssignment?: { draftVersion: number; chapters: ReadSnapshot["chapters"] };
 }
 
 /**
@@ -145,10 +149,24 @@ export function validateEditorReceivingHandoff(
     );
   }
 
-  // 6. Source references coverage check (must cover all 3 chapters on approved version)
+  // 6. Source revisions belong to their own artifact; Bible linkage is checked separately.
+  const assignment = input.sourceAssignment;
+  if (assignment) {
+    if (data.version.draftVersion !== assignment.draftVersion || assignment.chapters.length !== 3 ||
+        new Set(assignment.chapters.map(c => c.chapterIndex)).size !== 3 || data.sourceReferences.length !== 3)
+      failedChecks.push("SOURCE_ASSIGNMENT_MISMATCH");
+    for (const source of assignment.chapters) {
+      const base = input.baseChapters.find(c => c.chapterIndex === source.chapterIndex);
+      const ref = data.sourceReferences.find(r => r.locator === `chapter_${source.chapterIndex}`);
+      if (!base || source.bibleVersion !== input.approvedBibleVersion || source.draftVersion !== assignment.draftVersion ||
+          source.text !== base.text || createHash("sha256").update(source.text, "utf8").digest("hex") !== source.sha256 ||
+          ref?.sourceId !== source.sourceId || ref.version !== source.draftVersion || ref.status !== "available")
+        failedChecks.push("ASSIGNED_SOURCE_CHANGED");
+    }
+  }
   const availableLocators = new Set(
     data.sourceReferences
-      .filter((r) => r.status === "available" && r.version === input.approvedBibleVersion)
+      .filter((r) => r.status === "available" && r.version === (assignment?.draftVersion ?? input.approvedBibleVersion))
       .map((r) => r.locator)
   );
   for (const idx of [1, 2, 3]) {

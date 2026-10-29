@@ -2,7 +2,7 @@
 
 Keep this approved phase order and folder setup. Changes to scope/order need an explicit plan update.
 
-Status: planning documentation; implementation tasks are not completed by creating these files.
+Status: planning index; implementation status and evidence are recorded in each phase file and the canonical checklist.
 
 Phase 1 (M01) completed October 26, 2026 on the approved temporary
 `manny/phase-1-intake-to-research` branch. S01's decisions are recorded; full
@@ -16,14 +16,13 @@ records/text reader remain unconfigured. Phase 2.2 (M03) and parent Phase 2
 completed October 27, 2026: 41/41 affected targeted and 174/174 full tests across
 19 files, typecheck, two SECURITY rounds, one FIXER cycle, affected security
 recheck and independent REVIEWER approval. Existing PostgreSQL JSON is reused
-without a migration. Publish one Phase 2 PR, verify its safe integration and
-cleanup, then stop; Phase 3/4 execution is deferred by the current user override.
+without a migration. Phase 2B and its publication were completed separately.
 
 [Master phase index](../README.md) | [Commit groups](../COMMIT-GROUPS.md)
 
 - [Phase 1: Confirmed intake-to-Research contract](Phase-1-Confirmed-intake-to-Research-contract/1-Confirmed-intake-to-Research-contract.md)
 - [Phase 2: Research evidence and dossier acceptance](Phase-2-Research-evidence-and-dossier-acceptance/2-Research-evidence-and-dossier-acceptance.md)
 
-Supplemental Phase 2B plan: [Controlled vocabulary and intake/research alignment](Phase-2B-Controlled-vocabulary-and-intake-research-alignment/2B-Controlled-vocabulary-and-intake-research-alignment.md). Full implementation and `manny/phase-2b-vocabulary-alignment` were approved October 28, 2026. Readiness used 2/2 approved HTTP 200 data lookups. Sub-phases 2B.1-2B.4 are verified within the documented code/synthetic scope: 225/225 unit tests, typecheck/build, SECURITY 58/58 and REVIEWER approval. Phase 2B and 2B.5 completed after the separately authorized human browser check returned NYT OK and Gutendex HTTP 200. Publication is authorized and in progress. Phase 3 and Phase 4 remain paused.
-- [Phase 3: Reader and Consistency connections](Phase-3-Reader-and-Consistency-connections/3-Reader-and-Consistency-connections.md)
-- [Phase 4: READ reliability evidence](Phase-4-READ-reliability-evidence/4-READ-reliability-evidence.md)
+Supplemental Phase 2B plan: [Controlled vocabulary and intake/research alignment](Phase-2B-Controlled-vocabulary-and-intake-research-alignment/2B-Controlled-vocabulary-and-intake-research-alignment.md). Full implementation and `manny/phase-2b-vocabulary-alignment` were approved October 28, 2026. Readiness used 2/2 approved HTTP 200 data lookups. Sub-phases 2B.1-2B.4 are verified within the documented code/synthetic scope: 225/225 unit tests, typecheck/build, SECURITY 58/58 and REVIEWER approval. Phase 2B and 2B.5 completed after the separately authorized human browser check returned NYT OK and Gutendex HTTP 200. Publication was completed through PR #19.
+- [Phase 3: Reader and Consistency connections](Phase-3-Reader-and-Consistency-connections/3-Reader-and-Consistency-connections.md) — completed October 28, 2026 within synthetic implementation scope. M04–M06 each have a completion record and are checked in the canonical checklist. Post-remediation affected tests passed 135/135 across 10 files; typecheck passed; targeted SECURITY cleared and independent REVIEWER approved. Live Writer/Editor provenance, provider calls, deployed behavior, PostgreSQL contention and request/resume UI remain unverified; dispatch stays opt-in.
+- [Phase 4: READ reliability evidence](Phase-4-READ-reliability-evidence/4-READ-reliability-evidence.md) — not started; awaiting further user direction.
