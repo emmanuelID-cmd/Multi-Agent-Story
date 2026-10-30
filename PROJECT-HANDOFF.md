@@ -103,7 +103,7 @@ Branch `manny/phase-3-reader-consistency`; verified remote developer baseline `d
 
 Feature remains opt-in. There are no live Writer/Editor producers, provider calls, live PostgreSQL contention, or user request/resume UI. M07/M08 and Phase 4 remain untouched; main is unchanged; historical docs and temporary traces are preserved. Next: verify the remote, commit and push this branch, open a PR to developer, merge only if safe, then fast-forward eligible non-main branches and delete this merged phase branch. Do not start Phase 4.
 
-## 2026-10-29 — Shared Phase 3 completion / pre-push
+## 2026-10-29 ï¿½ Shared Phase 3 completion / pre-push
 
 Shared Phase 3 is complete and approved for publication on `shared/phase-3-durable-execution-recovery`, based on `origin/developer` at `ad4e90d0d360966d6ff77bec24167fe4227e0164`; no PRs are open. Keep `main` untouched and exclude the pre-existing untracked `docs/temp/`.
 
@@ -118,3 +118,24 @@ Limits: dependency and recovery tests were synthetic; no live provider call or r
 - Commit `9541123` on `sql-foundation` adds the shared story budget ledger schema and migration, server ledger code, and synthetic ledger tests across six files. No database migration was applied.
 - Validation: synthetic tests passed 8/8, Node 24 TypeScript check passed, and offline Drizzle verification passed.
 - Phase 4.1 and 4.2 remain incomplete. READ/Bible/WRITE runtime adapters and workflow/export are pending. Remote push is not yet verified.
+## 2026-10-30 - Shared Phase 4.1 implementation handoff to Justin
+
+### Verified base and outgoing work
+
+- App repository: emmanuelID-cmd/Multi-Agent-Story. Active branch: `shared/phase-4-planning-orchestration`.
+- Before restoring the saved edits, this branch was fast-forwarded to verified `origin/developer` at `4b870c325436aea86ea9c0bc00c96066b80222ea`. The Phase 4.1 implementation commit is `d9c8e41b4162009946a867d43a4e577409787d96`, authored by Emmanuel De Jesus. The branch has no remote ref yet; this is preparation for its initial push and a PR into `developer`.
+- Shared SQL budget ledger PR #27 is already merged into `developer`. SQL remains on `sql-foundation`; no migration was applied. `main` was not changed (last verified at `4b340485bd0cf94b52294150c44b28d4ba890aa3`).
+
+### Shared Phase 4.1 status
+
+- The implementation adds three independent model-backed Bible proposals from confirmed intake and accepted Research, exact version/hash approval, stale-state barriers, and shared-ledger adapters for the existing READ, Bible, Writer and Editor dispatch paths.
+- The approved story cap is USD 3 and 60,000 tokens total across READ, Bible planning and WRITE. Connectors remain disabled until migration, verified rates and lane opt-ins are configured.
+- Focused synthetic suite: 115/115 passed across eight files; TypeScript typecheck passed. Available runtime was Node 26.12.1 although the repository targets Node 24. The tests used mocks; no live model/provider call or database migration was run.
+- I01 remains unchecked at the user's direction until the completion rule is reinstated. This is a handoff status, not a Phase 4.1 completion claim.
+
+### Stop point and preserved work
+
+- After the authorized PR merges into `developer`, fast-forward eligible clean non-main branches only when ancestry and ownership allow; leave `main` untouched. Stop there until the user reinstates the completion rule/continuation.
+- Do not start Shared Phase 4.2 now. I02 still needs the complete fixed graph, user review, and Shared Phase 5.2 accepted-export integration.
+- Preserve Justin's Writer/Editor prompts, tools, permissions and core behavior. Only budget/connection adapters were added in the outgoing Phase 4.1 commit.
+- The remaining unstaged auth and ResearchReview/source-submission changes, related research tests, and all 20 `docs/temp/` files are excluded from this push and remain locally preserved for separate ownership/scope review.
