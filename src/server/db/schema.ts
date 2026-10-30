@@ -1,4 +1,5 @@
-import { pgTable, text, timestamp, boolean, integer, jsonb, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, integer, jsonb, uniqueIndex, check, index } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import type { Brief, Bible, Fixture } from "../../contracts";
 import type { RevisedManuscript } from "../../agents/editors";
 import type { ResearchRecordData } from "../research/dossier-storage";
@@ -18,3 +19,40 @@ export const chapters = pgTable("chapters", { id: text().primaryKey(), runId: te
 export const memories = pgTable("memories", { id: text().primaryKey(), bibleId: text().notNull().references(()=>bibles.id), chapterIndex: integer().notNull(), data: jsonb().notNull() });
 export const critiques = pgTable("critiques", { id: text().primaryKey(), runId: text().notNull().references(()=>runs.id).unique(), data: jsonb().$type<Record<string, unknown>>().notNull(), createdAt: timestamp().notNull().defaultNow() });
 export const evidence = pgTable("evidence", { id: text().primaryKey(), projectId: text().notNull().references(()=>projects.id), runId: text().notNull().references(()=>runs.id), data: jsonb().notNull() });
+export const storyBudgetUsage = pgTable("story_budget_usage", {
+  projectId: text().primaryKey().references(() => projects.id, { onDelete: "cascade" }),
+  ownerId: text().notNull().references(() => user.id),
+  settledTokens: integer().notNull().default(0),
+  settledCostMicroUsd: integer().notNull().default(0),
+  reservedTokens: integer().notNull().default(0),
+  reservedCostMicroUsd: integer().notNull().default(0),
+  blocked: boolean().notNull().default(false),
+  updatedAt: timestamp().notNull().defaultNow(),
+}, (t) => [
+  check("story_budget_usage_nonnegative", sql`${t.settledTokens} >= 0 AND ${t.settledCostMicroUsd} >= 0 AND ${t.reservedTokens} >= 0 AND ${t.reservedCostMicroUsd} >= 0`),
+]);
+export const storyBudgetReservations = pgTable("story_budget_reservations", {
+  projectId: text().notNull().references(() => projects.id, { onDelete: "cascade" }),
+  operationId: text().notNull(),
+  requestFingerprint: text().notNull(),
+  role: text().notNull(),
+  inputTokenBound: integer().notNull(),
+  outputTokenBound: integer().notNull(),
+  inputMicroUsdPerMillion: integer().notNull(),
+  outputMicroUsdPerMillion: integer().notNull(),
+  reservedTokens: integer().notNull(),
+  reservedCostMicroUsd: integer().notNull(),
+  actualInputTokens: integer(),
+  actualOutputTokens: integer(),
+  actualCostMicroUsd: integer(),
+  status: text().notNull().default("dispatched"),
+  createdAt: timestamp().notNull().defaultNow(),
+  updatedAt: timestamp().notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("story_budget_reservation_operation").on(t.projectId, t.operationId),
+  index("story_budget_reservation_project_status").on(t.projectId, t.status),
+  check("story_budget_reservation_status", sql`${t.status} IN ('dispatched', 'uncertain', 'settled', 'blocked')`),
+  check("story_budget_reservation_nonnegative", sql`${t.inputTokenBound} >= 0 AND ${t.outputTokenBound} >= 0 AND ${t.reservedTokens} > 0 AND ${t.reservedCostMicroUsd} >= 0`),
+  check("story_budget_reservation_positive_rates", sql`${t.inputMicroUsdPerMillion} > 0 AND ${t.outputMicroUsdPerMillion} > 0`),
+  check("story_budget_reservation_actual_nonnegative", sql`(${t.actualInputTokens} IS NULL OR ${t.actualInputTokens} >= 0) AND (${t.actualOutputTokens} IS NULL OR ${t.actualOutputTokens} >= 0) AND (${t.actualCostMicroUsd} IS NULL OR ${t.actualCostMicroUsd} >= 0)`),
+]);
