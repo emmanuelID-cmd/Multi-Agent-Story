@@ -83,6 +83,17 @@ Verified move hashes:
 
 # Handoffs prepared for push
 
+## 2026-10-29T22:28:48-04:00
+
+Summary file: PROJECT-HANDOFF.md
+
+- Prepared for `sql-foundation`, targeting `developer`. Verified GitHub remote baseline: `eddc0e76e2c3ff52e1f9322c5a76f83b6bf3322b`; no open PRs. Work commit: `9541123`. This is preparation time, not a push claim.
+- Outgoing Git author: Emmanuel De Jesus, verified from the commit. Activity: add a per-story durable budget ledger, reservation schema/migration, generated Drizzle snapshot, and synthetic tests.
+- [x] Done: SQL prerequisite reviewed and committed as a precise six-file group; ledger tests passed 8/8, Node 24 typecheck passed, and offline Drizzle verification passed.
+- [ ] Not completed: database migration remains unapplied; READ/Bible/WRITE runtime integration and Shared Phase 5.2 export remain pending, so Phase 4.1/I01 and 4.2/I02 are not complete.
+- Validation: `tests/budget-ledger.test.ts` 8/8 synthetic; TypeScript `--noEmit` passed under Node 24.22.1; offline Drizzle generation verified; staged whitespace check passed. No live models/providers or DB migration. App work and `.tmp-drizzle-snapshot-20261029-212553/` are excluded; `main` untouched.
+
+
 ## 2026-10-29T18:40:48-04:00
 
 Summary file: PROJECT-HANDOFF.md

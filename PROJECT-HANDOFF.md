@@ -112,3 +112,9 @@ I03 atomically records state and dependencies. I04 adds worker recovery and idem
 Validation: 144/144 affected unit tests passed across 12 files (READ 118, postgres-target guard 14, task-attempt 12); typecheck and isolated synthetic PostgreSQL 17 recovery scenarios passed. Earlier I03 validation passed six isolated PostgreSQL scenarios. SECURITY and REVIEWER cleared/approved the work.
 
 Limits: dependency and recovery tests were synthetic; no live provider call or real external billing verification was performed. Duplicate Anthropic usage remains possible and acknowledged. Recovery covered orderly restart and simulated interrupted state, not a hard kill during a provider call. Next: prepare the TEAM-REFERENCE pointer and complete the authorized publication workflow, preserving these limits.
+
+## 2026-10-29 - SQL shared budget ledger prerequisite
+
+- Commit `9541123` on `sql-foundation` adds the shared story budget ledger schema and migration, server ledger code, and synthetic ledger tests across six files. No database migration was applied.
+- Validation: synthetic tests passed 8/8, Node 24 TypeScript check passed, and offline Drizzle verification passed.
+- Phase 4.1 and 4.2 remain incomplete. READ/Bible/WRITE runtime adapters and workflow/export are pending. Remote push is not yet verified.
