@@ -12,6 +12,7 @@ import type { IntakeCode, IntakeTrace } from "./intake-trace";
 import { lookupLcVocabulary } from "./research/lc-vocabulary";
 import type { LcLookup, LcKind } from "../contracts/vocabulary";
 import { isLcFresh } from "../contracts/vocabulary";
+import { storyReadModel } from "./story-budget";
 
 type RecordWithBrief = { brief: Brief };
 export type IntakeRepository = {
@@ -209,7 +210,8 @@ export async function updateProjectIntake(ownerId: string, projectId: string, re
       throw Error("INTAKE_INPUT_REVIEW_REQUIRED");
     }
     trace?.record("input_read", "PASSED", { revision: reservedIntake.revision, operationId });
-    const model = dependencies.model ?? modelFromEnvironment();
+    const configuredModel = dependencies.model ?? modelFromEnvironment();
+    const model = dependencies.repository ? configuredModel : storyReadModel(configuredModel, ownerId, projectId, operationId);
     const analysis = await analyzeIntake(ownerId, reservedIntake.rawText, model, dependencies.signal, trace);
     trace?.record("persist", "STARTED", { revision: reservedIntake.revision, operationId });
     let project: RecordWithBrief;

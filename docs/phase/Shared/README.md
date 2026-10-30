@@ -2,9 +2,9 @@
 
 Keep this approved phase order and folder setup. Changes to scope/order need an explicit plan update.
 
-Status: Shared Phases 1–3 complete October 29, 2026. Shared Phases 4–5 remain planned and require their listed prerequisites.
+Status: Shared Phases 1-3 are complete. Shared Phase 4.1 model-backed Bible planning and shared-ledger code is present; I01 remains unchecked at the user's direction until the completion rule is reinstated. Shared 4.2 and Phase 5 remain outstanding.
 
-Shared 1.1 completed the owner structure, phase mapping and commit groups on October 26, 2026. Shared 1.2 renamed the existing local/remote SQL lane to `sql-foundation`, verified matching history and tracking, and removed the old remote ref on October 29, 2026. Shared Phase 2 established the typed Manny Bible-planning contract and checked it against the existing WRITE receiver; it does not complete I01 or claim live planners, authenticated approval wiring, or a full-circle run. Shared Phase 3's storage, atomic state, and current recovery work is complete on synthetic evidence; Shared 5.3 must recheck recovery behavior against later connectors. See each completion record for evidence. The canonical 26-item checklist remains authoritative for product implementation status.
+Shared 1.1 completed the owner structure, phase mapping and commit groups on October 26, 2026. Shared 1.2 renamed the existing local/remote SQL lane to `sql-foundation`, verified matching history and tracking, and removed the old remote ref on October 29, 2026. Shared Phase 2 established the typed Manny Bible-planning contract and checked it against the existing WRITE receiver; it does not complete I01 or claim live planners, authenticated approval wiring, or a full-circle run. Shared Phase 3's storage, atomic state, and current recovery work is complete on synthetic evidence; Shared 5.3 must recheck recovery behavior against later connectors. Shared Phase 4.1 uses the merged durable ledger across READ, Bible planning and WRITE; its USD 3 / 60,000-token cap is per story. No live models or database migration have been applied. See each completion record for evidence. The canonical 26-item checklist remains authoritative for product implementation status.
 
 [Master phase index](../README.md) | [Commit groups](../COMMIT-GROUPS.md)
 

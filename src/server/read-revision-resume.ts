@@ -1,7 +1,8 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { db } from "./db";
-import { projects, proposals, runs } from "./db/schema";
+import { bibles, projects, proposals, runs } from "./db/schema";
 import { connectionId, readRequestSchema, readResumeSchema, ReadConnectionError } from "./read-connection-contracts";
+import { assertCurrentPlanningApproval, planningKinds } from "./bible-planning";
 import { sha256 } from "../agents/read/runtime";
 
 /** Authenticated connection-only resume; never invents instructions or reruns active work. */
@@ -13,6 +14,12 @@ export async function resumeReadRevision(ownerId:string,projectId:string,runId:s
     if(!project)throw new ReadConnectionError("PROJECT_UNAVAILABLE","retrieval_recovery",404);
     const [run]=await tx.select().from(runs).where(and(eq(runs.id,runId),eq(runs.projectId,projectId))).for("update");
     if(!run||run.canceledAt||run.status!=="paused")throw new ReadConnectionError("PAUSED_READ_RUN_REQUIRED");
+    if(project.brief?.intake){
+      const [bible]=await tx.select().from(bibles).where(and(eq(bibles.id,run.bibleId),eq(bibles.projectId,project.id))).for("share");
+      if(!bible)throw new ReadConnectionError("APPROVED_BIBLE_REQUIRED");
+      await assertCurrentPlanningApproval(project,bible,await tx.select().from(proposals)
+        .where(and(eq(proposals.projectId,project.id),inArray(proposals.kind,planningKinds))).limit(201));
+    }
     const records=await tx.select().from(proposals).where(and(eq(proposals.projectId,projectId),eq(proposals.kind,"read_request"))).limit(201);
     if(records.length>200||!records.some(row=>{
       const parsed=readRequestSchema.safeParse(row.data);return parsed.success&&parsed.data.ownerId===ownerId&&

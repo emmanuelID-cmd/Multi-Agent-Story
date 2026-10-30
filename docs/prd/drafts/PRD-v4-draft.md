@@ -183,8 +183,9 @@ The application, after authenticated writer acceptance, is the sole committer of
 - Bible-planning tasks may run in parallel only after that gate. Bible A/B/C return three separately versioned candidates against the same confirmed-intent and accepted-dossier snapshot. The writer selects one exact candidate; the application records authenticated acceptance and assigns its approved `bibleVersion`. Bible, dossier, proposal and draft versions remain independent.
 - Three chapter writers run concurrently with indexed outputs. Each receives the approved global facts, accepted user constraints and assigned beats from the same version. Do not imply that a simultaneous writer has read another simultaneous writer's completed prose. No new emotional-state, voice-modeling or causal-simulation subsystem is required by v4; violations of an explicit accepted constraint still require a located finding.
 - Reader prepares the required five-field handoff after the write barrier. Both combined Critic/Editor roles validate it before dependent editing; Consistency checks each exact revision version. Accepted revisions can return to review, up to two rounds.
-- Proposed limits: three concurrent model tasks, one retry per failed task, 60,000 total model tokens per run, and a USD 3 provider-cost ceiling per run. These are prototype assumptions to calibrate, not validated performance estimates.
-- Application code checks estimated remaining cost before each dispatch. At a limit it pauses with saved outputs and lets the writer finish with the current draft or explicitly authorize a new run budget.
+- Proposed execution limits: three concurrent model tasks, one retry per failed task, and a 120-second task timeout remain assumptions to calibrate.
+- Approved story budget (October 29, 2026): a combined maximum of 60,000 model tokens and USD 3 across READ, Bible planning and WRITE for one story. Separate runs and agent lanes share the same durable ledger; retries and reopening a run do not reset it. Failed or uncertain dispatched calls retain reservations.
+- Before a paid call, application code reserves estimated usage through the per-story ledger, settles reported usage, and blocks dispatch when the budget is exhausted or required migration/rates are unavailable. Connectors remain disabled by default; live billing and PostgreSQL concurrency are not verified.
 
 ## 3b. System Prompt v0
 
@@ -289,10 +290,10 @@ NYT Books and Gutendex are the two required research providers in this draft, fo
 - **Before integration:** Verify orchestration phase barriers, chapter-index reducers, model structured-output support, token accounting, and provider cost estimates through a small spike.
 - **Before enabling research:** Confirm provider terms, identity-matching rules, text-use permissions and jurisdiction. Implement the per-dimension evidence gate in Section 5i, then calibrate sample size, source diversity, and recency against representative briefs before a pilot. Five confidently matched books is an earlier assumption only, not an approved threshold. Record explicit user scope changes and re-evaluate the dossier; a usable partial provider result alone never opens the two-provider gate.
 - **Before the pilot:** Approve retention, deletion, access controls, provider processing, and consent disclosures; define a deletion process that covers drafts, proposals, caches, and logs.
-- **Before release:** Calibrate the 4/5 critique threshold, 120-second timeout, and USD 3 budget against observed quality and latency; confirm accessibility with keyboard and screen-reader review.
+- **Before release:** Calibrate the 4/5 critique threshold and 120-second timeout; evaluate quality and latency within the approved USD 3 / 60,000-token per-story cap. Confirm accessibility with keyboard and screen-reader review.
 - **After the pilot:** Decide whether the measured benefit justifies parallel multi-agent cost and whether writers want longer stories, collaborative review, or public-domain comparisons next.
 
-This v4 revision changes documentation only. The current application combines implemented opt-in model-backed intake with a fixture-backed planning/writing flow; the separate READ runtime has bounded model runners and synthetic connector verification. Section 5j records the precise current boundary. The accepted research-to-planning web connection and full live loop are unfinished. Documentation approval and a successful smoke example are not release approval.
+This v4 draft records the repository implementation status. Shared Phase 4.1 now includes model-backed three-candidate Bible planning from confirmed intake and accepted Research, exact candidate approval, and budget-wrapped model dispatches using the shared per-story ledger. The database migration remains unapplied and connectors remain opt-in. Section 5j records the remaining web research, full graph and export boundaries. No live call, billing or full-circle success is claimed; documentation status is not release approval.
 
 ---
 
@@ -318,7 +319,7 @@ Research, three Manny Bible-planning instances, three Justin chapter-writing ins
 - The submitted PRD merges plot/character/world plans into one proposed bible; the workflow offers three complete candidate bibles for user selection. Both remain visible options pending a product decision; the three Bible instance labels do not decide which output format to build.
 - The submitted PRD uses separate critique dimensions and an editor; the workflow creates two complete alternative revisions. Two combined Critic/Editor instance labels make ownership traceable but do not establish two full alternative manuscripts as an approved MVP requirement.
 - The submitted PRD defers Gutendex excerpts and proposes other metadata adapters. The current correction selects NYT Books and Gutendex as mandatory research sources and expands design scope to permitted text analysis after rights verification. Live integration, text eligibility, coverage, and matching still require decisions before implementation.
-- The workflow's estimated 52,700-token base run plus 33,500 tokens per rewrite would exceed the PRD's proposed 60,000-token run ceiling. Treat those figures as unverified estimates; the existing budget gate must pause before an unaffordable dispatch.
+- The workflow's estimated 52,700-token base run plus 33,500 tokens per rewrite would exceed the approved 60,000-token per-story ceiling before any rewrite. Treat these figures as unverified estimates; the budget gate must pause before an unaffordable dispatch.
 - The workflow suggests export or best-effort polish at the loop limit. In this draft, unresolved work must remain visibly unresolved; reaching a limit cannot convert failure into acceptance or automatically mark a manuscript final.
 
 ## 5b. Sequential and parallel execution
@@ -444,8 +445,8 @@ The current READ adapter in `src/agents/read/model.ts` uses `claude-haiku-5-5`. 
 | Home-page intake | Expanded helper, sparse original persistence, Coordinator model analysis, independent suggestion review and exact scope confirmation are implemented. The documented controlled synthetic web example returned HTTP 200/analyzed, ten observations and five suggestions after one bounded grounding repair. | One example is not a reliability benchmark; confirmation is not research acceptance. |
 | READ runtime and harness | Research, Reader and Consistency model runners, fixed prompts, bounded tools, source/version checks and synthetic harness connectors exist. Prior recorded model-backed verification used synthetic provider/source/WRITE inputs. | These runners are not the full authenticated web orchestration; that run does not prove live book research or live WRITE generation. |
 | Research evidence/dossiers | Phase 2 connects confirmed Research to reviewed-source acquisition and immutable PostgreSQL dossiers, including query/exclusion provenance and exact authenticated acceptance. Final verification: 174/174 unit tests and 41/41 affected targeted tests, typecheck, SECURITY and independent review. | Synthetic repository/source/model verification only. Production source approval catalog and permitted text reader remain unconfigured; live PostgreSQL/provider/deployment behavior is untested. |
-| Research-to-planning web boundary | Owned Research history/detail and a strict authenticated acceptance route exist. Metadata adapters retain access/terms gates; new intake planning remains deliberately blocked. | Candidate generation is an internal service; full frontend/worker/planner dispatch is separate. Do not remove the fixture planner guard as a substitute for the agreed connector. |
-| Planning and WRITE | Three candidate bibles, chapter functions, two combined editor functions, proposal acceptance/export and revision plumbing exist as fixture-backed foundation behavior. | Replace fixture content with authorized model work in the appropriate owner lane and validate it through shared connectors; do not claim it is already live. |
+| Research-to-planning web boundary | Bible planning is connected to the authenticated project action and requires a current accepted dossier plus confirmed intake. Exact proposal version/hash approval is enforced. | User-facing Research acquisition/acceptance remains incomplete in the pushed scope; missing accepted evidence still blocks planning. |
+| Planning and WRITE | Bible A/B/C proposals use the model adapter for confirmed-intake projects and require exact human approval. Writer and Editor model dispatch adapters use the shared story ledger; legacy fixture projects retain fixture behavior. | Connectors remain disabled pending migration/rates/opt-in. The complete three-writer graph, Reader/Editor/Consistency barriers, user review and accepted export remain unfinished. |
 | Web Reader and Consistency | The current graph invokes a fixture Reader handoff/repair and an unavailable Consistency shell. The real READ runtime is separate. | Wire the actual owner/version-scoped readers and exact-proposal checks; an unavailable check cannot certify success. |
 | Whole workflow | Authentication, persistence, queue/worker and recovery primitives exist. | The full live chain from confirmed intake through accepted evidence, approved planning, writing, editorial checks and accepted export has not been demonstrated. |
 
@@ -746,7 +747,21 @@ chapter index inputs. No change to Justin's prompts, functions, tools,
 permissions, interface or editorial behavior is authorized by this decision.
 
 Phase 2 may establish and validate these shared contracts and fixture adapters.
-Live Bible-agent prompts/execution, model-backed planning, authenticated
-acceptance wiring, and full Coordinator orchestration remain implementation
-work under their assigned later phases. The Phase 2 contract does not mark I01
-complete or establish a live full-circle workflow.
+Shared Phase 4.1 adds model-backed Bible A/B/C proposals, authenticated exact-version acceptance, and budgeted dispatch connections for confirmed-intake projects. This does not mark I01 complete at the user's direction, claim live calls, or establish a full-circle workflow. Reader/Consistency orchestration, complete Writer/Editor graph barriers and accepted export remain outstanding.
+
+## 7n. Approved Shared Phase 4.1 story budget, October 29, 2026
+
+The project user approved Option 1: READ, Bible A/B/C planning and WRITE use
+one durable USD 3 / 60,000-token ledger per story. The separate SQL lane remains
+`sql-foundation`; its reviewed ledger implementation merged into `developer` in
+PR #27. Separate lane or run counters cannot reset the story cap. Dispatched
+calls with uncertain outcomes keep their reservations, and retries require the
+existing explicit recovery path and remaining story capacity.
+
+The application adapters fail closed when the ledger migration or positive
+server-side rates are unavailable, and lane opt-ins remain disabled by default.
+The migration has not been applied. No live model/provider call, production
+billing, or PostgreSQL concurrency result is claimed. The 3-call concurrency,
+one-retry and timeout assumptions remain separate calibration items. Keep I01
+unchecked at the user's direction until the completion rule is reinstated; this
+decision and implementation summary do not complete I01 or I02.

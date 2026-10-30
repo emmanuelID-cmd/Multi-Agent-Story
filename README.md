@@ -17,19 +17,19 @@ remain available for reference.
 
 **Status:** the local synthetic foundation is implemented. It includes
 authentication, project ownership, a minimal story workspace, fixture-backed
-workflow execution, and Markdown export. Opt-in web intake and a separate READ
-CLI harness use the existing Claude adapter; web drafting and editing remain
-synthetic, and book providers stay gated. No real manuscript processing is
-claimed. Current work stays in Manny's READ lane, including owner-scoped state,
-book-metadata boundaries and the approved intake connection. Existing WRITE behavior is preserved
-for Justin; this READ pass does not claim that his lane is complete or reviewed.
+workflow execution, and Markdown export. Opt-in web intake and a separate READ CLI harness use the
+existing Claude adapter. Shared Phase 4.1 adds gated model-backed Bible planning
+from accepted Research and budget-wrapped WRITE dispatches for confirmed-intake
+projects. These connections remain disabled until the shared ledger migration,
+verified rates and lane opt-ins are configured. The full three-writer/Reader/Editor/Consistency
+workflow and accepted export loop remain unfinished; no live calls are claimed. Shared Phase 4.1 extends Manny's READ work with Bible planning and shared-ledger adapters. Justin's writer/editor behavior and core functions are preserved; connector paths remain gated and have not been live-verified. I01 and I02 are not claimed complete.
 
 The separate [executable READ harness](docs/implementation/read-runtime.md) now
 connects real Research, Reader, and Consistency model runners. Run
 `npm run agents:read` for fixture evaluation or add `-- --live` to call Claude
-with the controlled synthetic inputs. Web drafting and editing remain fixture-backed.
-The harness records tools, source versions, failure states, and handoffs; its
-WRITE connectors and default NYT/Gutendex responses are explicitly synthetic.
+with the controlled synthetic inputs. This harness does not verify the full authenticated web workflow or live providers.
+The harness records tools, source versions, failure states, and handoffs. Its
+synthetic responses do not verify the full user-facing workflow or live providers.
 
 The web [story intake](docs/implementation/story-intake.md) now saves a sparse,
 free-form idea, displays the full story-material helper, and calls the existing
@@ -231,10 +231,13 @@ commits approved story state. The three Bible outputs remain separate until the
 writer selects one exact candidate. Ownership labels grant no runtime
 permissions, and these roles are not claimed to be live.
 
-Proposed scope: one English-language story of approximately 3,000 words, one
-writer per project, three concurrent model tasks, one retry per failed task,
-120-second task timeout, 60,000 tokens and USD 3 provider cost per run. These
-are PRD assumptions to calibrate, not measured performance or enforced limits.
+Proposed execution limits: three concurrent model tasks, one retry per failed task,
+and a 120-second timeout remain assumptions to calibrate. The user approved one
+durable USD 3 / 60,000-token budget per story across READ, Bible planning and
+WRITE. Application connectors reserve and settle through the shared ledger;
+missing migration, rates or lane opt-in fail closed. The SQL migration is merged
+but has not been applied. No live provider billing or PostgreSQL concurrency is
+claimed.
 Proposed critique threshold: 4/5 per available dimension and no unresolved
 critical continuity issue. Missing evidence is unavailable, never a zero score.
 

@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { ReadVersions } from "./contracts";
 
 export type ModelCall = {
-  agent: "research" | "reader" | "consistency" | "coordinator";
+  agent: "research" | "reader" | "consistency" | "coordinator" | "bible_a" | "bible_b" | "bible_c";
   system: string; data: unknown; schema: z.ZodType;
   maxOutputTokens: number; signal: AbortSignal;
   onDiagnostic?: (stage: "model_http" | "model_envelope" | "model_json", category: "PASSED" | "MODEL_HTTP_AUTH" | "MODEL_HTTP_CONFIG" | "MODEL_HTTP_RATE_LIMIT" | "MODEL_HTTP_UNAVAILABLE" | "MODEL_ENVELOPE_INVALID" | "MODEL_STOP_MAX_TOKENS" | "MODEL_STOP_OTHER" | "MODEL_JSON_INVALID" | "MODEL_STREAM_ERROR" | "MODEL_RESPONSE_TOO_LARGE", httpStatus?: number) => void;

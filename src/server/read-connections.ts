@@ -5,6 +5,7 @@ import { readSnapshotSchema, type ReadSnapshot } from "../agents/read/contracts"
 import { proposalDigest, runReader, runConsistency, sha256, type ReadDependencies } from "../agents/read/runtime";
 import { revisedManuscriptSchema, hashManuscriptContent, verifyManuscriptEnvelope } from "../agents/write/runtime";
 import { validateEditorReceivingHandoff, type ReaderToEditorHandoff } from "../agents/handoff";
+import { storyReadModel } from "./story-budget";
 import {
   connectionId, readAssignmentSchema, readRequestSchema, readOperationSchema, recoveryDecisionSchema, readerResultSchema,
   consistencyResultSchema, receiptSchema, ReadConnectionError,
@@ -313,6 +314,7 @@ export function createReadConnections(options:ReadConnectionOptions){
   async function dispatchReader(ownerId:string,projectId:string,runId:string,op:ReadOperation,r:ReadRequest,snapshot:ReadSnapshot,
     correction?:z.infer<typeof import("./read-connection-contracts").rejectionSchema>){
     const a=r.assignment;
+    const model=options.repository?options.runtime.model:storyReadModel(options.runtime.model,ownerId,projectId,`${op.operationId}:${op.generation}`);
     const used=op.readerResults.reduce((total,r)=>({inputTokens:total.inputTokens+r.usage.inputTokens,outputTokens:total.outputTokens+r.usage.outputTokens}),{inputTokens:0,outputTokens:0});
     const reserved=op.budgetReservation??options.runtime.budget;
     const budget={...options.runtime.budget,maxTokens:Math.max(0,reserved.maxTokens-used.inputTokens-used.outputTokens),
@@ -321,7 +323,7 @@ export function createReadConnections(options:ReadConnectionOptions){
       taskId:a.requestId,operationId:op.operationId,stateVersion:a.stateVersion,requestVersion:a.requestVersion,prdVersion:"v4-draft"},
       versions:options.versions,bibleVersion:a.bibleVersion,draftVersion:a.draftVersion,editorialTask:a.editorialTask,
       recordedRequest:a.recordedRequest,hasAdditionalInstructions:a.hasAdditionalInstructions,revision:a.editorialRound},
-      {...options.runtime,budget,readerContentRetries:0,readerCorrection:correction,readSnapshot:async()=>snapshot}));
+      {...options.runtime,model,budget,readerContentRetries:0,readerCorrection:correction,readSnapshot:async()=>snapshot}));
     if(result.output)result.output.handoff.version.handoffRevision=op.generation;
     // Model work is outside the repository lock. Late changes cannot become retained success.
     return locked(ownerId,projectId,runId,async(s,w)=>{
@@ -401,11 +403,12 @@ export function createReadConnections(options:ReadConnectionOptions){
   async function dispatchConsistency(ownerId:string,projectId:string,runId:string,op:ReadOperation,r:ReadRequest,snapshot:ReadSnapshot,
     binding:NonNullable<ReadOperation["proposalBinding"]>){
     const a=r.assignment,b=binding;
+    const model=options.repository?options.runtime.model:storyReadModel(options.runtime.model,ownerId,projectId,`${op.operationId}:${op.generation}`);
     const result=consistencyResultSchema.parse(await runConsistency({authority:{runId,projectId,ownerId,
       taskId:a.requestId,operationId:op.operationId,stateVersion:a.stateVersion,requestVersion:a.requestVersion,prdVersion:"v4-draft"},
       versions:options.versions,bibleVersion:a.bibleVersion,draftVersion:a.draftVersion,
       proposalId:b.proposalId,proposalVersion:b.proposalVersion,proposalSha256:b.readDigest},
-      {...options.runtime,budget:op.budgetReservation??options.runtime.budget,readSnapshot:async()=>snapshot}));
+      {...options.runtime,model,budget:op.budgetReservation??options.runtime.budget,readSnapshot:async()=>snapshot}));
     return locked(ownerId,projectId,runId,async(s,w)=>{
       const latest=operation(s,op.operationId);
       if(!latest||latest.generation!==op.generation||latest.status!=="running")throw new ReadConnectionError("DISPATCH_NO_LONGER_CURRENT");
