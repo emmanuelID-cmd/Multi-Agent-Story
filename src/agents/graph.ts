@@ -2,19 +2,21 @@ import { randomUUID } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
 import { Annotation, StateGraph, START, END, MemorySaver, interrupt, Command } from "@langchain/langgraph";
 import { PostgresSaver } from "@langchain/langgraph-checkpoint-postgres";
-import { and, desc, eq, isNull, like } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, like } from "drizzle-orm";
 import { db } from "../server/db";
 import { runs, tasks, chapters, bibles, critiques, evidence, projects, proposals } from "../server/db/schema";
 import { chapterSchema, orderedChapters, canDispatch, limits, type Bible, type Chapter, type Fixture } from "../contracts";
 import { getGenreBenchmarks } from "../server/research";
 import { buildWriterContext } from "./context";
-import { draftChapter } from "./writers";
+import { draftChapter, draftChapterModel } from "./writers";
+import { storyWriteModel } from "../server/story-budget";
 import { buildFixtureHandoff, validateHandoff, repairFixtureHandoff, type ReaderToEditorHandoff } from "./handoff";
 import { criticEditorA, criticEditorB } from "./editors";
 import { consistencyShell } from "./consistency-shell";
 import { buildManuscriptEnvelope } from "./write/runtime";
 import { executeRevisionCycle } from "./write/revision";
 import type { WriteModel, WriteModelCall } from "./write/model";
+import { assertCurrentPlanningApproval, planningKinds } from "../server/bible-planning";
 import { matchesCurrentTaskAttempt, matchesTaskAttemptLease, taskAttemptInputHash, taskAttemptOperationId, type TaskAttemptIdentity } from "../server/task-attempt";
 
 const State = Annotation.Root({ runId: Annotation<string> });
@@ -37,6 +39,8 @@ export async function writeChapter(runId: string, index: number, delayMs = (4-in
       return null;
     }
     const [bible]=await tx.select().from(bibles).where(and(eq(bibles.id,run.bibleId),eq(bibles.projectId,project.id))).for("share");
+    if(bible && project.brief.intake) await assertCurrentPlanningApproval(project, bible, await tx.select().from(proposals)
+      .where(and(eq(proposals.projectId,project.id),inArray(proposals.kind,planningKinds))).limit(201));
     const [task]=await tx.select().from(tasks).where(and(eq(tasks.runId,runId),eq(tasks.chapterIndex,index))).for("update");
     const savedInput=task?.savedInput as {version?:unknown}|undefined;
     if(!bible||!task||project.version!==bible.version||savedInput?.version!==bible.version||
@@ -48,18 +52,23 @@ export async function writeChapter(runId: string, index: number, delayMs = (4-in
       bibleId:bible.id,bibleVersion:bible.version,savedInputHash:taskAttemptInputHash(task.savedInput),
     };
     await tx.update(tasks).set({status:"running",attempts:attemptNumber,updatedAt:new Date()}).where(eq(tasks.id,task.id));
-    return {task,fixture:run.fixture,identity};
+    return {task,fixture:run.fixture,identity,modelBacked:Boolean(project.brief.intake)};
   });
   if(!claim)return {};
   const {task,identity,fixture}=claim;
   const started=Date.now();
+  const cancelWatch=claim.modelBacked?watchRevisionCancel(runId):undefined;
   try {
+    if(claim.modelBacked&&process.env.READ_CONNECTIONS_ENABLED!=="true")throw Error("STORY_WORKFLOW_UNAVAILABLE");
     const context=buildWriterContext(task.savedInput,index,task.savedInput.version);
     if(!context.canDispatch)throw Error("INPUT_REVIEW_REQUIRED: review the brief field constraints.");
-    const signal=AbortSignal.timeout(limits.timeoutMs);
+    const signal=cancelWatch?.signal??AbortSignal.timeout(limits.timeoutMs);
     await delay(delayMs,undefined,{signal});
     if(fixture==="timeout"&&index===2)throw Error("SYNTHETIC_TIMEOUT: chapter 2 timeout fixture. No real model call occurred.");
-    const output=draftChapter(index, context.bibleVersion, fixture as Fixture);
+    const output=claim.modelBacked?(await draftChapterModel({index:index as 1|2|3,bibleVersion:context.bibleVersion,
+      approvedBible:task.savedInput.bible,brief:task.savedInput.brief},
+      storyWriteModel(identity.ownerId,identity.projectId,identity.operationId),signal)).chapter:
+      draftChapter(index, context.bibleVersion, fixture as Fixture);
     await db.transaction(async tx=>{
       const [project]=await tx.select().from(projects).where(eq(projects.id,identity.projectId)).for("update");
       if(!project)return;
@@ -93,6 +102,8 @@ export async function writeChapter(runId: string, index: number, delayMs = (4-in
       await tx.update(tasks).set({status:"failed",error:current?(error instanceof Error?error.message:"Task failed."):"STALE_RESULT: Dependencies changed before the result could be committed.",elapsedMs:Date.now()-started,updatedAt:new Date()})
         .where(and(eq(tasks.id,identity.taskId),eq(tasks.status,"running"),eq(tasks.attempts,identity.attemptNumber)));
     });
+  } finally {
+    cancelWatch?.stop();
   }
   return {};
 }
@@ -511,9 +522,30 @@ async function executeRequestedRevision(
 }
 
 export async function executeRun(runId: string, checkpoint = true) {
-  const [run]=await db.update(runs).set({status:"running"})
-    .where(and(eq(runs.id,runId),eq(runs.status,"pending"),isNull(runs.canceledAt)))
-    .returning();
+  const run=await db.transaction(async tx=>{
+    const [observed]=await tx.select().from(runs).where(eq(runs.id,runId));
+    if(!observed)return undefined;
+    const [project]=await tx.select().from(projects).where(eq(projects.id,observed.projectId)).for("update");
+    if(!project)return undefined;
+    const [locked]=await tx.select().from(runs).where(eq(runs.id,runId)).for("update");
+    if(!locked||locked.projectId!==project.id||locked.status!=="pending"||locked.canceledAt)return undefined;
+    if(project.brief.intake){
+      try {
+        const [bible]=await tx.select().from(bibles).where(and(eq(bibles.id,locked.bibleId),eq(bibles.projectId,project.id))).for("share");
+        if(!bible)throw Error("Approved Bible is unavailable.");
+        await assertCurrentPlanningApproval(project,bible,await tx.select().from(proposals)
+          .where(and(eq(proposals.projectId,project.id),inArray(proposals.kind,planningKinds))).limit(201));
+      } catch {
+        await tx.update(runs).set({status:"failed"}).where(and(eq(runs.id,runId),eq(runs.status,"pending")));
+        await tx.update(tasks).set({status:"failed",error:"Review the current accepted research and approved story bible before retrying this run.",updatedAt:new Date()})
+          .where(and(eq(tasks.runId,runId),inArray(tasks.status,["pending","failed"])));
+        return undefined;
+      }
+    }
+    const [claimed]=await tx.update(runs).set({status:"running"})
+      .where(and(eq(runs.id,runId),eq(runs.status,"pending"),isNull(runs.canceledAt))).returning();
+    return claimed;
+  });
   // Queue deliveries can outlive an interrupted worker. Only an explicit
   // retry may move a failed run back to pending and authorize execution.
   if(!run||run.canceledAt)return;

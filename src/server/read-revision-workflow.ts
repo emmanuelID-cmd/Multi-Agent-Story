@@ -10,6 +10,7 @@ import { configuredReadConnections } from "./read-connection-http";
 import { assertCurrentReadConsistency, assertCurrentReadEditor, createReadConnections, type ReadConnectionOptions } from "./read-connections";
 import { createReadRevisionConnection, revisionReaderOperation, revisionProposalIds, type ReadRevisionAssignments } from "./read-revision-connection";
 import { ReadConnectionError, readRequestSchema, type ConnectionSnapshot, type ReadAssignment } from "./read-connection-contracts";
+import { storyWriteModel } from "./story-budget";
 
 type Candidate={id:string;manuscript:RevisedManuscript};
 export type ConnectedRevisionInput={ownerId:string;projectId:string;runId:string;stateVersion:number;bibleVersion:number;
@@ -126,7 +127,9 @@ export async function executeReadConnectedRun(runId:string,modelA:WriteModel,mod
   }
   const input:ConnectedRevisionInput={ownerId:project.ownerId,projectId:project.id,runId,stateVersion:project.version,bibleVersion:bible.version,
     approvedBible:bible.data,draftChapters,readingA,readingB,revisionRound,editorialInstructions:assignments.critic_editor_a.recordedRequest,
-    hasAdditionalInstructions:assignments.critic_editor_a.hasAdditionalInstructions,assignments,modelA,modelB,options};
+    hasAdditionalInstructions:assignments.critic_editor_a.hasAdditionalInstructions,assignments,
+    modelA:project.brief.intake?storyWriteModel(project.ownerId,project.id,`${runId}:editor:a`):modelA,
+    modelB:project.brief.intake?storyWriteModel(project.ownerId,project.id,`${runId}:editor:b`):modelB,options};
   const assertReaders=(source:ConnectionSnapshot)=>{
     for(const editorId of ["critic_editor_a","critic_editor_b"] as const)
       assertCurrentReadEditor(source,revisionReaderOperation(assignments[editorId]),editorId,runId);
@@ -156,7 +159,7 @@ export async function executeReadConnectedRun(runId:string,modelA:WriteModel,mod
       await tx.update(proposals).set({status:"pending"}).where(and(eq(proposals.projectId,project.id),inArray(proposals.id,candidates.map(c=>c.id)),eq(proposals.status,"awaiting_read")));
       await tx.update(tasks).set({status:"completed",error:null,updatedAt:new Date()}).where(eq(tasks.runId,runId));
       await tx.insert(critiques).values({id:randomUUID(),runId,data:{revisionRounds:revisionRound,
-        producerProvenance:"unverified; worker uses fixture Editorial models",verifiedLiveProducer:false,
+        producerProvenance:project.brief.intake?"model adapters; live verification not performed":"unverified; worker uses fixture Editorial models",verifiedLiveProducer:false,
         consistency:{label:"exact READ Consistency",versionA:checks[0].consistencyResult,versionB:checks[1].consistencyResult},
         unresolvedIssues:checks.flatMap(c=>c.consistencyResult?.output?.unresolvedIssues??[])}}).onConflictDoNothing();
       await tx.update(runs).set({status:"completed"}).where(eq(runs.id,runId));

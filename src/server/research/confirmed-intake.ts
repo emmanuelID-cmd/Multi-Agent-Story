@@ -12,6 +12,7 @@ import type { ReadResult, ResearchDossier } from "../../agents/read/contracts";
 import type { ProviderEvidence } from "./book-metadata";
 import type { AcquisitionReport } from "./research-acquisition";
 import { isLcFresh } from "../../contracts/vocabulary";
+import { storyReadModel } from "../story-budget";
 
 type ProjectRecord = { id: string; ownerId: string; version: number; brief: { intake?: unknown } };
 export type ConfirmedIntakeRepository = {
@@ -151,7 +152,9 @@ export async function runConfirmedResearch(request: ConfirmedResearchRequest, de
     stage = "runtime";
     const acquired = acquire ? await boundedAcquisition(() => acquire(input, attempt.signal), attempt.signal) : undefined;
     if (acquired) { input = acquired.input; acquisition = acquired.report; }
-    result = await runResearch(input, { ...dependencies,
+    const model = repository === dbRepository ? storyReadModel(dependencies.model, request.authority.ownerId,
+      request.authority.projectId, request.authority.operationId) : dependencies.model;
+    result = await runResearch(input, { ...dependencies, model,
       readBenchmarks: acquired ? async () => acquired.providerOutcomes : dependencies.readBenchmarks,
       signal: attempt.signal, beforeResearchModel: async () => {
       await prepareConfirmedResearchInput(request, repository, boundary);

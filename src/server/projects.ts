@@ -10,6 +10,7 @@ import type { RevisedManuscript } from "../agents/editors";
 import { verifyManuscriptEnvelope } from "../agents/write/runtime";
 import { assertCurrentReadConsistency } from "./read-connections";
 import { taskAttemptInputHash } from "./task-attempt";
+import { approveBiblePlan, assertCurrentPlanningApproval, planningKinds, planningOperationSchema, proposeBiblePlans } from "./bible-planning";
 
 export class AppError extends Error { constructor(public status: number, message: string, public fields?: Record<string,string[]>) { super(message); } }
 export async function ownedProject(ownerId: string, id: string) {
@@ -30,11 +31,23 @@ export async function createProject(ownerId: string, input: unknown) {
   const [project] = await db.insert(projects).values({ id:randomUUID(), ownerId, brief }).returning();
   return project;
 }
+export function latestPlanningState(planningRows: Array<{id:string;projectId:string;baseVersion:number;status:string;data:unknown}>, ownerId:string, id:string) {
+  const parsedOperations = planningRows.map(row => ({ row, parsed: planningOperationSchema.safeParse(row.data) }));
+  const invalid = planningRows.length > 200 || parsedOperations.some(({row,parsed}) => !parsed.success ||
+    parsed.data.operationId !== row.id || row.projectId !== id || parsed.data.projectId !== id || parsed.data.ownerId !== ownerId ||
+    parsed.data.baseStateVersion !== row.baseVersion || !["running","completed","failed"].includes(row.status));
+  if (invalid) return { status:"invalid", proposalVersion:0 };
+  const latest = parsedOperations.filter(item => item.parsed.success).sort((a,b) => b.parsed.data!.proposalVersion - a.parsed.data!.proposalVersion)[0];
+  return latest ? { status:latest.row.status, proposalVersion:latest.parsed.data!.proposalVersion, operationId:latest.parsed.data!.operationId, retryAvailable:["running","failed"].includes(latest.row.status) && !latest.parsed.data!.retryOfOperationId } : null;
+}
 export async function projectState(ownerId: string, id: string) {
   const project = await ownedProject(ownerId, id);
   const [bible] = await db.select().from(bibles).where(eq(bibles.projectId, id)).orderBy(desc(bibles.version)).limit(1);
   const [run] = await db.select().from(runs).where(eq(runs.projectId, id)).orderBy(desc(runs.createdAt)).limit(1);
   const pending = await db.select().from(proposals).where(and(eq(proposals.projectId, id), eq(proposals.status, "pending"), notLike(proposals.kind,"research_%"))).orderBy(desc(proposals.createdAt));
+  const planningRows = project.brief.intake ? await db.select().from(proposals)
+    .where(and(eq(proposals.projectId,id),eq(proposals.kind,"bible_planning_operation"))).limit(201) : [];
+  const latestPlanning = latestPlanningState(planningRows,ownerId,id);
   const [acceptedManuscript] = await db.select().from(proposals).where(and(
     eq(proposals.projectId, id),
     eq(proposals.status, "accepted"),
@@ -42,17 +55,24 @@ export async function projectState(ownerId: string, id: string) {
     like(proposals.kind, "manuscript_%")
   )).orderBy(desc(proposals.createdAt)).limit(1);
 
-  if (!run) return { project, bible, pending, acceptedManuscript: acceptedManuscript ?? null, run: null, tasks: [], chapters: [], critique: null, evidence: [] };
+  if (!run) return { project, bible, pending, latestPlanning, acceptedManuscript: acceptedManuscript ?? null, run: null, tasks: [], chapters: [], critique: null, evidence: [] };
   const [critique] = await db.select().from(critiques).where(eq(critiques.runId, run.id));
   return {
-    project, bible, pending, acceptedManuscript: acceptedManuscript ?? null, run,
+    project, bible, pending, latestPlanning, acceptedManuscript: acceptedManuscript ?? null, run,
     tasks: await db.select().from(tasks).where(eq(tasks.runId, run.id)).orderBy(asc(tasks.chapterIndex)),
     chapters: await db.select().from(chapters).where(eq(chapters.runId, run.id)).orderBy(asc(chapters.chapterIndex)),
     critique: critique?.data ?? null,
     evidence: await db.select().from(evidence).where(eq(evidence.runId, run.id)),
   };
 }
-export async function proposePlan(ownerId: string, id: string) {
+export async function proposePlan(ownerId: string, id: string, operationId?: string, signal?: AbortSignal, retryOfOperationId?: string) {
+  const current = await ownedProject(ownerId, id);
+  if (current.brief.intake) {
+    if (!operationId) throw new AppError(400, "A planning operation ID is required.");
+    const set = await proposeBiblePlans(ownerId, id, operationId, { signal, retryOfOperationId });
+    return { ...set, id: set.candidates[0].proposalId };
+  }
+  if (retryOfOperationId) throw new AppError(409, "Bible planning retry is unavailable for this project.");
   return db.transaction(async tx => {
   // Serialize this boundary with intake edits; a stale confirmed scope cannot open planning.
   const [project] = await tx.select().from(projects).where(and(eq(projects.id,id),eq(projects.ownerId,ownerId))).for("update");
@@ -105,11 +125,16 @@ export async function proposePlan(ownerId: string, id: string) {
   return inserted[0];
   });
 }
-export async function approveProposal(ownerId: string, id: string, proposalId: string) {
-  await ownedProject(ownerId, id);
+export async function approveProposal(ownerId: string, id: string, proposalId: string, exact?: { proposalVersion: number; proposalHash: string }) {
+  const current = await ownedProject(ownerId, id);
+  if (current.brief.intake) {
+    if (!exact) throw new AppError(400, "Select the exact candidate version and hash.");
+    return approveBiblePlan(ownerId, id, { proposalId, ...exact });
+  }
   return db.transaction(async tx => {
     const [project] = await tx.select().from(projects).where(and(eq(projects.id, id), eq(projects.ownerId, ownerId))).for("update");
     if (!project) throw new AppError(404, "Project unavailable.");
+    if (project.brief.intake) throw new AppError(409, "Select the exact current model-backed Bible candidate.");
     const [proposal] = await tx.select().from(proposals).where(and(eq(proposals.id, proposalId), eq(proposals.projectId, id))).for("update");
     if (!proposal || proposal.status !== "pending" || proposal.baseVersion !== project.version) throw new AppError(409, "Proposal is stale or already decided. Review a new plan.");
     if (!proposal.kind.startsWith("bible_") && proposal.kind !== "synthetic-plan") {
@@ -189,7 +214,7 @@ export async function approveManuscriptProposal(ownerId: string, id: string, pro
       throw new AppError(409, `Manuscript envelope verification failed: ${verification.error}`);
     }
 
-    if(process.env.READ_CONNECTIONS_ENABLED==="true"){
+    if(project.brief?.intake||process.env.READ_CONNECTIONS_ENABLED==="true"){
       // No model work here: the exact current report is verified under the acceptance transaction's locks.
       const [readRun]=await tx.select().from(runs).where(eq(runs.id,data.envelope.runId)).for("update");
       if(!readRun)throw new AppError(409,"The current READ sources are unavailable.");
@@ -220,7 +245,9 @@ export async function approveManuscriptProposal(ownerId: string, id: string, pro
   });
 }
 export async function rewriteRun(ownerId: string, id: string, feedback?: string, dispatch = true) {
-  await ownedProject(ownerId, id);
+  const sourceProject=await ownedProject(ownerId, id);
+  if (sourceProject.brief?.intake && (process.env.READ_CONNECTIONS_ENABLED!=="true" || process.env.WRITE_CONNECTIONS_ENABLED!=="true"))
+    throw new AppError(503,"The story workflow is not configured. Your approved work is preserved.");
   const [completedRun] = await db.select().from(runs).where(and(eq(runs.projectId, id), eq(runs.status, "completed"))).orderBy(desc(runs.createdAt)).limit(1);
   if (!completedRun) throw new AppError(409, "A completed run is required before requesting a rewrite.");
   const [critique] = await db.select().from(critiques).where(eq(critiques.runId, completedRun.id));
@@ -259,6 +286,8 @@ export async function rewriteRun(ownerId: string, id: string, feedback?: string,
     const [project] = await tx.select().from(projects).where(eq(projects.id, id)).for("update");
     const [bible] = await tx.select().from(bibles).where(and(eq(bibles.projectId, id), eq(bibles.version, project.version)));
     if (!bible) throw new AppError(409, "Approve a story bible before drafting.");
+    if (project.brief.intake) await assertCurrentPlanningApproval(project, bible, await tx.select().from(proposals)
+      .where(and(eq(proposals.projectId, id), inArray(proposals.kind, planningKinds))).limit(201));
     const active = await tx.select().from(runs).where(eq(runs.projectId, id));
     if (active.some(r => ["pending", "running"].includes(r.status))) throw new AppError(409, "A run is already active.");
 
@@ -314,8 +343,12 @@ export async function startRun(ownerId: string, id: string, input: unknown, disp
   const run = await db.transaction(async tx=>{
     const [project] = await tx.select().from(projects).where(and(eq(projects.id,id),eq(projects.ownerId,ownerId))).for("update");
     if (!project) throw new AppError(404,"Project not found.");
+    if (project.brief.intake && (process.env.READ_CONNECTIONS_ENABLED!=="true" || process.env.WRITE_CONNECTIONS_ENABLED!=="true"))
+      throw new AppError(503,"The story workflow is not configured. Your approved plan is preserved.");
     const [bible] = await tx.select().from(bibles).where(and(eq(bibles.projectId,id),eq(bibles.version,project.version)));
     if (!bible) throw new AppError(409,"Approve a story bible before drafting.");
+    if (project.brief.intake) await assertCurrentPlanningApproval(project, bible, await tx.select().from(proposals)
+      .where(and(eq(proposals.projectId, id), inArray(proposals.kind, planningKinds))).limit(201));
     const active = await tx.select().from(runs).where(eq(runs.projectId,id));
     if (active.some(r=>["pending","running"].includes(r.status))) throw new AppError(409,"A run is already active.");
 
@@ -367,11 +400,15 @@ export async function retryRun(ownerId: string, id: string, dispatch=true) {
   await db.transaction(async tx=>{
     const [project]=await tx.select().from(projects).where(and(eq(projects.id,id),eq(projects.ownerId,ownerId))).for("update");
     if(!project)throw new AppError(404,"Project unavailable.");
+    if (project.brief.intake && (process.env.READ_CONNECTIONS_ENABLED!=="true" || process.env.WRITE_CONNECTIONS_ENABLED!=="true"))
+      throw new AppError(503,"The story workflow is not configured. Your approved work is preserved.");
     const [locked]=await tx.select().from(runs).where(eq(runs.projectId,id)).orderBy(desc(runs.createdAt)).limit(1).for("update");
     if(!locked)throw new AppError(409,"No run to retry.");
     if(locked.status!=="failed")throw new AppError(409,"Only a failed run can be retried.");
     const [bible]=await tx.select().from(bibles).where(and(eq(bibles.id,locked.bibleId),eq(bibles.projectId,id)));
     if(!bible||bible.version!==project.version)throw new AppError(409,"The approved Bible changed. Review the current plan before retrying.");
+    if (project.brief.intake) await assertCurrentPlanningApproval(project, bible, await tx.select().from(proposals)
+      .where(and(eq(proposals.projectId, id), inArray(proposals.kind, planningKinds))).limit(201));
     const all=await tx.select().from(tasks).where(eq(tasks.runId,locked.id));
     const eligible=all.filter(t=>t.status!=="completed"&&t.attempts<2);
     if(!eligible.length)throw new AppError(409,"The one-retry limit has been reached. Completed outputs are preserved.");

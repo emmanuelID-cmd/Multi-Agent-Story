@@ -67,7 +67,7 @@ function releaseModelSlot(): void {
   if (next) { next.signal.removeEventListener("abort", next.abort); next.resolve(releaseModelSlot); }
   else activeModelCalls--;
 }
-async function acquireModelSlot(signal: AbortSignal): Promise<() => void> {
+export async function acquireModelSlot(signal: AbortSignal): Promise<() => void> {
   if (signal.aborted) throw new Error("CANCELED");
   if (activeModelCalls < limits.concurrency) { activeModelCalls++; return releaseModelSlot; }
   return new Promise((resolve, reject) => {

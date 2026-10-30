@@ -5,6 +5,7 @@ import { intakeRecordSchema } from "../../contracts/intake";
 import { sha256, type ReadDependencies } from "../../agents/read/runtime";
 import type { ResearchDossier, ResearchInput } from "../../agents/read/contracts";
 import { AppError } from "../projects";
+import { storyReadModel } from "../story-budget";
 import { prepareConfirmedResearchInput, type ConfirmedIntakeRepository, type ConfirmedResearchRequest } from "./confirmed-intake";
 import { acquireResearchEvidence, approvedSourceFingerprint, runAcquiredConfirmedResearch, type AcquisitionOptions } from "./research-acquisition";
 import { acceptanceRow, assertResearchCapacity, dbResearchRepository, parseAcceptance, parseCandidate, researchAcceptanceSchema, sealCandidate,
@@ -141,7 +142,8 @@ export async function createResearchCandidate(request:ConfirmedResearchRequest,r
   if(request.criteriaVersion!==RESEARCH_CRITERIA_VERSION)throw new AppError(409,"Research criteria changed.");
   const repository=dependencies.repository??dbResearchRepository;
   const confirmed=dependencies.confirmedRepository??{get:async(ownerId:string,projectId:string)=>(await repository.load(ownerId,projectId)).project};
-  const result=await runAcquiredConfirmedResearch(request,{...read,signal:dependencies.signal??read.signal},confirmed,dependencies.acquisition);
+  const model=dependencies.repository?read.model:storyReadModel(read.model,request.authority.ownerId,request.authority.projectId,request.authority.operationId);
+  const result=await runAcquiredConfirmedResearch(request,{...read,model,signal:dependencies.signal??read.signal},confirmed,dependencies.acquisition);
   if(!result.output||!result.acquisition||!["ready_for_review","blocked"].includes(result.status))
     throw new AppError(409,"Research has no reviewable dossier candidate.");
   const dossier=result.output;
