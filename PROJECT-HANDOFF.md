@@ -123,7 +123,7 @@ Limits: dependency and recovery tests were synthetic; no live provider call or r
 ### Verified base and outgoing work
 
 - App repository: emmanuelID-cmd/Multi-Agent-Story. Active branch: `shared/phase-4-planning-orchestration`.
-- Before restoring the saved edits, this branch was fast-forwarded to verified `origin/developer` at `4b870c325436aea86ea9c0bc00c96066b80222ea`. The Phase 4.1 implementation commit is `d9c8e41b4162009946a867d43a4e577409787d96`, authored by Emmanuel De Jesus. The branch has no remote ref yet; this is preparation for its initial push and a PR into `developer`.
+- Before restoring the saved edits, this branch was fast-forwarded to verified `origin/developer` at `4b870c325436aea86ea9c0bc00c96066b80222ea`. The Phase 4.1 implementation commit is `d9c8e41b4162009946a867d43a4e577409787d96`, authored by Emmanuel De Jesus. Initial push was verified at `8e7dbf3` on `origin/shared/phase-4-planning-orchestration`; PR #28 targets `developer`: https://github.com/emmanuelID-cmd/Multi-Agent-Story/pull/28.
 - Shared SQL budget ledger PR #27 is already merged into `developer`. SQL remains on `sql-foundation`; no migration was applied. `main` was not changed (last verified at `4b340485bd0cf94b52294150c44b28d4ba890aa3`).
 
 ### Shared Phase 4.1 status
@@ -139,3 +139,8 @@ Limits: dependency and recovery tests were synthetic; no live provider call or r
 - Do not start Shared Phase 4.2 now. I02 still needs the complete fixed graph, user review, and Shared Phase 5.2 accepted-export integration.
 - Preserve Justin's Writer/Editor prompts, tools, permissions and core behavior. Only budget/connection adapters were added in the outgoing Phase 4.1 commit.
 - The remaining unstaged auth and ResearchReview/source-submission changes, related research tests, and all 20 `docs/temp/` files are excluded from this push and remain locally preserved for separate ownership/scope review.
+
+### Publication state
+
+- Initial branch push verified October 30, 2026 at `8e7dbf3`; PR #28 is open from `shared/phase-4-planning-orchestration` to `developer`.
+- Next: publish this PR-link handoff update, verify required checks/review and ancestry, merge only when safe, then fast-forward eligible non-main branches and stop. Keep `main` untouched and preserve the excluded local work.
