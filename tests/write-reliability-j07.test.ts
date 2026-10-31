@@ -487,12 +487,20 @@ describe("J07 — WRITE Reliability Evidence & Failure Recovery", () => {
             : 0;
           return rightTime - leftTime;
         });
+        // Pretends the database locked these rows before sorting them.
+        // retryRun calls for("update") right after where(), then orderBy() and limit().
+        const lockedRows = () => Object.assign(Promise.resolve(rows), {
+          orderBy: () => Object.assign(Promise.resolve(newestFirst), {
+            limit: (count: number) => Promise.resolve(newestFirst.slice(0, count)),
+          }),
+          limit: (count: number) => Promise.resolve(rows.slice(0, count)),
+        });
         return Object.assign(pending, {
           orderBy: () => Object.assign(Promise.resolve(newestFirst), {
             limit: (count: number) => Promise.resolve(newestFirst.slice(0, count)),
           }),
           limit: (count: number) => Promise.resolve(rows.slice(0, count)),
-          for: () => Promise.resolve(rows),
+          for: lockedRows,
         });
       };
 
@@ -594,7 +602,7 @@ describe("J07 — WRITE Reliability Evidence & Failure Recovery", () => {
           chapterIndex,
           status: "failed",
           attempts: 1,
-          savedInput: { revisionRound: 1, editorialInstructions: "More fog." },
+          savedInput: { bible: mockBible, version: 1, brief: store.projects[0].brief, revisionRound: 1, editorialInstructions: "More fog." },
         }))
       );
       mockProjectDb(store);

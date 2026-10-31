@@ -11,7 +11,7 @@ function fixture() {
       entries.add(input.operationId);
       return { replayed };
     }),
-    settle: vi.fn(async () => undefined), markUncertain: vi.fn(async () => undefined),
+    settle: vi.fn(async () => undefined), markUncertain: vi.fn(async () => undefined), release: vi.fn(async () => undefined),
   };
   const complete = vi.fn(async () => ({ value: { text: "synthetic" }, usage: { inputTokens: 10, outputTokens: 20 } }));
   const model: ReadModel = { modelId: "synthetic", complete };
@@ -29,7 +29,7 @@ describe("shared story budget model boundary (synthetic)", () => {
     expect(f.complete).toHaveBeenCalledBefore(vi.mocked(f.ledger.settle));
     expect(f.ledger.settle).toHaveBeenCalledWith(expect.objectContaining({ actualInputTokens: 10, actualOutputTokens: 20 }));
     expect(f.ledger.reserve).toHaveBeenCalledWith(expect.objectContaining({ ownerId: "owner", projectId: "story",
-      role: "bible_a", inputByteLength: expect.any(Number), overheadTokens: 4096, maxOutputTokens: 100 }));
+      role: "bible_a", estimatedInputTokens: expect.any(Number), overheadTokens: 4096, maxOutputTokens: 100 }));
   });
 
   it("blocks model dispatch when the durable shared cap is exhausted", async () => {
@@ -43,7 +43,22 @@ describe("shared story budget model boundary (synthetic)", () => {
     const f = fixture();
     await budgetReadModel(f.model, f.context).complete(f.call);
     await expect(budgetReadModel(f.model, f.context).complete(f.call)).rejects.toThrow("REPLAY_REQUIRES_RECOVERY");
+    const calls = vi.mocked(f.ledger.reserve).mock.calls;
+    expect(calls[0][0].operationId).toBe(calls[1][0].operationId);
+    expect(calls[0][0].role).toBe(calls[1][0].role);
     expect(f.complete).toHaveBeenCalledTimes(1);
+  });
+
+  it("reserves a new operation when the same planning id and role get a changed payload", async () => {
+    const f = fixture();
+    const wrapped = budgetReadModel(f.model, f.context);
+    await wrapped.complete(f.call);
+    await wrapped.complete({ ...f.call, data: { name: "Renamed" } });
+    const calls = vi.mocked(f.ledger.reserve).mock.calls;
+    expect(calls[0][0].operationId).not.toBe(calls[1][0].operationId);
+    expect(calls[0][0].role).toBe("bible_a");
+    expect(calls[1][0].role).toBe("bible_a");
+    expect(f.complete).toHaveBeenCalledTimes(2);
   });
 
   it("retains uncertain reservations when a provider fails", async () => {
@@ -106,5 +121,30 @@ describe("shared story budget model boundary (synthetic)", () => {
     const calls = vi.mocked(f.ledger.reserve).mock.calls;
     expect(calls[0][0].operationId).not.toBe(calls[1][0].operationId);
     expect(calls.every(([input]) => input.projectId === "story")).toBe(true);
+  });
+
+  it("marks reservation uncertain when aborted during provider execution and avoids release", async () => {
+    const f = fixture();
+    const controller = new AbortController();
+    f.complete.mockImplementation(async () => {
+      controller.abort();
+      throw Error("CANCELED");
+    });
+    await expect(budgetReadModel(f.model, f.context).complete({ ...f.call, signal: controller.signal })).rejects.toThrow("CANCELED");
+    expect(f.ledger.markUncertain).toHaveBeenCalled();
+    expect(f.ledger.release).not.toHaveBeenCalled();
+  });
+
+  it("releases reservation when aborted before provider dispatch without marking uncertain", async () => {
+    const f = fixture();
+    const controller = new AbortController();
+    vi.mocked(f.ledger.reserve).mockImplementation(async () => {
+      controller.abort();
+      return { replayed: false };
+    });
+    await expect(budgetReadModel(f.model, f.context).complete({ ...f.call, signal: controller.signal })).rejects.toThrow("CANCELED");
+    expect(f.complete).not.toHaveBeenCalled();
+    expect(f.ledger.release).toHaveBeenCalled();
+    expect(f.ledger.markUncertain).not.toHaveBeenCalled();
   });
 });

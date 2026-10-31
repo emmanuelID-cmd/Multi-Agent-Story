@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { intakeJsonBody } from "../src/server/intake-http";
+import { failure } from "../src/server/http";
 
 function request(body: string, extra: Record<string, string> = {}) {
   return new Request("http://localhost:3000/api/projects", { method: "POST", headers: { "content-type": "application/json", ...extra }, body });
@@ -21,5 +22,21 @@ describe("bounded intake request bodies", () => {
     controller.abort();
     await expect(reading).rejects.toMatchObject({ status: 400 });
     expect(cancel).toHaveBeenCalledOnce();
+  });
+
+  it("maps SyntaxError in failure() to 400 Bad Request", async () => {
+    const res = failure(new SyntaxError("Unexpected token in JSON"));
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "Check the request payload format." });
+  });
+
+  it("keeps a non-JSON SyntaxError on the unavailable path", async () => {
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    const res = failure(new SyntaxError("Unexpected token ')'"));
+    expect(res.status).toBe(503);
+    expect(await res.json()).toEqual({ error: "Temporarily unavailable. Your saved work is preserved." });
+    expect(logged).toHaveBeenCalledOnce();
+    expect(logged).toHaveBeenCalledWith("Project request failed; private inputs omitted.");
+    logged.mockRestore();
   });
 });

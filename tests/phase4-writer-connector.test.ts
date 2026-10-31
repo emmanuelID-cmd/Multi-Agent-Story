@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { z, ZodError } from "zod";
 
 const harness = vi.hoisted(() => ({
   state: null as any,
@@ -27,7 +28,7 @@ vi.mock("../src/server/bible-planning", () => ({
 }));
 
 import { bibles, chapters, projects, proposals, runs, tasks } from "../src/server/db/schema";
-import { writeChapter } from "../src/agents/graph";
+import { writeChapter, executeRun } from "../src/agents/graph";
 
 function setup(intake: boolean) {
   const project = { id: "project-1", ownerId: "owner-1", version: 7,
@@ -37,6 +38,7 @@ function setup(intake: boolean) {
   const task = { id: "task-2", runId: run.id, chapterIndex: 2, status: "pending", attempts: 0,
     savedInput: { version: 7, bible: bible.data, brief: project.brief } };
   const rows = new Map<any, any[]>([[runs, [run]], [projects, [project]], [bibles, [bible]], [tasks, [task]], [proposals, []], [chapters, []]]);
+  const updates: { table: unknown; values: Record<string, unknown> }[] = [];
   const api: any = {
     select: () => ({ from: (table: any) => ({ where: () => {
       const result: any = Promise.resolve(rows.get(table) ?? []);
@@ -45,15 +47,25 @@ function setup(intake: boolean) {
       return result;
     } }) }),
     update: (table: any) => ({ set: (values: any) => ({ where: async () => {
+      updates.push({ table, values });
       const target = rows.get(table)?.[0];
-      if (target) Object.assign(target, values);
+      if (!target) return;
+      const next = { ...values };
+      if (next.usedTokens !== undefined && typeof next.usedTokens !== "number") delete next.usedTokens;
+      Object.assign(target, next);
     } }) }),
     insert: (table: any) => ({ values: (value: any) => {
-      rows.get(table)?.push(...(Array.isArray(value) ? value : [value]));
-      return { onConflictDoNothing: async () => undefined };
+      const list = Array.isArray(value) ? value : [value];
+      return { onConflictDoNothing: () => ({ returning: async () => {
+        const existing = rows.get(table) ?? [];
+        const fresh = list.filter((row: any) => !existing.some((saved: any) => saved.runId === row.runId && saved.chapterIndex === row.chapterIndex));
+        existing.push(...fresh);
+        rows.set(table, existing);
+        return fresh;
+      } }) };
     } }),
   };
-  harness.state = { api, project, run, bible, task, rows };
+  harness.state = { api, project, run, bible, task, rows, updates };
   return harness.state;
 }
 
@@ -99,5 +111,65 @@ describe("Phase 4 writer connector", () => {
     expect(harness.fixtureDraft).not.toHaveBeenCalled();
     expect(task.status).toBe("failed");
     expect(task.error).toBe("WRITE_MODEL_NOT_CONFIGURED");
+  });
+
+  it("fails the task with BIBLE_FACT_MISMATCH when savedInput facts do not match approved bible", async () => {
+    const { task } = setup(false);
+    task.savedInput = {
+      ...task.savedInput,
+      bible: { facts: [{ id: "F1", text: "Tampered fact" }], beats: [] },
+    };
+
+    await writeChapter("run-1", 2, 0);
+
+    expect(harness.fixtureDraft).not.toHaveBeenCalled();
+    expect(task.status).toBe("failed");
+    expect(task.error).toContain("BIBLE_FACT_MISMATCH");
+  });
+
+  it("stores a model chapter ZodError as INVALID_CHAPTER_OUTPUT without the raw issue list", async () => {
+    const { task, rows } = setup(true);
+    let zodError: unknown;
+    try {
+      z.object({ text: z.string() }).parse({ text: 12 });
+    } catch (error) {
+      zodError = error;
+    }
+    const issueList = zodError instanceof Error ? zodError.message : "";
+    expect(zodError).toBeInstanceOf(ZodError);
+    expect(issueList).toContain("Invalid input: expected string, received number");
+    harness.modelDraft.mockRejectedValue(zodError);
+
+    await writeChapter("run-1", 2, 0);
+
+    expect(task.status).toBe("failed");
+    expect(task.error).toBe("INVALID_CHAPTER_OUTPUT: Model chapter output failed schema validation.");
+    expect(task.error).not.toContain("Invalid input: expected string, received number");
+    expect(task.error).not.toContain("invalid_type");
+    const storedText = (rows.get(chapters) ?? []).map((row: { text?: string }) => row.text ?? "").join("\n");
+    expect(storedText).not.toContain("Invalid input: expected string, received number");
+  });
+
+  it("adds provider tokens to the run only when a chapter row is inserted", async () => {
+    const state = setup(true);
+    harness.modelDraft.mockResolvedValue({
+      chapter: { chapterIndex: 2, bibleVersion: 7, text: "Model chapter." },
+      usage: { inputTokens: 11, outputTokens: 7 },
+    });
+
+    await writeChapter("run-1", 2, 0);
+    const tokenWrites = () => state.updates.filter((update) => Object.prototype.hasOwnProperty.call(update.values, "usedTokens"));
+    expect(tokenWrites()).toHaveLength(1);
+
+    state.task.status = "pending";
+    state.task.attempts = 0;
+    await writeChapter("run-1", 2, 0);
+    expect(tokenWrites()).toHaveLength(1);
+  });
+
+  it("rejects invalid worker runId with INVALID_RUN_ID", async () => {
+    for (const invalid of ["undefined", "123", "not-a-uuid", "' OR 1=1 --"]) {
+      await expect(executeRun(invalid as any, false)).rejects.toThrow("INVALID_RUN_ID");
+    }
   });
 });

@@ -1,6 +1,42 @@
 # Project Handoff
 
-## Current task: Empty test marker cleanup
+## Current task: Shared Phases 4.2–5.3 & Red-Team Vulnerability Resolution
+
+Prepared: 2026-10-31T12:08:34-04:00. Push verified 2026-10-31T12:10:05-04:00.
+
+- Repository: `emmanuelID-cmd/Multi-Agent-Story`.
+- Branch: `justins-side`; baseline commit: `8c7b696`.
+- Execution owner: Shared (Justin & Manny).
+
+### Done
+
+- [x] `retryRun` locks the latest run with `.for("update")` immediately after `.where()`, then `.orderBy()` and `.limit(1)`, in `src/server/projects.ts`. Confirmed in that function. `tests/write-reliability-j07.test.ts` passed 17/17.
+- [x] Input policy & writer dispatch hardening (A1, A2, A11): canonical NFKC normalization, Cyrillic lookalike letter folding on detection scan copy only, rejection of invisible Unicode tag blocks and zero-width/format chars, role-delimiter flagging across fields, and `canDispatch` requiring `ACCEPT` across all findings.
+- [x] Continuity fixture gate (A3): whitespace and zero-width characters, including U+2060 and U+00AD, are stripped before `/\bmara\s+(?:swam|dove\s+in(?:\s+and\s+swam)?)\b/i`. That pattern matches “Mara dove in and swam” and “Mara dove in the boat,” and it does not match “Mara cannot swim” or “the sailor swam.” The critique records the matching passage from the stripped text.
+- [x] Dispatch safety & error sanitization (A4, A5, A8, A9, A10, A12, A13): fact hash & version mismatch failure in `writeChapter`, sanitized Zod task input errors, strict boolean/version validation in `approvalSpike`, worker UUID validation, `SyntaxError` 400 mapping in `failure()`, and parallel start/approval and superseded bible retry regressions.
+- [x] Confirmed research blocks unless `inspectText` returns `ACCEPT`. A `FLAG`, including an instruction phrase, does not reach the research model.
+- [x] Shared story budget: a reservation stores `Math.ceil(byteLength / 4)` plus overhead and the output bound, not the raw byte length. The operation id is `digest([context.operationId, role, digest(payload)])`, so a changed prompt is a new reservation and a reused id with a different fingerprint still throws `IDEMPOTENCY_KEY_REUSE`. A hold is released only before the provider call starts. Chapter writes do not query `story_budget_usage` while `STORY_BUDGET_USAGE_PROVISIONED` is off. Provider tokens are added to the run only after a chapter row is inserted. HTTP 400 is limited to a `SyntaxError` whose message contains “JSON.”
+- [x] Synthetic graph barriers are in the tree. Intake projects pause when required Consistency is not current. The fixture continuity check strips U+2060 and U+00AD and records the cleaned passage. I02 stays open because this is not a live twelve-role graph.
+- [x] Shared 5.1 / I05: UI visibility in `src/app/workspace.tsx` showing stored task status, project state version, failed-gate alerts for paused, failed, and completed runs, with manuscript acceptance disabled until Consistency is current.
+- [x] Shared 5.2 / I06: clean accepted export in `src/server/projects.ts` exporting only accepted ordered manuscripts with strict chapter order, rejection of missing approved story bible (409), heading injection prevention (escaped `#` on all free-text lines), and fenced ````json blocks with backtick run escaping.
+- [x] Synthetic full-circle coverage is split. A paused intake run stays paused, `approveManuscriptProposal` returns 409, and export returns 409. A legacy project with no intake brief finishes completed, accepts through `approveManuscriptProposal`, and exports accepted manuscript markdown with the bible and evidence in fenced JSON. `tests/full-circle-synthetic.test.ts` passed 8/8 and `tests/red-team-a12-a13.test.ts` passed 3/3. I07 stays open.
+
+### Not completed
+
+- I01, I02, and I07 remain unchecked.
+- Live Anthropic model and research provider calls remain disabled (`READ_CONNECTIONS_ENABLED` and `WRITE_CONNECTIONS_ENABLED` stay false).
+- Database migration `drizzle/0001_shared_story_budget_ledger.sql` remains unapplied.
+- Pushed `justins-side` to `origin`. Previous tip `8c7b696`. Verified remote tip `5ebc7717727a9f58a498badd220b8d15d36ca008`. `main` stays at `4b34048`. No branch is deleted. No pull request was opened.
+
+### Validation and limits
+
+- Focused unit files from the review plan: 76/76 passed across 10 files (`story-budget-model` 13/13, `budget-ledger` 9/9, `input-boundary` 3/3, `intake-http` 5/5, `phase4-writer-connector` 7/7, `write-reliability-j07` 17/17, `export` 7/7, `full-circle-synthetic` 8/8, `red-team-a12-a13` 3/3, `read-revision-resume` 4/4).
+- `npx vitest run` full unit suite: 59 files, 585/585 passed.
+- No live provider call. Migration `drizzle/0001_shared_story_budget_ledger.sql` was not applied.
+
+---
+
+## Previous task: Empty test marker cleanup
 
 Prepared: 2026-10-29T18:40:48-04:00. Pre-push handoff; publication is not yet verified.
 

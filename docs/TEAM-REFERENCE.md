@@ -82,6 +82,15 @@ Verified move hashes:
   opened into `main`; no merge performed. Timestamp is the immediate post-push check.
 
 # Handoffs prepared for push
+## 2026-10-31T12:10:05-04:00 - Synthetic gate fixes pushed to justins-side
+
+Summary file: PROJECT-HANDOFF.md
+
+- Destination: `emmanuelID-cmd/Multi-Agent-Story`, branch `justins-side`. Previous remote tip: `8c7b696`. Verified remote tip: `5ebc7717727a9f58a498badd220b8d15d36ca008`. No pull request was opened.
+- Outgoing commit: `5ebc7717727a9f58a498badd220b8d15d36ca008`, author Justin Day. Activity: keep the reviewed synthetic gates honest. Confirmed research blocks unless the text verdict is `ACCEPT`. Budget reservations use a token estimate, and the operation id includes a hash of the prompt. Chapter writes do not query `story_budget_usage` while the provision gate is off. A paused intake run rejects acceptance and export. A legacy run with no intake brief can accept and export through the real functions. `retryRun` locks the newest run before it sorts and limits.
+- [x] Done: focused review files passed 76/76. Full unit suite on October 31, 2026: 59 files, 585/585. I05 and I06 stay checked.
+- [ ] Not completed: I01, I02, and I07 stay unchecked. Live model and research provider calls stay disabled. `drizzle/0001_shared_story_budget_ledger.sql` is not applied. `main` stays at `4b34048`. No branch is deleted.
+
 ## 2026-10-30T17:03:19-04:00 - Shared Phase 4.1 initial push and PR #28
 
 Summary file: PROJECT-HANDOFF.md

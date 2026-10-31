@@ -60,6 +60,7 @@ export interface StoryBudgetRepository {
   reserve(reservation: NewReservation, limits: typeof STORY_BUDGET_LIMITS): Promise<ReserveResult>;
   settle(input: { ownerId: string; projectId: string; operationId: string; actualInputTokens: number; actualOutputTokens: number; actualCostMicroUsd: number }): Promise<SettleResult>;
   markUncertain(input: { ownerId: string; projectId: string; operationId: string }): Promise<{ reservation: Reservation; totals: BudgetTotals }>;
+  release(input: { ownerId: string; projectId: string; operationId: string }): Promise<{ totals: BudgetTotals }>;
 }
 
 export class StoryBudgetError extends Error {
@@ -71,23 +72,30 @@ export class StoryBudgetError extends Error {
 
 export function createStoryBudgetLedger(options: { repository: StoryBudgetRepository; rates: StoryBudgetRates }) {
   return {
+    /**
+     * Holds tokens for one model call before it runs. The caller already turned
+     * the prompt into estimatedInputTokens, then this adds overhead and the
+     * output cap. It connects that hold to the project cap in the repository.
+     * Pass a token estimate here. A raw character or byte count will make the
+     * cap trip too early, and a maintainer should leave the stored totals in tokens.
+     */
     async reserve(input: {
       ownerId: string;
       projectId: string;
       operationId: string;
       requestFingerprint: string;
       role: AgentRole;
-      inputByteLength: number;
+      estimatedInputTokens: number;
       overheadTokens: number;
       maxOutputTokens: number;
     }) {
       if (!input.ownerId || !input.projectId || !input.operationId || !input.requestFingerprint) throw new StoryBudgetError("INVALID_IDENTITY");
       if (!AGENT_ROLES.includes(input.role)) throw new StoryBudgetError("INVALID_ROLE");
-      for (const value of [input.inputByteLength, input.overheadTokens, input.maxOutputTokens]) {
+      for (const value of [input.estimatedInputTokens, input.overheadTokens, input.maxOutputTokens]) {
         if (!Number.isSafeInteger(value) || value < 0) throw new StoryBudgetError("INVALID_TOKEN_BOUND");
       }
-      const inputTokenBound = input.inputByteLength + input.overheadTokens;
-      const reservedTokens = inputTokenBound + input.maxOutputTokens;
+      const inputTokenBound = input.estimatedInputTokens + input.overheadTokens;
+      const reservedTokens = input.estimatedInputTokens + input.overheadTokens + input.maxOutputTokens;
       if (!Number.isSafeInteger(reservedTokens) || reservedTokens < 1 || reservedTokens > STORY_BUDGET_LIMITS.tokens) throw new StoryBudgetError("TOKEN_RESERVATION_LIMIT");
       const rate = options.rates[input.role];
       if (!rate || !validRate(rate.inputMicroUsdPerMillion) || !validRate(rate.outputMicroUsdPerMillion)) throw new StoryBudgetError("INVALID_SERVER_RATE");
@@ -135,6 +143,10 @@ export function createStoryBudgetLedger(options: { repository: StoryBudgetReposi
 
     async markUncertain(input: { ownerId: string; projectId: string; operationId: string }) {
       return options.repository.markUncertain(input);
+    },
+
+    async release(input: { ownerId: string; projectId: string; operationId: string }) {
+      return options.repository.release(input);
     },
   };
 }
@@ -227,6 +239,24 @@ export class DbStoryBudgetRepository implements StoryBudgetRepository {
       if (prior.status === "blocked") throw new StoryBudgetError("PROJECT_BUDGET_BLOCKED");
       if (prior.status === "dispatched") await client.query(`UPDATE story_budget_reservations SET "status"='uncertain',"updatedAt"=now() WHERE "projectId"=$1 AND "operationId"=$2`, [input.projectId, input.operationId]);
       return { reservation: { ...prior, status: "uncertain" }, totals };
+    });
+  }
+
+  async release(input: { ownerId: string; projectId: string; operationId: string }): Promise<{ totals: BudgetTotals }> {
+    return this.withProjectLock(input.ownerId, input.projectId, async (client) => {
+      const totals = await this.readUsage(client, input.projectId);
+      const selected = await client.query<DbReservationRow>(`SELECT * FROM story_budget_reservations WHERE "projectId"=$1 AND "operationId"=$2 FOR UPDATE`, [input.projectId, input.operationId]);
+      if (!selected.rows[0]) return { totals };
+      const prior = fromDb(selected.rows[0], input.ownerId);
+      if (prior.status !== "dispatched") return { totals };
+      const next: BudgetTotals = {
+        ...totals,
+        reservedTokens: Math.max(0, totals.reservedTokens - prior.reservedTokens),
+        reservedCostMicroUsd: Math.max(0, totals.reservedCostMicroUsd - prior.reservedCostMicroUsd),
+      };
+      await client.query(`UPDATE story_budget_usage SET "reservedTokens"=$2,"reservedCostMicroUsd"=$3,"updatedAt"=now() WHERE "projectId"=$1`, [input.projectId, next.reservedTokens, next.reservedCostMicroUsd]);
+      await client.query(`DELETE FROM story_budget_reservations WHERE "projectId"=$1 AND "operationId"=$2`, [input.projectId, input.operationId]);
+      return { totals: next };
     });
   }
 

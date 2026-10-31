@@ -402,7 +402,7 @@ export async function retryRun(ownerId: string, id: string, dispatch=true) {
     if(!project)throw new AppError(404,"Project unavailable.");
     if (project.brief.intake && (process.env.READ_CONNECTIONS_ENABLED!=="true" || process.env.WRITE_CONNECTIONS_ENABLED!=="true"))
       throw new AppError(503,"The story workflow is not configured. Your approved work is preserved.");
-    const [locked]=await tx.select().from(runs).where(eq(runs.projectId,id)).orderBy(desc(runs.createdAt)).limit(1).for("update");
+    const [locked]=await tx.select().from(runs).where(eq(runs.projectId,id)).for("update").orderBy(desc(runs.createdAt), desc(runs.id)).limit(1);
     if(!locked)throw new AppError(409,"No run to retry.");
     if(locked.status!=="failed")throw new AppError(409,"Only a failed run can be retried.");
     const [bible]=await tx.select().from(bibles).where(and(eq(bibles.id,locked.bibleId),eq(bibles.projectId,id)));
@@ -427,19 +427,46 @@ export async function retryRun(ownerId: string, id: string, dispatch=true) {
 }
 export async function exportProject(ownerId: string, id: string) {
   const state = await projectState(ownerId, id);
-  let doc = `# Synthetic story foundation\n\nStatus: ${state.run?.status ?? "not started"}. Not an AI-generated production draft.\n\n## Brief\n${state.project.brief.premise}\n\n## Approved bible\n${JSON.stringify(state.bible?.data ?? null, null, 2)}\n\n`;
-  doc += state.chapters.map(c => `## Draft Chapter ${c.chapterIndex} (bible v${c.bibleVersion})\n${c.text}`).join("\n\n");
-  if (state.acceptedManuscript) {
-    const ms = state.acceptedManuscript.data as RevisedManuscript;
-    doc += `\n\n## Accepted Manuscript (${ms.editorialLens})\nRationale: ${ms.rationale}\n\n`;
-    if (ms.changesMade && ms.changesMade.length > 0) {
-      doc += `### Located Editorial Changes\n` +
-        ms.changesMade.map(ch => `- **Chapter ${ch.chapterIndex}**: ${ch.summary} _(Justification: ${ch.justification})_`).join("\n") + "\n\n";
-    }
-    doc += ms.chapters.map(c => `### Chapter ${c.chapterIndex}\n${c.text}`).join("\n\n");
-  } else {
-    doc += "\n\n## Accepted Manuscript\nNone accepted yet. Draft chapters remain pending review.\n";
+  if (!state.acceptedManuscript) {
+    throw new AppError(409, "No accepted manuscript to export. Review and accept a proposal first.");
   }
-  doc += `\n\n## Critique and unresolved issues\n${JSON.stringify(state.critique, null, 2)}\n\n## Research evidence\n${JSON.stringify(state.evidence.map(e => e.data), null, 2)}\n`;
+  if (!state.bible) {
+    throw new AppError(409, "Approved story bible is missing.");
+  }
+  if (state.acceptedManuscript.baseVersion !== state.project.version || state.acceptedManuscript.baseVersion !== state.bible.version) {
+    throw new AppError(409, "Accepted manuscript is stale. It does not match the current project version.");
+  }
+
+  const ms = state.acceptedManuscript.data as RevisedManuscript;
+  if (!ms || !Array.isArray(ms.chapters)) {
+    throw new AppError(409, "Accepted manuscript is malformed.");
+  }
+
+  let ordered;
+  try {
+    ordered = orderedChapters(ms.chapters, state.acceptedManuscript.baseVersion);
+  } catch {
+    throw new AppError(409, "Accepted manuscript has incomplete or misordered chapters.");
+  }
+
+  const escapeHeading = (text: string) => text.replace(/^(#+)/gm, "\\$1");
+  const escapeFence = (text: string) => text.replace(/```/g, "\\`\\`\\`");
+  const safePremise = escapeHeading(state.project.brief.premise);
+  const safeRationale = escapeHeading(ms.rationale);
+  const runStatus = state.run?.status ?? "not started";
+
+  let doc = `# Accepted Story Manuscript\n\n`;
+  doc += `Status: ${runStatus}. Exported from accepted manuscript v${state.acceptedManuscript.baseVersion}.\n\n`;
+  doc += `## Brief\n\n${safePremise}\n\n`;
+  doc += `## Approved story bible\n\n\`\`\`json\n${escapeFence(JSON.stringify(state.bible.data, null, 2))}\n\`\`\`\n\n`;
+  doc += `## Accepted Manuscript (${ms.editorialLens})\n\n`;
+  doc += `Rationale: ${safeRationale}\n\n`;
+  if (ms.changesMade && ms.changesMade.length > 0) {
+    doc += `### Located Editorial Changes\n\n` +
+      ms.changesMade.map(ch => `- **Chapter ${ch.chapterIndex}**: ${escapeHeading(ch.summary)} _(Justification: ${escapeHeading(ch.justification)})_`).join("\n") + "\n\n";
+  }
+  doc += ordered.map(c => `### Chapter ${c.chapterIndex}\n\n${escapeHeading(c.text)}`).join("\n\n");
+  doc += `\n\n## Critique and unresolved issues\n\n\`\`\`json\n${escapeFence(JSON.stringify(state.critique ?? { unresolvedIssues: [] }, null, 2))}\n\`\`\`\n\n`;
+  doc += `## Research evidence\n\n\`\`\`json\n${escapeFence(JSON.stringify(state.evidence.map(e => e.data), null, 2))}\n\`\`\`\n`;
   return doc;
 }

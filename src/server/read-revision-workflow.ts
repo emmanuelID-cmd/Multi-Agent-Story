@@ -10,6 +10,7 @@ import { configuredReadConnections } from "./read-connection-http";
 import { assertCurrentReadConsistency, assertCurrentReadEditor, createReadConnections, type ReadConnectionOptions } from "./read-connections";
 import { createReadRevisionConnection, revisionReaderOperation, revisionProposalIds, type ReadRevisionAssignments } from "./read-revision-connection";
 import { ReadConnectionError, readRequestSchema, type ConnectionSnapshot, type ReadAssignment } from "./read-connection-contracts";
+import { isCurrentConsistencyStatus } from "../agents/consistency-current";
 import { storyWriteModel } from "./story-budget";
 
 type Candidate={id:string;manuscript:RevisedManuscript};
@@ -162,7 +163,9 @@ export async function executeReadConnectedRun(runId:string,modelA:WriteModel,mod
         producerProvenance:project.brief.intake?"model adapters; live verification not performed":"unverified; worker uses fixture Editorial models",verifiedLiveProducer:false,
         consistency:{label:"exact READ Consistency",versionA:checks[0].consistencyResult,versionB:checks[1].consistencyResult},
         unresolvedIssues:checks.flatMap(c=>c.consistencyResult?.output?.unresolvedIssues??[])}}).onConflictDoNothing();
-      await tx.update(runs).set({status:"completed"}).where(eq(runs.id,runId));
+      const consistencyReady = checks.every(c => isCurrentConsistencyStatus(c.consistencyResult?.status) || isCurrentConsistencyStatus(c.status));
+      const status = (project.brief.intake && !consistencyReady) ? "paused" : "completed";
+      await tx.update(runs).set({ status }).where(eq(runs.id, runId));
     }),
   });
 }

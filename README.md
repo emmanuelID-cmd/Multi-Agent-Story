@@ -18,11 +18,18 @@ remain available for reference.
 **Status:** the local synthetic foundation is implemented. It includes
 authentication, project ownership, a minimal story workspace, fixture-backed
 workflow execution, and Markdown export. Opt-in web intake and a separate READ CLI harness use the
-existing Claude adapter. Shared Phase 4.1 adds gated model-backed Bible planning
-from accepted Research and budget-wrapped WRITE dispatches for confirmed-intake
-projects. These connections remain disabled until the shared ledger migration,
-verified rates and lane opt-ins are configured. The full three-writer/Reader/Editor/Consistency
-workflow and accepted export loop remain unfinished; no live calls are claimed. Shared Phase 4.1 extends Manny's READ work with Bible planning and shared-ledger adapters. Justin's writer/editor behavior and core functions are preserved; connector paths remain gated and have not been live-verified. I01 and I02 are not claimed complete.
+existing Claude adapter. Synthetic code is present for budgeted planning, graph barriers, UI gate
+notes, accepted export, and a split full-circle check. Confirmed research blocks
+text that is not accepted, and a budget operation id includes a hash of the prompt.
+I01, I02, and I07 stay open: chapter writes
+do not query the shared ledger while its provision gate is off, an intake run pauses when
+Consistency is not current, and the legacy export is not a live twelve-role run. I05 and I06 stay
+checked. On October 31, 2026, `tests/manuscript-status.test.ts` passed 2/2,
+`tests/planning-visibility.test.ts` passed 6/6, and `tests/export.test.ts` passed 7/7. The unit
+suite passed 585/585 across 59 files. In `retryRun`, `.for("update")` is called immediately after
+`.where()`, then `orderBy` and `limit`. Live connectors stay off, and
+`drizzle/0001_shared_story_budget_ledger.sql` is not applied. Justin's writer/editor behavior
+and core functions are preserved.
 
 The separate [executable READ harness](docs/implementation/read-runtime.md) now
 connects real Research, Reader, and Consistency model runners. Run
