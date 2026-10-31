@@ -267,8 +267,12 @@ describe("J03: Direct finishRun and writeChapter Barrier Integration", () => {
           }),
         }),
         insert: (_table: any) => ({
-          values: (_v: any) => ({
-            onConflictDoNothing: async () => [],
+          values: (val: any) => ({
+            // A saved chapter ignores a duplicate, then asks which rows were actually new.
+            // returning() is that second step. The save stops if this mock ends one step early.
+            onConflictDoNothing: () => ({
+              returning: async () => (Array.isArray(val) ? val : [val]),
+            }),
           }),
         }),
       };

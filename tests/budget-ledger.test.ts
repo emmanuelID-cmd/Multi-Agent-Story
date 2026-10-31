@@ -80,6 +80,18 @@ class MemoryBudgetRepository implements StoryBudgetRepository {
     this.reservations.set(key, uncertain);
     return { reservation: uncertain, totals: this.totals };
   }
+  async release(input: { ownerId: string; projectId: string; operationId: string }) {
+    const key = this.key(input.projectId, input.operationId);
+    const row = await this.getReservation(input);
+    if (!row || row.status !== "dispatched") return { totals: this.totals };
+    this.totals = {
+      ...this.totals,
+      reservedTokens: Math.max(0, this.totals.reservedTokens - row.reservedTokens),
+      reservedCostMicroUsd: Math.max(0, this.totals.reservedCostMicroUsd - row.reservedCostMicroUsd),
+    };
+    this.reservations.delete(key);
+    return { totals: this.totals };
+  }
 }
 
 function setup() {
@@ -87,7 +99,7 @@ function setup() {
   const ledger = createStoryBudgetLedger({ repository, rates });
   const request = {
     ownerId: "owner-1", projectId: "project-1", operationId: "op-1", requestFingerprint: "sha256:input-1",
-    role: "research" as AgentRole, inputByteLength: 12, overheadTokens: 3, maxOutputTokens: 10,
+    role: "research" as AgentRole, estimatedInputTokens: 12, overheadTokens: 3, maxOutputTokens: 10,
   };
   return { repository, ledger, request };
 }
@@ -102,7 +114,7 @@ describe("shared story budget ledger", () => {
     expect(adapter).toMatch(/INSERT INTO story_budget_usage \("projectId", "ownerId"\) VALUES \(\$1,\$2\) ON CONFLICT/);
   });
 
-  it("reserves byte-length plus schema/system overhead and output under fixed caps", async () => {
+  it("reserves estimated input tokens plus overhead and output under fixed caps", async () => {
     const { ledger, request } = setup();
     const result = await ledger.reserve(request);
     expect(result.reservation.inputTokenBound).toBe(15);
@@ -114,7 +126,7 @@ describe("shared story budget ledger", () => {
   it("rejects unsafe role, invalid rates, and requests above the fixed token cap", async () => {
     const { ledger, request } = setup();
     await expect(ledger.reserve({ ...request, role: "client-role" as AgentRole })).rejects.toMatchObject({ code: "INVALID_ROLE" });
-    await expect(ledger.reserve({ ...request, inputByteLength: 60_001 })).rejects.toMatchObject({ code: "TOKEN_RESERVATION_LIMIT" });
+    await expect(ledger.reserve({ ...request, estimatedInputTokens: 60_001 })).rejects.toMatchObject({ code: "TOKEN_RESERVATION_LIMIT" });
     const badRates = { ...rates, research: { inputMicroUsdPerMillion: -1, outputMicroUsdPerMillion: 1 } };
     await expect(createStoryBudgetLedger({ repository: new MemoryBudgetRepository(), rates: badRates }).reserve(request)).rejects.toMatchObject({ code: "INVALID_SERVER_RATE" });
   });
@@ -169,5 +181,14 @@ describe("shared story budget ledger", () => {
     expect(observed).toMatchObject({ status: "blocked", actualInputTokens: 16, actualOutputTokens: 5, actualCostMicroUsd: 26 });
     expect(repository.totalsSnapshot).toMatchObject({ blocked: true, settledTokens: 0, reservedTokens: 25, reservedCostMicroUsd: 35 });
     await expect(ledger.reserve({ ...request, operationId: "op-2", requestFingerprint: "sha256:input-2" })).rejects.toMatchObject({ code: "PROJECT_BUDGET_BLOCKED" });
+  });
+
+  it("releases active reservation on cancel and frees reserved budget", async () => {
+    const { ledger, repository, request } = setup();
+    await ledger.reserve(request);
+    expect(repository.totalsSnapshot.reservedTokens).toBe(25);
+    const result = await ledger.release({ ownerId: request.ownerId, projectId: request.projectId, operationId: request.operationId });
+    expect(result?.totals.reservedTokens).toBe(0);
+    expect(await repository.getReservation({ ownerId: request.ownerId, projectId: request.projectId, operationId: request.operationId })).toBeUndefined();
   });
 });

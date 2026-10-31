@@ -44,13 +44,17 @@ async function fixture() {
     usage: { inputTokens: 1, outputTokens: 1 }, missing: [], suggestions: [], observations: [{ field: "genre", quote: "horror", ambiguous: false }] };
   const intake: IntakeRecord = { version: 1, revision: 1, rawText, status: "confirmed", analysis, decisions: [],
     confirmed: { at: new Date().toISOString(), analysisId: analysis.id, scope: scopeFromIntake(analysis, []) } };
-  const memory = store(intake);
+  const memory = store(intakeRecordSchema.parse(intake));
   const source = { sourceId: "craft", kind: "licensed_text" as const, work: "Synthetic source", author: "Test", publicationDate: null,
     sourceUrl: "https://example.invalid/reference", locator: "reference:1", expectedSha256: sha256(text),
     rights: { basis: "Synthetic license", type: "user_license" as const, jurisdiction: "US" as const, purpose: "research_text_analysis" as const,
       verifiedAt: new Date(Date.now() - 1000).toISOString(), validThrough: new Date(Date.now() + 86_400_000).toISOString(), evidenceRef: "license:1" },
     identity: { type: "licensed_user" as const, ownerId: "owner", projectId: "project" }, matches: [{ dimensionId: "genre", confirmedValue: "horror", evidenceRef: "review:genre" }] };
-  const acquisition = { approvedSources: [source], readBenchmarks: async () => fixtureProviders(), readApprovedText: async () => ({ text, fetchedAt: new Date().toISOString() }) };
+  const freshProviders = () => fixtureProviders().map(p => ({
+    ...p, checkedAt: new Date().toISOString(), fetchedAt: new Date().toISOString(),
+    records: p.records.map(r => ({ ...r, fetchedAt: new Date().toISOString() })),
+  }));
+  const acquisition = { approvedSources: [source], readBenchmarks: async () => freshProviders(), readApprovedText: async () => ({ text, fetchedAt: new Date().toISOString() }) };
   const researchModel: ReadModel = { modelId: "synthetic", complete: async () => ({ value: { items: [{ itemId: "g", sourceId: "craft", kind: "located_text_observation",
     dimensionId: "genre", claim: "A delayed bell creates uncertainty.", locator: "reference:1", quote: text, confidence: 1 }],
     synthesis: [{ dimensionId: "genre", observation: "Create an original unresolved question.", itemIds: ["g"] }], gaps: [], limitations: [] }, usage: { inputTokens: 1, outputTokens: 1 } }) };

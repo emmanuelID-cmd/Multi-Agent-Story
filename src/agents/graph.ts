@@ -1,17 +1,19 @@
 import { randomUUID } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
+import { z, ZodError } from "zod";
 import { Annotation, StateGraph, START, END, MemorySaver, interrupt, Command } from "@langchain/langgraph";
 import { PostgresSaver } from "@langchain/langgraph-checkpoint-postgres";
-import { and, desc, eq, inArray, isNull, like } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, like, sql } from "drizzle-orm";
 import { db } from "../server/db";
-import { runs, tasks, chapters, bibles, critiques, evidence, projects, proposals } from "../server/db/schema";
+import { runs, tasks, chapters, bibles, critiques, evidence, projects, proposals, storyBudgetUsage } from "../server/db/schema";
 import { chapterSchema, orderedChapters, canDispatch, limits, type Bible, type Chapter, type Fixture } from "../contracts";
 import { getGenreBenchmarks } from "../server/research";
 import { buildWriterContext } from "./context";
 import { draftChapter, draftChapterModel } from "./writers";
 import { storyWriteModel } from "../server/story-budget";
 import { buildFixtureHandoff, validateHandoff, repairFixtureHandoff, type ReaderToEditorHandoff } from "./handoff";
-import { criticEditorA, criticEditorB } from "./editors";
+import { criticEditorA, criticEditorB, hasFixtureContradiction, normalizeFixtureContradictionText } from "./editors";
+import { isCurrentConsistencyStatus } from "./consistency-current";
 import { consistencyShell } from "./consistency-shell";
 import { buildManuscriptEnvelope } from "./write/runtime";
 import { executeRevisionCycle } from "./write/revision";
@@ -20,21 +22,63 @@ import { assertCurrentPlanningApproval, planningKinds } from "../server/bible-pl
 import { matchesCurrentTaskAttempt, matchesTaskAttemptLease, taskAttemptInputHash, taskAttemptOperationId, type TaskAttemptIdentity } from "../server/task-attempt";
 
 const State = Annotation.Root({ runId: Annotation<string> });
+
+type ChapterWriteTx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/**
+ * Decides whether this chapter may spend more of the shared story budget.
+ * The ledger table arrives with migration 0001, so the gate stays off until that
+ * migration is applied. While it is off, the check uses the token count already
+ * saved on the run and a cost of zero, and it leaves story_budget_usage unread.
+ * A missing table would cancel the open chapter transaction, so the select waits
+ * for the gate instead of being discovered at runtime.
+ * When the gate is on, settled and reserved micro-dollars are added and divided
+ * by one million before they are compared with the three-dollar limit. A blocked
+ * row stops the chapter. A missing row uses the run's token count and a cost of zero.
+ * Leave STORY_BUDGET_USAGE_PROVISIONED unset. Turn it on only in the change that applies migration 0001.
+ */
+async function chapterSpendAllowsDispatch(tx: ChapterWriteTx, projectId: string, usedTokens: number): Promise<boolean> {
+  const ledgerTableIsProvisioned = process.env.STORY_BUDGET_USAGE_PROVISIONED === "true";
+  if (!ledgerTableIsProvisioned) return canDispatch(usedTokens, 0);
+  const [usage] = await tx.select().from(storyBudgetUsage).where(eq(storyBudgetUsage.projectId, projectId));
+  if (!usage) return canDispatch(usedTokens, 0);
+  if (usage.blocked) return false;
+  const tokens = usage.settledTokens + usage.reservedTokens;
+  const costUsd = (usage.settledCostMicroUsd + usage.reservedCostMicroUsd) / 1_000_000;
+  return canDispatch(tokens, costUsd);
+}
+
+/**
+ * Turns a bad model chapter into a short task error.
+ * The model parser can fail the chapter schema. This replaces that failure before
+ * anything is saved, so the task record keeps a stable code and leaves Zod's issue list out.
+ * A context-build failure is handled earlier and keeps the code INVALID_TASK_INPUT.
+ * If the wording changes, keep the raw issue list out of the stored sentence.
+ */
+function invalidChapterOutput(err: unknown): never {
+  if (err instanceof ZodError || (err as { name?: string } | null)?.name === "ZodError") {
+    throw Error("INVALID_CHAPTER_OUTPUT: Model chapter output failed schema validation.");
+  }
+  throw err;
+}
+
 export async function writeChapter(runId: string, index: number, delayMs = (4-index)*80) {
   const claim = await db.transaction(async tx=>{
     const [observedRun]=await tx.select().from(runs).where(eq(runs.id,runId));
     if(!observedRun||observedRun.canceledAt||!["running","pending"].includes(observedRun.status))return null;
-    if(!canDispatch(observedRun.usedTokens,0)){
+    if(!(await chapterSpendAllowsDispatch(tx, observedRun.projectId, observedRun.usedTokens))){
       const [lockedRun]=await tx.select().from(runs).where(eq(runs.id,runId)).for("update");
-      if(lockedRun&&!lockedRun.canceledAt&&["running","pending"].includes(lockedRun.status)&&!canDispatch(lockedRun.usedTokens,0))
-        await tx.update(runs).set({status:"paused"}).where(eq(runs.id,runId));
+      if(lockedRun&&!lockedRun.canceledAt&&["running","pending"].includes(lockedRun.status)){
+        if(!(await chapterSpendAllowsDispatch(tx, lockedRun.projectId, lockedRun.usedTokens)))
+          await tx.update(runs).set({status:"paused"}).where(eq(runs.id,runId));
+      }
       return null;
     }
     const [project]=await tx.select().from(projects).where(eq(projects.id,observedRun.projectId)).for("update");
     if(!project)return null;
     const [run]=await tx.select().from(runs).where(eq(runs.id,runId)).for("update");
     if(!run||run.projectId!==project.id||run.canceledAt||!["running","pending"].includes(run.status))return null;
-    if(!canDispatch(run.usedTokens,0)){
+    if(!(await chapterSpendAllowsDispatch(tx, project.id, run.usedTokens))){
       await tx.update(runs).set({status:"paused"}).where(eq(runs.id,runId));
       return null;
     }
@@ -42,9 +86,18 @@ export async function writeChapter(runId: string, index: number, delayMs = (4-in
     if(bible && project.brief.intake) await assertCurrentPlanningApproval(project, bible, await tx.select().from(proposals)
       .where(and(eq(proposals.projectId,project.id),inArray(proposals.kind,planningKinds))).limit(201));
     const [task]=await tx.select().from(tasks).where(and(eq(tasks.runId,runId),eq(tasks.chapterIndex,index))).for("update");
-    const savedInput=task?.savedInput as {version?:unknown}|undefined;
-    if(!bible||!task||project.version!==bible.version||savedInput?.version!==bible.version||
-      task.status==="completed"||task.status==="running"||task.attempts>=2)return null;
+    const savedInput=task?.savedInput as {version?:unknown;bible?:unknown}|undefined;
+    if(!task||task.status==="completed"||task.status==="running"||task.attempts>=2)return null;
+    if(!bible||project.version!==bible.version||savedInput?.version!==bible.version){
+      await tx.update(tasks).set({status:"failed",error:"STALE_BIBLE_VERSION: Task input does not match current approved Bible version.",updatedAt:new Date()})
+        .where(eq(tasks.id,task.id));
+      return null;
+    }
+    if(taskAttemptInputHash(savedInput?.bible)!==taskAttemptInputHash(bible.data)){
+      await tx.update(tasks).set({status:"failed",error:"BIBLE_FACT_MISMATCH: Saved facts do not match the locked approved Bible row.",updatedAt:new Date()})
+        .where(eq(tasks.id,task.id));
+      return null;
+    }
     const attemptNumber=task.attempts+1;
     const identity:TaskAttemptIdentity={
       taskId:task.id,runId:run.id,projectId:project.id,ownerId:project.ownerId,attemptNumber,
@@ -60,15 +113,29 @@ export async function writeChapter(runId: string, index: number, delayMs = (4-in
   const cancelWatch=claim.modelBacked?watchRevisionCancel(runId):undefined;
   try {
     if(claim.modelBacked&&process.env.READ_CONNECTIONS_ENABLED!=="true")throw Error("STORY_WORKFLOW_UNAVAILABLE");
-    const context=buildWriterContext(task.savedInput,index,task.savedInput.version);
+    let context: ReturnType<typeof buildWriterContext>;
+    try {
+      context = buildWriterContext(task.savedInput, index, task.savedInput.version);
+    } catch (err) {
+      if (err instanceof ZodError || (err as any)?.name === "ZodError") {
+        throw Error("INVALID_TASK_INPUT: Malformed task input; schema validation failed.");
+      }
+      throw err;
+    }
     if(!context.canDispatch)throw Error("INPUT_REVIEW_REQUIRED: review the brief field constraints.");
     const signal=cancelWatch?.signal??AbortSignal.timeout(limits.timeoutMs);
     await delay(delayMs,undefined,{signal});
     if(fixture==="timeout"&&index===2)throw Error("SYNTHETIC_TIMEOUT: chapter 2 timeout fixture. No real model call occurred.");
-    const output=claim.modelBacked?(await draftChapterModel({index:index as 1|2|3,bibleVersion:context.bibleVersion,
-      approvedBible:task.savedInput.bible,brief:task.savedInput.brief},
-      storyWriteModel(identity.ownerId,identity.projectId,identity.operationId),signal)).chapter:
-      draftChapter(index, context.bibleVersion, fixture as Fixture);
+    let outputResult: Awaited<ReturnType<typeof draftChapterModel>> | null = null;
+    let output: Chapter;
+    try {
+      outputResult = claim.modelBacked ? await draftChapterModel({index:index as 1|2|3,bibleVersion:context.bibleVersion,
+        approvedBible:task.savedInput.bible,brief:task.savedInput.brief},
+        storyWriteModel(identity.ownerId,identity.projectId,identity.operationId),signal) : null;
+      output = outputResult ? outputResult.chapter : draftChapter(index, context.bibleVersion, fixture as Fixture);
+    } catch (err) {
+      invalidChapterOutput(err);
+    }
     await db.transaction(async tx=>{
       const [project]=await tx.select().from(projects).where(eq(projects.id,identity.projectId)).for("update");
       if(!project)return;
@@ -84,7 +151,12 @@ export async function writeChapter(runId: string, index: number, delayMs = (4-in
             .where(and(eq(tasks.id,identity.taskId),eq(tasks.status,"running"),eq(tasks.attempts,identity.attemptNumber)));
         return;
       }
-      await tx.insert(chapters).values({id:randomUUID(),runId,...output}).onConflictDoNothing();
+      const inserted = await tx.insert(chapters).values({id:randomUUID(),runId,...output}).onConflictDoNothing().returning();
+      const actualTokens = outputResult?.usage ? (outputResult.usage.inputTokens ?? 0) + (outputResult.usage.outputTokens ?? 0) : 0;
+      // A repeated delivery inserts nothing. Only a new chapter row may raise the run's token count.
+      if (inserted.length > 0 && actualTokens > 0) {
+        await tx.update(runs).set({ usedTokens: sql`${runs.usedTokens} + ${actualTokens}` }).where(eq(runs.id, identity.runId));
+      }
       await tx.update(tasks).set({status:"completed",error:null,elapsedMs:Date.now()-started,updatedAt:new Date()})
         .where(and(eq(tasks.id,identity.taskId),eq(tasks.status,"running"),eq(tasks.attempts,identity.attemptNumber)));
     });
@@ -99,7 +171,8 @@ export async function writeChapter(runId: string, index: number, delayMs = (4-in
       const [bible]=await tx.select().from(bibles).where(and(eq(bibles.id,run.bibleId),eq(bibles.projectId,project.id))).for("share");
       const current=!!bible&&matchesCurrentTaskAttempt(identity,{project,run,bible,task:taskState});
       if(!current&&!matchesTaskAttemptLease(identity,taskState))return;
-      await tx.update(tasks).set({status:"failed",error:current?(error instanceof Error?error.message:"Task failed."):"STALE_RESULT: Dependencies changed before the result could be committed.",elapsedMs:Date.now()-started,updatedAt:new Date()})
+      const errorMsg = current ? (error instanceof Error ? error.message : "Task failed.") : "STALE_RESULT: Dependencies changed before the result could be committed.";
+      await tx.update(tasks).set({status:"failed",error:errorMsg,elapsedMs:Date.now()-started,updatedAt:new Date()})
         .where(and(eq(tasks.id,identity.taskId),eq(tasks.status,"running"),eq(tasks.attempts,identity.attemptNumber)));
     });
   } finally {
@@ -112,7 +185,7 @@ export async function finishRun(runId: string) {
     const watch=watchRevisionCancel(runId);
     try{await (await import("../server/read-revision-workflow")).executeReadConnectedRun(runId,fixtureEditorialModel(),fixtureEditorialModel(),watch.signal);return {};}
     catch(error){
-      if(error instanceof Error&&error.message==="EXPLICIT_AUTHENTICATED_READ_REQUEST_REQUIRED"){
+      if(error instanceof Error&& (error.message==="EXPLICIT_AUTHENTICATED_READ_REQUEST_REQUIRED" || error.message==="CURRENT_READ_CONSISTENCY_REQUIRED")){
         await db.update(runs).set({status:"paused"}).where(and(eq(runs.id,runId),eq(runs.status,"running")));return {};
       }throw error;
     }
@@ -125,6 +198,7 @@ export async function finishRun(runId: string) {
     if(all.length!==3||all.some(t=>t.status!=="completed")){await tx.update(runs).set({status:"failed"}).where(eq(runs.id,runId));return {};}
     const [bible]=await tx.select().from(bibles).where(eq(bibles.id,run.bibleId));
     if(!bible){await tx.update(runs).set({status:"failed"}).where(eq(runs.id,runId));return {};}
+    const [project]=await tx.select().from(projects).where(eq(projects.id,run.projectId));
     let outputs: ReturnType<typeof orderedChapters>;
     try {
       outputs=orderedChapters(await tx.select().from(chapters).where(eq(chapters.runId,runId)),bible.version);
@@ -204,23 +278,35 @@ export async function finishRun(runId: string) {
       { id:randomUUID(), projectId:run.projectId, baseVersion:bible.version, kind:"manuscript_b", data:dataB },
     ]);
 
-    const contradiction=outputs.find(c=>c.text.includes("Mara swam"));
+    const contradiction=outputs.find(c=>hasFixtureContradiction(c.text));
+    let contradictionPassage = "";
+    if (contradiction) {
+      // Quote the sentence from the cleaned chapter. A hidden character in the raw text
+      // would miss this pattern and store the first 120 characters instead of the match.
+      const cleaned = normalizeFixtureContradictionText(contradiction.text);
+      const match = cleaned.match(/\bmara\s+(?:swam|dove\s+in(?:\s+and\s+swam)?)[^.!?\n]*[.!?]?/i);
+      contradictionPassage = match ? match[0] : cleaned.slice(0, 120);
+    }
     const critique={
       synthetic:true,
       revisionRounds,
-      continuity:{score:contradiction?2:4,notes:contradiction?[{chapterIndex:2,passage:"Mara swam toward the signal.",severity:"critical",factId:"F1",rationale:"Approved F1 says Mara cannot swim.",proposedEdit:"Mara approached in the boat."}]:[]},
+      continuity:{score:contradiction?2:4,notes:contradiction?[{chapterIndex:contradiction.chapterIndex,passage:contradictionPassage,severity:"critical",factId:"F1",rationale:"Approved F1 says Mara cannot swim.",proposedEdit:"Mara approached in the boat."}]:[]},
       style:{score:4,label:"Synthetic fixture score, not evaluated model quality."},
       pacing:{score:4,label:"Synthetic fixture score, not evaluated model quality."},
       marketReader:{availability:"unavailable",score:null},
       consistency:{versionA:checkA,versionB:checkB},
       unresolvedIssues:[
-        ...(contradiction?["Base chapter 2 contains a critical continuity contradiction; resolved in Version A & B proposals."]:[]),
+        ...(contradiction?[`Base chapter ${contradiction.chapterIndex} contains a critical continuity contradiction; resolved in Version A & B proposals.`]:[]),
         `Consistency findings: ${checkA.reason}`,
       ],
     };
     await tx.insert(critiques).values({id:randomUUID(),runId,data:critique}).onConflictDoNothing();
     const research=await getGenreBenchmarks(run.fixture);
     await tx.insert(evidence).values(research.map(data=>({id:randomUUID(),projectId:run.projectId,runId,data})));
+    if (project?.brief?.intake && (!isCurrentConsistencyStatus(checkA.status) || !isCurrentConsistencyStatus(checkB.status))) {
+      await tx.update(runs).set({ status: "paused" }).where(eq(runs.id, runId));
+      return {};
+    }
     await tx.update(runs).set({status:"completed"}).where(eq(runs.id,runId));
     return {};
   });
@@ -504,14 +590,17 @@ async function executeRequestedRevision(
         },
       }).onConflictDoNothing();
 
-      await tx.update(runs).set({ status: "completed" }).where(eq(runs.id, run.id));
+      const [project] = await tx.select().from(projects).where(eq(projects.id, run.projectId));
+      const consistencyReady = isCurrentConsistencyStatus(proposalA.consistency?.status) && isCurrentConsistencyStatus(proposalB.consistency?.status);
+      const status = (project?.brief?.intake && !consistencyReady) ? "paused" : "completed";
+      await tx.update(runs).set({ status }).where(eq(runs.id, run.id));
     });
     const [savedRun] = await db.select().from(runs).where(eq(runs.id, run.id));
     if (savedRun?.status === "running") {
       throw new Error("This revision stopped before it was saved.");
     }
   } catch (error) {
-    if(process.env.READ_CONNECTIONS_ENABLED==="true"&&error instanceof Error&&error.message==="EXPLICIT_AUTHENTICATED_READ_REQUEST_REQUIRED"){
+    if(process.env.READ_CONNECTIONS_ENABLED==="true"&&error instanceof Error&& (error.message==="EXPLICIT_AUTHENTICATED_READ_REQUEST_REQUIRED" || error.message==="CURRENT_READ_CONSISTENCY_REQUIRED")){
       await db.update(runs).set({status:"paused"}).where(and(eq(runs.id,run.id),eq(runs.status,"running")));return;
     }
     await markRevisionFailed(run.id);
@@ -522,6 +611,9 @@ async function executeRequestedRevision(
 }
 
 export async function executeRun(runId: string, checkpoint = true) {
+  if (!runId || typeof runId !== "string" || !z.string().uuid().safeParse(runId).success) {
+    throw Error("INVALID_RUN_ID: A valid UUID runId is required.");
+  }
   const run=await db.transaction(async tx=>{
     const [observed]=await tx.select().from(runs).where(eq(runs.id,runId));
     if(!observed)return undefined;
@@ -578,9 +670,14 @@ export async function executeRun(runId: string, checkpoint = true) {
 export function approvalSpike() {
   const state=Annotation.Root({version:Annotation<number>,approved:Annotation<boolean>});
   return new StateGraph(state).addNode("approval",s=>{
-    let answer=interrupt({version:s.version,question:"Approve this exact version?"}) as {approved:boolean;version:number};
-    while(answer.version!==s.version||!answer.approved){
-      answer=interrupt({version:s.version,question:"Exact-version approval required. Review and approve this version."}) as {approved:boolean;version:number};
+    const isValidApproval = (ans: unknown, targetVer: number): boolean => {
+      if (!ans || typeof ans !== "object") return false;
+      const rec = ans as Record<string, unknown>;
+      return rec.approved === true && rec.version === targetVer;
+    };
+    let answer=interrupt({version:s.version,question:"Approve this exact version?"});
+    while(!isValidApproval(answer, s.version)){
+      answer=interrupt({version:s.version,question:"Exact-version approval required. Review and approve this version."});
     }
     return {approved:true};
   }).addEdge(START,"approval").addEdge("approval",END).compile({checkpointer:new MemorySaver()});

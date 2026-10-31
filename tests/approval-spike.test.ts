@@ -25,5 +25,11 @@ describe("approval interruption", () => {
     await graph.invoke(new Command({ resume: { approved: false, version: 1 } }), config);
     expect((await graph.getState(config)).values.approved).toBe(false);
     expect((await graph.getState(config)).tasks[0].interrupts).toHaveLength(1);
+
+    // Red-team type confusion assertions (A8)
+    for (const bad of [{ approved: "false", version: 1 }, { approved: 1, version: 1 }, { approved: [], version: 1 }, "yes"]) {
+      await graph.invoke(new Command({ resume: bad }), config);
+      expect((await graph.getState(config)).values.approved).toBe(false);
+    }
   });
 });

@@ -14,6 +14,28 @@ import {
 export type { RevisedManuscript };
 
 /**
+ * Cleans chapter text before the Mara swim check and before the critique quotes a passage.
+ * Soft hyphens, word joiners, and zero-width marks are removed, then leftover spaces collapse,
+ * so a hidden character cannot split the words or hide a match.
+ * The critique copies its passage from this same cleaned text, which keeps the quoted sentence
+ * aligned with the words the check actually saw.
+ * Leave the character list as it is. Dropping a mark from it would let that mark hide a match.
+ */
+export function normalizeFixtureContradictionText(text: string): string {
+  return text.replace(/[\u00AD\u200B-\u200D\u2060\uFEFF]/gu, "").replace(/\s+/gu, " ");
+}
+
+/**
+ * Synthetic fixture continuity gate, not Fact F1 proof.
+ * Reads the cleaned chapter text and keeps the wide Mara swim pattern.
+ * Live Consistency remains the real contradiction check.
+ */
+export function hasFixtureContradiction(text: string): boolean {
+  const normalized = normalizeFixtureContradictionText(text);
+  return /\bmara\s+(?:swam|dove\s+in(?:\s+and\s+swam)?)\b/i.test(normalized);
+}
+
+/**
  * Critic/Editor A: Continuity and Pacing Lens.
  * Evaluates the three chapters for narrative continuity, fact adherence, and scene pacing.
  * Eliminates contradictions (e.g. rewriting "Mara swam" into safe boat handling)
@@ -26,7 +48,7 @@ export function criticEditorA(
 ): RevisedManuscript {
   const bibleVersion = handoff.version.bibleVersion;
   const cannotSwimFact = approvedBible.facts.find(f => f.id === "F1")?.text ?? "Mara cannot swim.";
-  const ch2HasContradiction = baseChapters.some(c => c.chapterIndex === 2 && c.text.includes("Mara swam"));
+  const ch2HasContradiction = baseChapters.some(c => c.chapterIndex === 2 && hasFixtureContradiction(c.text));
 
   const revisedChapters: Chapter[] = baseChapters.map(c => {
     if (c.chapterIndex === 1) {
@@ -41,7 +63,7 @@ export function criticEditorA(
     }
 
     if (c.chapterIndex === 2) {
-      if (c.text.includes("Mara swam")) {
+      if (hasFixtureContradiction(c.text)) {
         return chapterSchema.parse({
           chapterIndex: 2,
           bibleVersion,

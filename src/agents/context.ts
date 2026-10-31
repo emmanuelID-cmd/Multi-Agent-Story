@@ -16,6 +16,6 @@ export function buildWriterContext(input:unknown,index:number,version:number){
     trustedInstructions:WRITER_POLICY,
     // JSON escaping prevents data from breaking out into a trusted instruction section.
     dataJson:JSON.stringify({brief:acceptedBrief,...(intake?.status==="confirmed"?{confirmedStoryDetails:intake.confirmed?.scope.dimensions}:{}),approvedFacts:bible.facts,chapterBeat:bible.beats.find(b=>b.chapterIndex===assigned),chapterIndex:assigned,bibleVersion:version}),
-    findings,bibleVersion:version,canDispatch:findings.every(f=>f.verdict!=="REJECT"),
+    findings,bibleVersion:version,canDispatch:findings.every(f=>f.verdict==="ACCEPT"),
   };
 }
