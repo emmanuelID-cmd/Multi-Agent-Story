@@ -446,9 +446,12 @@ provides the isolated PostgreSQL 17 service. The project `.env` contains local
 random database and session secrets; never read or include those values in
 documentation, logs, or review output. The existing Anthropic Claude Haiku 5.5
 (`claude-haiku-5-5`) adapter is connected to opt-in web intake review and the
-separate READ CLI harness. Web Research/Reader/Consistency dispatch and live
-WRITE generation are not connected. Deployment target and production privacy
-and retention gates remain unresolved.
+separate READ CLI harness. The Research Review path now creates versioned
+candidate dossiers from confirmed intake and user-authorized transient source
+text, then requires exact human acceptance; it uses the existing READ budgeted
+adapter. Reader/Consistency dispatch and live WRITE generation are not
+connected. No live model/provider call or migration was run for this integration.
+Deployment target and production privacy and retention gates remain unresolved.
 
 The HTML guide and ZIP are earlier document snapshots. They are not regenerated
 as part of this foundation; their embedded text may predate the implementation.

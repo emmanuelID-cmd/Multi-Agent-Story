@@ -97,6 +97,15 @@ Summary file: PROJECT-HANDOFF.md
 - [x] Done: Full unit test suite passes: 61 suites, 594/594 tests. Team documentation updated with the review findings and capability URL access model.
 - [ ] Not completed: I01, I02, and I07 stay open. Live model/research provider connections remain disabled by default.
 
+## 2026-10-31T23:04:31-04:00 - ResearchReview integrated on manny/read-agents
+
+Summary file: PROJECT-HANDOFF.md
+
+- Base: `manny/read-agents` at `08d02939e43fb62260db1c1002f0eda2030706f6`, equal to `origin/developer` after PR #29 and #30.
+- Outgoing commit: `62a7621` (`feat(read): integrate ResearchReview on current lane`). Adds the user-facing review panel and transient licensed-source dossier flow, retaining Justin's capability URL ownership lookup and deferred auth/DB initialization.
+- Validation: `git diff --check` passed; tests and typecheck were not run. No live model/provider call or migration was run.
+- Preserve the original root worktree and all 20 `docs/temp/` files. I01/I02 remain open; keep `main` untouched.
+
 ## 2026-10-31T12:10:05-04:00 - Synthetic gate fixes pushed to justins-side
 
 Summary file: PROJECT-HANDOFF.md
