@@ -231,3 +231,9 @@ Limits: dependency and recovery tests were synthetic; no live provider call or r
 - `git diff --check` passed. Tests and typecheck were not run in this turn.
 - The original root worktree remains untouched as a recovery copy, including its pre-existing ResearchReview edits and all 20 `docs/temp/` files. No Phase 4 checklist item is checked; I01/I02 remain open.
 - Initial push verified on `manny/read-agents` at `33759a9`; PR #31 is open to `developer`: https://github.com/emmanuelID-cmd/Multi-Agent-Story/pull/31. The handoff/doc update is being prepared for publication. Merge only if required review and checks allow; keep `main` untouched.
+
+## 2026-10-31 - PR #31 auth-origin review correction
+
+- Review found configured auth origins accepted external HTTP URLs. `configuredAuthOrigin` now accepts HTTPS deployment origins and HTTP only for localhost, IPv4 loopback, or IPv6 loopback. ResearchReview and Justin's Writer/Editor implementation remain unchanged.
+- Added focused regression cases in `tests/auth-gate.test.ts`. Validation: auth-gate 4/4 passed, TypeScript typecheck passed, and `git diff --check` passed. No live model/provider call or database migration.
+- Intended PR update: `manny/read-agents` to `developer`, PR #31. Changes are prepared locally; push is not yet verified. Next: publish the reviewed correction, obtain required PR approval, then integrate and fast-forward eligible non-main lanes without touching `main` or the dirty Phase 4 worktree.
