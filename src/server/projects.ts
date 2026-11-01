@@ -114,11 +114,26 @@ async function assembleProjectState(project: Awaited<ReturnType<typeof getProjec
     eq(proposals.baseVersion, project.version),
     like(proposals.kind, "manuscript_%")
   )).orderBy(desc(proposals.createdAt)).limit(1);
+  const [acceptedResearch] = project.brief.intake ? await db.select().from(proposals).where(and(
+    eq(proposals.projectId, id),
+    eq(proposals.status, "accepted"),
+    eq(proposals.kind, "research_dossier")
+  )).orderBy(desc(proposals.createdAt)).limit(1) : [];
 
-  if (!run) return { project, bible, pending, latestPlanning, acceptedManuscript: acceptedManuscript ?? null, run: null, tasks: [], chapters: [], critique: null, evidence: [] };
+  const baseResult = {
+    project,
+    bible,
+    pending,
+    latestPlanning,
+    acceptedManuscript: acceptedManuscript ?? null,
+    acceptedResearch: acceptedResearch ? { id: acceptedResearch.id, status: acceptedResearch.status } : null,
+  };
+
+  if (!run) return { ...baseResult, run: null, tasks: [], chapters: [], critique: null, evidence: [] };
   const [critique] = await db.select().from(critiques).where(eq(critiques.runId, run.id));
   return {
-    project, bible, pending, latestPlanning, acceptedManuscript: acceptedManuscript ?? null, run,
+    ...baseResult,
+    run,
     tasks: await db.select().from(tasks).where(eq(tasks.runId, run.id)).orderBy(asc(tasks.chapterIndex)),
     chapters: await db.select().from(chapters).where(eq(chapters.runId, run.id)).orderBy(asc(chapters.chapterIndex)),
     critique: critique?.data ?? null,

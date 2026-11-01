@@ -653,6 +653,267 @@
   margin-top: 14px;
 }
 
+/* ============================================================
+   SEQUENTIAL PIPELINE & CHECKPOINT DROP-BOX
+   ============================================================ */
+
+.pipelineBar {
+  background: #0e1526;
+  border: 1px solid #222f4c;
+  border-radius: 12px;
+  padding: 18px 20px;
+  margin: 18px 0 22px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+}
+
+.checkpointDropdownRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #1e293b;
+}
+
+.checkpointDropdownGroup {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.checkpointLabel {
+  font-size: 13px;
+  font-weight: 700;
+  color: #fef08a;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.checkpointIcon {
+  font-size: 15px;
+}
+
+.checkpointSelect {
+  background: #161f36;
+  color: #f8fafc;
+  border: 1.5px solid #d4af37;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(212, 175, 55, 0.15);
+  outline: none;
+  min-width: 280px;
+}
+
+.checkpointSelect:focus {
+  border-color: #fef08a;
+  box-shadow: 0 0 14px rgba(212, 175, 55, 0.35);
+}
+
+.pipelineStagePill {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  background: #1a2238;
+  color: #94a3b8;
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1px solid #334155;
+}
+
+/* Horizontal Stepper */
+.pipelineStepper {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-top: 16px;
+  position: relative;
+}
+
+.stepperStep {
+  background: #121829;
+  border: 1px solid #222f4c;
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+  color: inherit;
+  font-family: inherit;
+}
+
+.stepperStep:hover:not(:disabled) {
+  background: #182238;
+  border-color: #3b82f6;
+}
+
+.stepperStepActive {
+  background: #162039 !important;
+  border-color: #d4af37 !important;
+  box-shadow: 0 0 14px rgba(212, 175, 55, 0.25);
+}
+
+.stepperStepComplete {
+  border-color: #10b981;
+}
+
+.stepperStepComplete:not(.stepperStepActive) {
+  background: #0f1c24;
+}
+
+.stepperStepLocked {
+  opacity: 0.55;
+  cursor: not-allowed !important;
+  border-style: dashed;
+}
+
+.stepBadge {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #1e293b;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.stepperStepActive .stepBadge {
+  background: #d4af37;
+  color: #0c111e;
+  font-weight: 800;
+  box-shadow: 0 0 8px rgba(212, 175, 55, 0.5);
+}
+
+.stepperStepComplete .stepBadge {
+  background: #10b981;
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.stepperStepLocked .stepBadge {
+  background: #182030;
+  color: #64748b;
+  font-size: 11px;
+}
+
+.stepInfo {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.stepNumber {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #64748b;
+  font-weight: 700;
+}
+
+.stepperStepActive .stepNumber {
+  color: #fef08a;
+}
+
+.stepperStepComplete .stepNumber {
+  color: #34d399;
+}
+
+.stepTitle {
+  font-size: 12px;
+  color: #f1f5f9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 1px;
+}
+
+.stepperStepActive .stepTitle {
+  color: #fef08a;
+  font-weight: 700;
+}
+
+.stepSubtitle {
+  font-size: 10px;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+
+/* Stage Navigation Toolbar & Advance Banners */
+.stageToolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-bottom: 14px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #1e293b;
+}
+
+.stageAdvanceBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: #064e3b;
+  border: 1.5px solid #10b981;
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin-top: 20px;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.2);
+}
+
+.stageAdvanceCheck {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: #10b981;
+  color: #064e3b;
+  border-radius: 50%;
+  font-weight: 900;
+  font-size: 13px;
+  margin-right: 10px;
+}
+
+@media (max-width: 900px) {
+  .pipelineStepper {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .pipelineStepper {
+    grid-template-columns: 1fr;
+  }
+  .checkpointSelect {
+    min-width: 100%;
+  }
+}
+
 @media (max-width: 760px) {
   .shell { display: block; }
   .sidebar { position: static; width: 100%; padding: 16px; }
