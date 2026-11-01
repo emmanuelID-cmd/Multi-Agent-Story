@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { scopeFromIntake, type IntakeAnalysis, type IntakeRecord } from "../src/contracts/intake";
+import { intakeRecordSchema, scopeFromIntake, type IntakeAnalysis, type IntakeRecord } from "../src/contracts/intake";
 import { intakeHash } from "../src/agents/intake";
 import { sha256 } from "../src/agents/read/runtime";
 import { prepareConfirmedResearchInput, runConfirmedResearch } from "../src/server/research/confirmed-intake";
@@ -14,7 +14,7 @@ const analysis: IntakeAnalysis = {id:"c5a51390-8e7c-4357-a027-2f23867289aa",sour
   {field:"genre",quote:"horror",ambiguous:false},{field:"setting",quote:"München",ambiguous:false},{field:"timePeriod",quote:"1930s",ambiguous:false},
 ]};
 const intake: IntakeRecord = {version:1,revision:1,rawText,status:"confirmed",analysis,decisions:[],confirmed:{at:new Date().toISOString(),analysisId:analysis.id,scope:scopeFromIntake(analysis,[])}};
-const request = {authority,versions,expectedRevision:1,expectedAnalysisId:analysis.id,expectedAnalysisHash:sha256(JSON.stringify(analysis)),expectedSourceHash:intakeHash(rawText),criteriaVersion:1,eligibleSources:[]};
+const request = {authority,versions,expectedRevision:1,expectedAnalysisId:analysis.id,expectedAnalysisHash:sha256(JSON.stringify(intakeRecordSchema.parse(intake).analysis)),expectedSourceHash:intakeHash(rawText),criteriaVersion:1,eligibleSources:[]};
 const repository = {get:vi.fn(async () => ({id:"project",ownerId:"owner",version:0,brief:{intake}}))};
 const now = new Date().toISOString();
 const tomorrow = new Date(Date.now()+86_400_000).toISOString();

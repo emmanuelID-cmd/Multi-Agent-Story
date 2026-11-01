@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks=vi.hoisted(()=>({
   calls:[] as string[],sameOrigin:vi.fn<(request:Request)=>void>(),
   intakeJsonBody:vi.fn<()=>Promise<unknown>>(),list:vi.fn<()=>Promise<unknown>>(),detail:vi.fn<()=>Promise<unknown>>(),accept:vi.fn<()=>Promise<unknown>>(),
+  create:vi.fn<(...args:unknown[])=>Promise<unknown>>(),connections:vi.fn<(signal:AbortSignal)=>{runtime:unknown}>(),runtime:{modelId:"synthetic"},
 }));
 vi.mock("../src/server/projects", async () => {
   const actual = await import("../src/server/projects");
@@ -20,9 +21,11 @@ vi.mock("../src/server/http",()=>({
     {status:error instanceof Error&&"status" in error&&typeof error.status==="number"?error.status:503}),
 }));
 vi.mock("../src/server/intake-http",()=>({intakeJsonBody:mocks.intakeJsonBody}));
+vi.mock("../src/server/read-connection-http",()=>({configuredReadConnections:mocks.connections}));
 vi.mock("../src/server/research/dossier-service",async importOriginal=>({
   ...await importOriginal<typeof import("../src/server/research/dossier-service")>(),
   listResearchCandidates:mocks.list,getResearchCandidate:mocks.detail,acceptResearchCandidate:mocks.accept,
+  createResearchCandidateForProject:mocks.create,
 }));
 
 import { GET, POST } from "../src/app/api/projects/[id]/research/route";
@@ -38,6 +41,8 @@ beforeEach(()=>{
   mocks.list.mockImplementation(async()=>{mocks.calls.push("list");return [];});
   mocks.detail.mockImplementation(async()=>{mocks.calls.push("detail");return {id:"candidate"};});
   mocks.accept.mockImplementation(async()=>{mocks.calls.push("accept");return {candidateId:body.candidateId};});
+  mocks.create.mockImplementation(async(...args)=>{mocks.calls.push("create");return args[2];});
+  mocks.connections.mockReturnValue({runtime:mocks.runtime});
 });
 
 describe("research dossier route boundary",()=>{
@@ -77,5 +82,15 @@ describe("research dossier route boundary",()=>{
     expect((await POST(req,context)).status).toBe(200);
     expect(mocks.calls.slice(-3)).toEqual(["origin","body","accept"]);
     expect(mocks.accept).toHaveBeenCalledWith("stored-owner","project",body,{signal:req.signal});
+  });
+  it("creates Research candidates using the stored project owner and configured model",async()=>{
+    const submission={operationId:"33333333-3333-4333-8333-333333333333",sources:[{kind:"licensed_text",work:"Test work",author:"Test author",
+      publicationDate:null,sourceUrl:"https://example.invalid/book",locator:"chapter 1",licenseReference:"license-123",
+      dimensionIds:["genre"],text:"A synthetic excerpt.",confirmPermission:true}]};
+    mocks.intakeJsonBody.mockResolvedValueOnce({action:"create",...submission});
+    const req=request();
+    expect((await POST(req,context)).status).toBe(200);
+    expect(mocks.connections).toHaveBeenCalledWith(req.signal);
+    expect(mocks.create).toHaveBeenCalledWith("stored-owner","project",submission,mocks.runtime,{signal:req.signal});
   });
 });

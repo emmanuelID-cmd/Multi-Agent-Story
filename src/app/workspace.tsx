@@ -7,6 +7,7 @@ import type { projectState } from "../server/projects";
 import styles from "./workspace.module.css";
 import StoryIntake from "./story-intake";
 import ModelStateIndicator, { type ModelRunningState } from "./model-state-indicator";
+import ResearchReview from "./research-review";
 import { showBibleCandidate, canRetryBiblePlanning } from "./planning-visibility";
 import { manuscriptConsistencyLabel } from "./manuscript-status";
 import { isCurrentConsistencyStatus } from "../agents/consistency-current";
@@ -973,13 +974,17 @@ export default function Workspace({ workId }: { workId?: string }) {
                 )}
               </section>
               <section id="panel-research" role="tabpanel" aria-labelledby="tab-research" hidden={tab !== "research"} className={styles.card} tabIndex={0}>
-                <h2>Evidence without invented signals</h2>
-                <p>NYT Books and Gutendex adapter boundaries are fixture-only. No live data was retrieved, and market-reader scores remain unavailable.</p>
-                {state.evidence.length ? (
-                  state.evidence.map(e => <article className={styles.proposal} key={e.id}><pre>{JSON.stringify(e.data, null, 2)}</pre></article>)
+                <h2>Research and evidence</h2>
+                {state.project.brief.intake ? (
+                  <ResearchReview key={selected} projectId={selected} intake={state.project.brief.intake} onAccepted={async () => { await refresh(selected); }} />
                 ) : (
-                  <p>No evidence record yet. A completed fixture run records its source limitations.</p>
+                  <p>This legacy fixture project has no Research dossier review.</p>
                 )}
+                {state.evidence.length > 0 && <>
+                  <h3>Synthetic run evidence</h3>
+                  <p>These fixture records do not establish research acceptance.</p>
+                  {state.evidence.map(e => <article className={styles.proposal} key={e.id}><pre>{JSON.stringify(e.data, null, 2)}</pre></article>)}
+                </>}
               </section>
             </>
           ) : (

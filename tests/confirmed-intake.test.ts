@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { scopeFromIntake, intakeFields, type IntakeAnalysis, type IntakeRecord } from "../src/contracts/intake";
+import { scopeFromIntake, intakeFields, intakeRecordSchema, type IntakeAnalysis, type IntakeRecord } from "../src/contracts/intake";
 import { intakeHash } from "../src/agents/intake";
 import { sha256, runResearch } from "../src/agents/read/runtime";
 import { prepareConfirmedResearchInput, runConfirmedResearch } from "../src/server/research/confirmed-intake";
@@ -47,8 +47,9 @@ function savedIntake(long = false): IntakeRecord {
 function setup(intake = savedIntake()) {
   const project = { id: authority.projectId, ownerId: authority.ownerId, version: 0, brief: { intake } };
   const repository = { get: vi.fn(async () => project) };
+  const parsedAnalysis = intakeRecordSchema.parse(intake).analysis!;
   const request = { authority, versions, expectedRevision: intake.revision,
-    expectedAnalysisId: intake.analysis!.id, expectedAnalysisHash: sha256(JSON.stringify(intake.analysis)),
+    expectedAnalysisId: parsedAnalysis.id, expectedAnalysisHash: sha256(JSON.stringify(parsedAnalysis)),
     expectedSourceHash: intakeHash(intake.rawText), criteriaVersion: 1, eligibleSources: [] };
   return { project, repository, request };
 }

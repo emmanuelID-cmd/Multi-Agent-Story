@@ -24,11 +24,25 @@ async function buildAuth(secret: string) {
   const { drizzleAdapter } = await import("better-auth/adapters/drizzle");
   const { db } = await import("../db");
   const schema = await import("../db/schema");
+  const configuredUrl = process.env.BETTER_AUTH_URL || process.env.RENDER_EXTERNAL_URL;
+  const trustedOrigins = ["http://localhost:3000", "http://127.0.0.1:3000"];
+  let baseURL: string | undefined;
+  if (configuredUrl) {
+    try {
+      const parsed = new URL(configuredUrl);
+      if (parsed.protocol === "https:" || parsed.protocol === "http:") {
+        baseURL = parsed.origin;
+        if (!trustedOrigins.includes(parsed.origin)) trustedOrigins.push(parsed.origin);
+      }
+    } catch {
+      // Ignore malformed optional deployment URLs; auth remains constrained to local origins.
+    }
+  }
   return betterAuth({
     database: drizzleAdapter(db, { provider: "pg", schema }),
     secret,
-    baseURL: process.env.BETTER_AUTH_URL,
-    trustedOrigins: ["http://localhost:3000", "http://127.0.0.1:3000"],
+    baseURL,
+    trustedOrigins,
     emailAndPassword: { enabled: true, minPasswordLength: 12, maxPasswordLength: 128 },
     rateLimit: { enabled: true, window: 60, max: 60 },
   });

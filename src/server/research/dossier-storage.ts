@@ -49,7 +49,8 @@ export const researchCandidateBodySchema = z.strictObject({
   criteriaVersion:positive,dossier:storedDossierSchema,provenance:acquisitionProvenanceSchema,
   sourceReviews:z.array(z.strictObject({sourceId:z.string().min(1).max(128),sourceUrl:z.url().max(2_000),locator:z.string().min(1).max(200),
     textSha256:digest,rightsEvidenceRef:z.string().min(1).max(300),rightsVerifiedAt:z.iso.datetime(),rightsValidThrough:z.iso.datetime(),
-    reviewFingerprint:digest,matchedDimensions:z.array(z.string().min(1).max(128)).min(1).max(24)})).max(24),
+    reviewFingerprint:digest,matchedDimensions:z.array(z.string().min(1).max(128)).min(1).max(24),requireTransientResubmission:z.boolean().optional(),
+    quoteProofs:z.array(z.strictObject({itemId:z.string().min(1).max(128),quoteSha256:digest,start:z.number().int().nonnegative(),length:z.number().int().positive().max(600)})).max(80).optional()})).max(24),
 });
 export const researchCandidateSchema=researchCandidateBodySchema.extend({payloadHash:digest});
 export type ResearchCandidate=z.infer<typeof researchCandidateSchema>;
