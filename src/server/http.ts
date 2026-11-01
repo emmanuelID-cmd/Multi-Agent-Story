@@ -30,5 +30,15 @@ export function failure(error: unknown) {
   if (process.env.NODE_ENV !== "test") {
     console.error("[Diagnostic Server Error]:", error instanceof Error ? (error.stack ?? error.message) : error);
   }
-  return Response.json({ error: "Temporarily unavailable. Your saved work is preserved." }, { status: 503 });
+  const reason = error instanceof Error ? error.message.replace(/[\r\n]+/g, " ").slice(0, 150) : "Internal service error";
+  return Response.json(
+    { error: "Temporarily unavailable. Your saved work is preserved." },
+    {
+      status: 503,
+      headers: {
+        "x-diagnostic-reason": reason,
+        "x-diagnostic-version": "afbb9c0",
+      },
+    }
+  );
 }

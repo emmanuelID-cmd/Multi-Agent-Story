@@ -14,11 +14,26 @@ import { approveBiblePlan, assertCurrentPlanningApproval, planningKinds, plannin
 
 export class AppError extends Error { constructor(public status: number, message: string, public fields?: Record<string,string[]>) { super(message); } }
 
+let migrationEnsured = false;
+export async function ensureDatabaseMigrated() {
+  if (migrationEnsured || !process.env.DATABASE_URL) return;
+  try {
+    const { migrate } = await import("drizzle-orm/node-postgres/migrator");
+    await migrate(db, { migrationsFolder: "drizzle" });
+    migrationEnsured = true;
+  } catch (err) {
+    if (process.env.NODE_ENV !== "test") {
+      console.warn("Auto-migration check skipped or failed:", err instanceof Error ? err.message : err);
+    }
+  }
+}
+
 // Finds one story by its link id.
 // Story pages and the book-metadata request use this, then read ownerId from the saved row.
 // A missing or blank id always answers "Project unavailable." so those cases look the same.
 export async function getProjectById(id: string) {
   if (!id || typeof id !== "string") throw new AppError(404, "Project unavailable.");
+  await ensureDatabaseMigrated();
   const [project] = await db.select().from(projects).where(eq(projects.id, id));
   if (!project) throw new AppError(404, "Project unavailable.");
   return project;
@@ -50,6 +65,7 @@ function briefFromInput(input: unknown) {
 // It creates a private owner row and the project together, so the link has someone to belong to.
 // POST /api/projects is the web caller. Scripts that already know an owner call createProject instead.
 export async function createAnonymousProject(input: unknown) {
+  await ensureDatabaseMigrated();
   const brief = briefFromInput(input);
   return db.transaction(async tx => {
     const anonymousId = randomUUID();
