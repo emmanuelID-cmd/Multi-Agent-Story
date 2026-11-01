@@ -33,7 +33,7 @@ function fixture(mapped=true) {
   const request={authority:{runId:"run",taskId:"task",operationId:"operation",ownerId:"owner",projectId:project.id,
     stateVersion:0,requestVersion:3,prdVersion:"v4-draft"},
     versions:{contract:"read-v1" as const,prompt:"read-v1" as const,harness:"synthetic",model:"fixture"},expectedRevision:3,
-    expectedAnalysisId:analysis.id,expectedAnalysisHash:sha256(JSON.stringify(analysis)),expectedSourceHash:analysis.sourceHash,
+    expectedAnalysisId:analysis.id,expectedAnalysisHash:sha256(JSON.stringify(intakeAnalysisSchema.parse(analysis))),expectedSourceHash:analysis.sourceHash,
     criteriaVersion:1,eligibleSources:[]};
   mocks.project.mockResolvedValue(project);
   return {project,request,input:{projectId:project.id,genre:"horror",providers:["nyt","gutendex"] as ["nyt","gutendex"],limit:5,nytList:"hardcover-fiction" as const}};

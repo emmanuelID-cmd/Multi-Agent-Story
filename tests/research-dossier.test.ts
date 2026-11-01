@@ -1,13 +1,14 @@
 import { randomUUID } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
-import { scopeFromIntake, type IntakeAnalysis, type IntakeRecord } from "../src/contracts/intake";
+import { intakeRecordSchema, scopeFromIntake, type IntakeAnalysis, type IntakeRecord } from "../src/contracts/intake";
 import { intakeHash } from "../src/agents/intake";
 import { sha256 } from "../src/agents/read/runtime";
 import { limits } from "../src/contracts";
 import { fixtureProviders } from "../src/agents/read-harness-fixtures";
 import type { ReadModel } from "../src/agents/read/model";
+import type { ReadDependencies } from "../src/agents/read/runtime";
 import type { ApprovedResearchSource } from "../src/server/research/research-acquisition";
-import { acceptResearchCandidate, createResearchCandidate, getResearchCandidate, listResearchCandidates } from "../src/server/research/dossier-service";
+import { acceptResearchCandidate, createResearchCandidate, createResearchCandidateForProject, getResearchCandidate, listResearchCandidates } from "../src/server/research/dossier-service";
 import { acquisitionProvenanceSchema, type ResearchRepository, type ResearchRow, type ResearchSnapshot } from "../src/server/research/dossier-storage";
 
 const rawText="A horror story in München during the 1930s.";
@@ -35,7 +36,7 @@ const model:ReadModel={modelId:"synthetic",complete:async()=>({value:{items:[
 const budget={maxTokens:60_000,maxCostUsd:0.25,inputUsdPerMillion:1,outputUsdPerMillion:5};
 const request={authority:{runId:"run",taskId:"task",operationId:"create_1",ownerId:"owner",projectId:"project",stateVersion:0,requestVersion:1,prdVersion:"v4"},
   versions:{contract:"read-v1" as const,prompt:"read-v1" as const,harness:"dossier-test",model:"synthetic"},expectedRevision:1,
-  expectedAnalysisId:analysis.id,expectedAnalysisHash:sha256(JSON.stringify(analysis)),expectedSourceHash:intakeHash(rawText),criteriaVersion:1,eligibleSources:[]};
+  expectedAnalysisId:analysis.id,expectedAnalysisHash:sha256(JSON.stringify(intakeRecordSchema.parse(intake).analysis)),expectedSourceHash:intakeHash(rawText),criteriaVersion:1,eligibleSources:[]};
 
 function memoryRepository(){
   let snapshot:ResearchSnapshot={project:{id:"project",ownerId:"owner",version:0,brief:{intake}},rows:[]};
@@ -75,6 +76,65 @@ function deferred(){
 }
 
 describe("Research dossier storage and human acceptance",()=>{
+  it("stores transient licensed excerpts as fingerprints and rechecks the same text at approval",async()=>{
+    const f=fixture();
+    const genreAnalysis={...analysis,observations:analysis.observations.filter(observation=>observation.field==="genre")};
+    const genreOnly={...intake,analysis:genreAnalysis,confirmed:{...intake.confirmed!,
+      analysisId:genreAnalysis.id,scope:scopeFromIntake(genreAnalysis,[])}};
+    const snapshot=structuredClone(f.store.state);snapshot.project.brief.intake=genreOnly;f.store.state=snapshot;
+    const excerpt="The bell rang after the door was locked.";
+    const operationId="33333333-3333-4333-8333-333333333333";
+    const source={kind:"licensed_text" as const,work:"Synthetic short story",author:"Test author",publicationDate:null,
+      sourceUrl:"https://example.invalid/story",locator:"chapter 1",licenseReference:"license:owner-attested",
+      dimensionIds:["genre"],text:excerpt,confirmPermission:true};
+    const transientModel:ReadModel={modelId:"synthetic",async complete(call){
+      const data=call.data as {eligibleSources?:Array<{sourceId:string;locator:string;text:string}>};
+      const source=data.eligibleSources?.[0];if(!source)throw new Error("TEST_SOURCE_MISSING");
+      return {value:{items:[{itemId:"transient-evidence",sourceId:source.sourceId,kind:"located_text_observation",
+        dimensionId:"genre",claim:"A delayed bell creates suspense.",locator:source.locator,quote:source.text,confidence:0.9}],
+        synthesis:[],gaps:[],limitations:[]},usage:{inputTokens:100,outputTokens:50}};
+    }};
+    const read:ReadDependencies={model:transientModel,budget,readBenchmarks:async()=>fixtureProviders()};
+    const candidate=await createResearchCandidateForProject("owner","project",{operationId,sources:[source]},read,
+      {repository:f.store.repository,acquisition:{readBenchmarks:async()=>fixtureProviders()}});
+    const stored=f.store.state.rows[0].data as Record<string,any>;
+    expect(JSON.stringify(stored)).not.toContain(excerpt);
+    expect(stored.dossier.items[0].quote).toBeNull();
+    expect(stored.sourceReviews[0].requireTransientResubmission).toBe(true);
+    expect(stored.sourceReviews[0].quoteProofs[0]).toMatchObject({itemId:"transient-evidence",length:excerpt.length});
+    const accept={...acceptRequest(candidate),transientSources:[{sourceId:stored.sourceReviews[0].sourceId,
+      licenseReference:source.licenseReference,text:"A changed excerpt.",confirmPermission:true}]};
+    await expect(acceptResearchCandidate("owner","project",accept,{repository:f.store.repository,
+      acquisition:{readBenchmarks:async()=>fixtureProviders()}})).rejects.toThrow("Paste the same excerpt again");
+    expect(f.store.state.rows).toHaveLength(1);
+    const accepted=await acceptResearchCandidate("owner","project",{...accept,transientSources:[{...accept.transientSources[0],text:excerpt}]},
+      {repository:f.store.repository,acquisition:{readBenchmarks:async()=>fixtureProviders()}});
+    expect(accepted.candidateId).toBe(candidate.id);
+    expect(f.store.state.rows).toHaveLength(2);
+  });
+  it("rejects verbatim source text echoed into a persisted research claim",async()=>{
+    const f=fixture();
+    const genreAnalysis={...analysis,observations:analysis.observations.filter(observation=>observation.field==="genre")};
+    const genreOnly={...intake,analysis:genreAnalysis,confirmed:{...intake.confirmed!,
+      analysisId:genreAnalysis.id,scope:scopeFromIntake(genreAnalysis,[])}};
+    const snapshot=structuredClone(f.store.state);snapshot.project.brief.intake=genreOnly;f.store.state=snapshot;
+    const excerpt="A bell rang after the old door was locked for the night.";
+    const source={kind:"licensed_text" as const,work:"Synthetic short story",author:"Test author",publicationDate:null,
+      sourceUrl:"https://example.invalid/story",locator:"chapter 1",licenseReference:"license:owner-attested",
+      dimensionIds:["genre"],text:excerpt,confirmPermission:true};
+    const echoModel:ReadModel={modelId:"synthetic",async complete(call){
+      const data=call.data as {eligibleSources?:Array<{sourceId:string;locator:string}>};
+      const eligible=data.eligibleSources?.[0];if(!eligible)throw new Error("TEST_SOURCE_MISSING");
+      return {value:{items:[{itemId:"echo",sourceId:eligible.sourceId,kind:"located_text_observation",dimensionId:"genre",
+        claim:excerpt,locator:eligible.locator,quote:excerpt,confidence:0.9}],synthesis:[],gaps:[],limitations:[]},
+        usage:{inputTokens:100,outputTokens:50}};
+    }};
+    const read:ReadDependencies={model:echoModel,budget,readBenchmarks:async()=>fixtureProviders()};
+    await expect(createResearchCandidateForProject("owner","project",{operationId:"33333333-3333-4333-8333-333333333334",sources:[source]},read,
+      {repository:f.store.repository,acquisition:{readBenchmarks:async()=>fixtureProviders()}}))
+      .rejects.toThrow("Research output repeated text from a transient source");
+    expect(f.store.state.rows).toHaveLength(0);
+  });
   it("stores an immutable bounded candidate, re-reads text and accepts exact current evidence once",async()=>{
     const f=fixture();const candidate=await create(f);
     expect(candidate.gateRecommendation).toBe("ACCEPT_CANDIDATE");
@@ -82,10 +142,12 @@ describe("Research dossier storage and human acceptance",()=>{
     expect(JSON.stringify(f.store.state.rows[0].data)).not.toContain(craftText);
     expect(JSON.stringify(f.store.state.rows[0].data)).not.toContain(contextText);
     const listed=await listResearchCandidates("owner","project",f.store.repository);
-    expect(listed).toMatchObject([{id:candidate.id,version:1,status:"pending"}]);
+    expect(listed).toMatchObject([{id:candidate.id,version:1,status:"pending",current:true}]);
     expect(listed[0].coverage.map(c=>c.status)).toEqual(["supported","supported","supported"]);
     expect(JSON.stringify(listed[0])).not.toContain("sourceReviews");
-    expect((await getResearchCandidate("owner","project",candidate.id,f.store.repository)).dossier.coverage).toEqual(listed[0].coverage);
+    const detail=await getResearchCandidate("owner","project",candidate.id,f.store.repository);
+    expect(detail.current).toBe(true);
+    expect(detail.dossier.coverage).toEqual(listed[0].coverage);
     const accept=acceptRequest(candidate);
     const result=await acceptResearchCandidate("owner","project",accept,{repository:f.store.repository,acquisition:f.acquisition});
     expect(result).toMatchObject({candidateId:candidate.id,candidateHash:candidate.hash,ownerId:"owner"});
@@ -96,6 +158,19 @@ describe("Research dossier storage and human acceptance",()=>{
     f.acquisition.readApprovedText=vi.fn(async()=>{throw Error("Reader offline after commit.");});
     expect(await acceptResearchCandidate("owner","project",accept,{repository:f.store.repository,acquisition:f.acquisition})).toEqual(result);
     expect(f.store.state.rows).toHaveLength(2);
+  });
+  it("marks previously saved dossiers stale when project or confirmed intake changes",async()=>{
+    const f=fixture();const candidate=await create(f);
+    const original=structuredClone(f.store.state);
+    const changedVersion=structuredClone(original);changedVersion.project.version++;
+    f.store.state=changedVersion;
+    expect((await listResearchCandidates("owner","project",f.store.repository))[0].current).toBe(false);
+    expect((await getResearchCandidate("owner","project",candidate.id,f.store.repository)).current).toBe(false);
+    const changedIntake=structuredClone(original);
+    (changedIntake.project.brief.intake as IntakeRecord).revision++;
+    f.store.state=changedIntake;
+    expect((await listResearchCandidates("owner","project",f.store.repository))[0].current).toBe(false);
+    expect((await getResearchCandidate("owner","project",candidate.id,f.store.repository)).current).toBe(false);
   });
   it("persists bounded query and excluded-source provenance with the exact dossier version",async()=>{
     const f=fixture();

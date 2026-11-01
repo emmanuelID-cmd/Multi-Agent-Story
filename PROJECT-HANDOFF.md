@@ -222,3 +222,18 @@ Limits: dependency and recovery tests were synthetic; no live provider call or r
 
 - Initial branch push verified October 30, 2026 at `8e7dbf3`; PR #28 is open from `shared/phase-4-planning-orchestration` to `developer`.
 - Next: publish this PR-link handoff update, verify required checks/review and ancestry, merge only when safe, then fast-forward eligible non-main branches and stop. Keep `main` untouched and preserve the excluded local work.
+
+## 2026-10-31 - ResearchReview carried onto the current READ lane
+
+- Current integration base: `manny/read-agents` at `08d02939e43fb62260db1c1002f0eda2030706f6`, equal to verified `origin/developer` after Justin's PR #29 and #30 updates.
+- Commit `62a7621` carries the preserved ResearchReview work onto this current base. It adds transient licensed-source submission, versioned dossier candidate creation and exact human acceptance, and combines those actions with Justin's project-owner lookup, capability URL route model, and deferred auth/database initialization.
+- The existing READ model adapter and shared story-budget wrapper are used. Source excerpts are excluded from stored dossier prose and must be resubmitted for acceptance. No live model/provider call or migration was run during this integration.
+- `git diff --check` passed. Tests and typecheck were not run in this turn.
+- The original root worktree remains untouched as a recovery copy, including its pre-existing ResearchReview edits and all 20 `docs/temp/` files. No Phase 4 checklist item is checked; I01/I02 remain open.
+- Initial push verified on `manny/read-agents` at `33759a9`; PR #31 is open to `developer`: https://github.com/emmanuelID-cmd/Multi-Agent-Story/pull/31. The handoff/doc update is being prepared for publication. Merge only if required review and checks allow; keep `main` untouched.
+
+## 2026-10-31 - PR #31 auth-origin review correction
+
+- Review found configured auth origins accepted external HTTP URLs. `configuredAuthOrigin` now accepts HTTPS deployment origins and HTTP only for localhost, IPv4 loopback, or IPv6 loopback. ResearchReview and Justin's Writer/Editor implementation remain unchanged.
+- Added focused regression cases in `tests/auth-gate.test.ts`. Validation: auth-gate 4/4 passed, TypeScript typecheck passed, and `git diff --check` passed. No live model/provider call or database migration.
+- Intended PR update: `manny/read-agents` to `developer`, PR #31. Changes are prepared locally; push is not yet verified. Next: publish the reviewed correction, obtain required PR approval, then integrate and fast-forward eligible non-main lanes without touching `main` or the dirty Phase 4 worktree.

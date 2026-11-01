@@ -17,6 +17,19 @@ export async function getAuth() {
   return clientPromise;
 }
 
+/** Trust HTTPS deployment origins; permit HTTP only for the supported local dev hosts. */
+export function configuredAuthOrigin(configuredUrl: string | undefined): string | undefined {
+  if (!configuredUrl) return undefined;
+  try {
+    const parsed = new URL(configuredUrl);
+    const localHttp = parsed.protocol === "http:" &&
+      (parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1" || parsed.hostname === "[::1]");
+    return parsed.protocol === "https:" || localHttp ? parsed.origin : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 // Loads Better Auth only when getAuth has already confirmed a secret.
 // The database adapter stays inside this function so a missing secret does not open a connection on startup.
 async function buildAuth(secret: string) {
@@ -24,11 +37,14 @@ async function buildAuth(secret: string) {
   const { drizzleAdapter } = await import("better-auth/adapters/drizzle");
   const { db } = await import("../db");
   const schema = await import("../db/schema");
+  const trustedOrigins = ["http://localhost:3000", "http://127.0.0.1:3000"];
+  const baseURL = configuredAuthOrigin(process.env.BETTER_AUTH_URL || process.env.RENDER_EXTERNAL_URL);
+  if (baseURL && !trustedOrigins.includes(baseURL)) trustedOrigins.push(baseURL);
   return betterAuth({
     database: drizzleAdapter(db, { provider: "pg", schema }),
     secret,
-    baseURL: process.env.BETTER_AUTH_URL,
-    trustedOrigins: ["http://localhost:3000", "http://127.0.0.1:3000"],
+    baseURL,
+    trustedOrigins,
     emailAndPassword: { enabled: true, minPasswordLength: 12, maxPasswordLength: 128 },
     rateLimit: { enabled: true, window: 60, max: 60 },
   });

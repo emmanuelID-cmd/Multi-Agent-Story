@@ -82,6 +82,23 @@ Verified move hashes:
   opened into `main`; no merge performed. Timestamp is the immediate post-push check.
 
 # Handoffs prepared for push
+## 2026-10-31T23:34:22-04:00 - PR #31 auth-origin review correction
+
+Summary file: PROJECT-HANDOFF.md
+
+### Done
+
+- [x] Emmanuel De Jesus: restricted configured Better Auth origins to HTTPS deployment URLs and supported local HTTP hosts; added regression tests.
+
+### Not completed
+
+- [ ] PR #31 still needs the required review approval before merge; publication of this correction is not yet verified.
+- [ ] Fast-forward eligible non-main lanes only after verified integration into `developer`; keep `main` and the dirty Phase 4 worktree untouched.
+
+- Remote baseline: `origin/manny/read-agents` at `6a9b9db628b1b58c4198576253e397901c6fcd11`; outgoing work consists of the current auth-origin and test changes plus this handoff update.
+- Validation: `npm.cmd test -- --run tests/auth-gate.test.ts` passed 4/4; `npm.cmd run typecheck` passed; `git diff --check` passed.
+- Next: push the correction to `manny/read-agents` for PR #31 and verify the remote tip.
+
 ## 2026-10-31T22:30:00-04:00 - PR #30 Review Finding: Capability URL Authentication Pivot
 
 Summary file: PROJECT-HANDOFF.md
@@ -96,6 +113,15 @@ Summary file: PROJECT-HANDOFF.md
   - Temperature retry in `model.ts` swallows errors in an empty catch block.
 - [x] Done: Full unit test suite passes: 61 suites, 594/594 tests. Team documentation updated with the review findings and capability URL access model.
 - [ ] Not completed: I01, I02, and I07 stay open. Live model/research provider connections remain disabled by default.
+
+## 2026-10-31T23:05:34-04:00 - ResearchReview pushed; PR #31 open
+
+Summary file: PROJECT-HANDOFF.md
+
+- Base: `manny/read-agents` at `08d02939e43fb62260db1c1002f0eda2030706f6`, equal to `origin/developer` after PR #29 and #30. Initial push verified at `33759a9`; PR #31 is open from `manny/read-agents` to `developer`: https://github.com/emmanuelID-cmd/Multi-Agent-Story/pull/31.
+- Outgoing implementation commit: `62a7621` (`feat(read): integrate ResearchReview on current lane`); documentation commit: `d5a677d`.
+- Validation: `git diff --check` passed; tests and typecheck were not run. No live model/provider call or migration was run.
+- Preserve the original root worktree and all 20 `docs/temp/` files. I01/I02 remain open; keep `main` untouched.
 
 ## 2026-10-31T12:10:05-04:00 - Synthetic gate fixes pushed to justins-side
 

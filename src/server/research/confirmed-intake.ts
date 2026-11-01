@@ -86,7 +86,7 @@ export async function prepareConfirmedResearchInput(request: ConfirmedResearchRe
       intake.revision !== request.expectedRevision || intake.analysis.id !== request.expectedAnalysisId ||
       intake.confirmed.analysisId !== request.expectedAnalysisId ||
       intake.analysis.sourceHash !== request.expectedSourceHash || intakeHash(intake.rawText) !== request.expectedSourceHash ||
-      createHash("sha256").update(JSON.stringify((project.brief.intake as { analysis: unknown }).analysis)).digest("hex") !== request.expectedAnalysisHash ||
+      createHash("sha256").update(JSON.stringify(intake.analysis)).digest("hex") !== request.expectedAnalysisHash ||
       authority.requestVersion !== intake.revision)
     throw new AppError(409, "Confirmed intake changed. Reload before research.");
   if (new Set(intake.analysis.observations.map(o => o.field)).size !== intake.analysis.observations.length ||
