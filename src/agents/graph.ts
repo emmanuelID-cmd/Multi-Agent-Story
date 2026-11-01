@@ -188,17 +188,8 @@ export async function finishRun(runId: string) {
       return {};
     } catch (error) {
       if (error instanceof Error && (error.message === "EXPLICIT_AUTHENTICATED_READ_REQUEST_REQUIRED" || error.message === "CURRENT_READ_CONSISTENCY_REQUIRED")) {
-        const isIntake = await db.transaction(async tx => {
-          const [run] = await tx.select().from(runs).where(eq(runs.id, runId));
-          if (!run) return false;
-          const [proj] = await tx.select().from(projects).where(eq(projects.id, run.projectId));
-          return Boolean(proj?.brief?.intake);
-        }).catch(() => false);
-
-        if (!isIntake) {
-          await db.update(runs).set({ status: "paused" }).where(and(eq(runs.id, runId), eq(runs.status, "running")));
-          return {};
-        }
+        await db.update(runs).set({ status: "paused" }).where(and(eq(runs.id, runId), eq(runs.status, "running")));
+        return {};
       } else {
         throw error;
       }

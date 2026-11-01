@@ -175,7 +175,7 @@ export class AnthropicWriteModel implements WriteModel {
       system: call.system,
       messages: [{ role: "user", content: JSON.stringify({ storyContext: call.data }) }],
       output_config: {
-        effort: "medium",
+        effort: "low",
         format: { type: "json_schema", schema: modelWireSchema(call.schema) },
       },
     };
