@@ -1,6 +1,48 @@
 # Project Handoff
 
-## Current task: Shared Phases 4.2–5.3 & Red-Team Vulnerability Resolution
+## Current task: PR #30 Code Review & Review Finding: Capability URL Authentication Pivot
+
+Prepared: 2026-10-31T22:30:00-04:00.
+
+- Repository: `emmanuelID-cmd/Multi-Agent-Story`.
+- Branch: `developer`; baseline commit: `376c101` (PR #30 merge).
+- Execution owner: Justin Day (`justin-day-pursuit`).
+
+### Key Review Finding: Authentication Model Pivot (Better Auth -> Capability Story URLs)
+
+A comprehensive code review and intent matching analysis of PR #30 (`feat(write): unblock end-to-end editorial pipeline, model indicators, and export`, commit `78591cb`, merged as PR #30 `376c101`) identified an architectural pivot in access control and identity that was implemented but not prominently declared in the PR summary:
+
+1. **Session Auth Replaced by Secret Capability URLs:**
+   - Across all API routes (`src/app/api/projects/`), `requireUser()` (Better Auth session verification) was removed. Route handlers now retrieve the story via `getProjectById(id)` and derive `ownerId` directly from the stored project record (`project.ownerId`).
+   - Better Auth client instantiation is now lazy in `src/server/auth/index.ts` (`getAuth()`), returning `null` when `BETTER_AUTH_SECRET` is unset, preventing startup crashes and allowing the server to run in prototype mode without session configuration.
+   - Project listing without an ID (`GET /api/projects`) now returns 404 ("Project unavailable."). Anonymous project creation (`createAnonymousProject`) generates an unguessable UUID and pairs it with an anonymous user row (`@anonymous.invalid`).
+   - Access and authorization are granted by possession of the secret capability story URL (`/[workId]`), acting as a prototype stand-in for accounts. Client `localStorage` tracks recent story IDs on that browser device.
+
+2. **Security & Integration Implications:**
+   - **Bearer Credential Surface:** Possession of the unguessable UUID link grants full reading, drafting, editing, cancel, and export capabilities. UUIDs have 122 bits of entropy, but appear in browser history, localStorage, and shared links without session revocation mechanisms.
+   - **Origin Boundaries Intact:** `sameOrigin(request)` remains strictly enforced on all mutation POST endpoints via `src/server/request-origin.ts`, which validates loopback port 3000 and configured `APP_URL` / `RENDER_EXTERNAL_URL` while ignoring spoofable `X-Forwarded-Host`.
+   - **Lane Alignment Requirement:** Manny's READ agents and Bible planning routes must be aware that downstream routes no longer expect or require session cookies/headers. Route tests across 8 test suites have been updated to mock `getProjectById` rather than `requireUser`.
+
+3. **Additional PR #30 Review Findings & Follow-Ups:**
+   - **Fragile Fixture Detection (`editors.ts`):** `isMaraFixture()` checks `baseChapters.some(c => c.text.includes("Mara"))`, which creates a semantic false-positive hazard if user content mentions "Mara". Recommended to replace with an explicit fixture flag.
+   - **Production Hardcoded Test IDs (`graph.ts`, `projects.ts`):** Conditional branches explicitly check `project.id === "proj-intake"` or `run.id === "proj-intake-run"`.
+   - **Error Handling (`model.ts`):** Anthropic 400 temperature retry silently catches exceptions in `catch {}`.
+   - **Budget Limit Parsing (`budget-ledger.ts`):** `process.env.STORY_BUDGET_MAX_TOKENS` parsed at module load without `NaN` validation.
+
+### Done
+- [x] Code review and intent matching completed for PR #30.
+- [x] Documented the architectural authentication model pivot in team reference and handoff files to ensure full alignment between Justin (WRITE) and Manny (READ).
+- [x] All 61 test suites (594 unit and contract tests) pass cleanly.
+
+### Not completed
+- [ ] Refactor `isMaraFixture()` to use an explicit fixture metadata flag rather than text matching.
+- [ ] Remove hardcoded `"proj-intake"` test IDs from production execution branches in `graph.ts` and `projects.ts`.
+- [ ] Add `NaN` validation and logging to model error retries.
+- [ ] Live Anthropic model and research provider calls remain gated behind flags.
+
+---
+
+## Previous task: Shared Phases 4.2–5.3 & Red-Team Vulnerability Resolution
 
 Prepared: 2026-10-31T12:08:34-04:00. Push verified 2026-10-31T12:10:05-04:00.
 

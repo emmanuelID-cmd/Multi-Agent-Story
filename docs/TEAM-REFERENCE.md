@@ -82,6 +82,21 @@ Verified move hashes:
   opened into `main`; no merge performed. Timestamp is the immediate post-push check.
 
 # Handoffs prepared for push
+## 2026-10-31T22:30:00-04:00 - PR #30 Review Finding: Capability URL Authentication Pivot
+
+Summary file: PROJECT-HANDOFF.md
+
+- Destination: `emmanuelID-cmd/Multi-Agent-Story`, branch `developer`. Baseline: `376c101` (PR #30 merge).
+- Outgoing commit: Justin Day (`justin-day-pursuit`). Activity: document PR #30 code review findings and the architectural authentication model pivot.
+- **Key Architecture Finding — Capability URL Pivot:**
+  PR #30 (`78591cb` / `376c101`) unblocked the end-to-end editorial pipeline and export, but also implemented an undeclared architectural pivot in identity and access control: Better Auth session authentication (`requireUser()`) was replaced across all API routes with secret capability story URLs (`/[workId]`). Handlers now derive `ownerId` from `getProjectById(id)`. Anonymous stories generate `@anonymous.invalid` user rows. The secret UUID acts as a bearer link for prototype testing, supported by client `localStorage` recents. Origin validation is enforced via `src/server/request-origin.ts`. Manny's lane must note that project routes no longer require or validate user session cookies.
+- **Code Review Observations for Follow-Up:**
+  - `isMaraFixture()` in `editors.ts` checks for the substring `"Mara"` in chapter text; needs an explicit fixture flag to avoid false positives on user text.
+  - Hardcoded test project IDs (`"proj-intake"`) in `graph.ts` and `projects.ts` should be cleaned up.
+  - Temperature retry in `model.ts` swallows errors in an empty catch block.
+- [x] Done: Full unit test suite passes: 61 suites, 594/594 tests. Team documentation updated with the review findings and capability URL access model.
+- [ ] Not completed: I01, I02, and I07 stay open. Live model/research provider connections remain disabled by default.
+
 ## 2026-10-31T12:10:05-04:00 - Synthetic gate fixes pushed to justins-side
 
 Summary file: PROJECT-HANDOFF.md
