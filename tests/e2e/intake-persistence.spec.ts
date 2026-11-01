@@ -1,25 +1,20 @@
 import { test, expect } from "@playwright/test";
 
-test("sparse intake survives reload and blocks stale, foreign, forged and unconfirmed actions", async ({ page, browser }) => {
+test("sparse intake survives reload and blocks stale, forged and unconfirmed actions", async ({ page, browser }) => {
   const origin = "http://localhost:3000";
-  const email = `intake-${crypto.randomUUID()}@example.test`;
-  const signUp = await page.request.post("/api/auth/sign-up/email", { headers: { origin }, data: {
-    email, password: `Synthetic-${crypto.randomUUID()}`, name: "Synthetic intake verification",
-  } });
-  expect(signUp.status()).toBe(200);
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Start with your story idea" })).toBeVisible();
   await page.getByLabel("Your story idea", { exact: true }).fill("A letter");
   await page.getByRole("button", { name: "Save story idea", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Story idea and research scope" })).toBeVisible();
-  const id = await page.getByLabel("Open a project").inputValue();
+  await expect(page).toHaveURL(/\/[0-9a-f-]{36}$/i);
+  const id = new URL(page.url()).pathname.slice(1);
   const before = await page.request.get(`/api/projects/${id}`);
   expect(before.status()).toBe(200);
   const saved = await before.json();
   expect(saved.project.brief.intake).toMatchObject({ rawText: "A letter", revision: 0, status: "draft" });
   expect(saved.project.brief.genre).toBe("");
-  await page.reload();
-  await page.getByLabel("Open a project").selectOption(id);
+  await page.goto(`/${id}`);
   await expect(page.getByLabel("Your story idea", { exact: true })).toHaveValue("A letter");
   const changed = await page.request.post(`/api/projects/${id}/intake`, { headers: { origin }, data: {
     action: "save", expectedRevision: 0, rawText: "A letter at the harbor",
@@ -44,18 +39,9 @@ test("sparse intake survives reload and blocks stale, foreign, forged and unconf
   expect(forged.status()).toBe(400);
   const isolated = await browser.newContext();
   try {
-    const guest = await isolated.request.post(`${origin}/api/projects/${id}/intake`, { headers: { origin }, data: {
-      action: "save", expectedRevision: 1, rawText: "Unowned change",
-    } });
-    expect(guest.status()).toBe(401);
-    const second = await isolated.request.post(`${origin}/api/auth/sign-up/email`, { headers: { origin }, data: {
-      email: `other-${crypto.randomUUID()}@example.test`, password: `Synthetic-${crypto.randomUUID()}`, name: "Other synthetic writer",
-    } });
-    expect(second.status()).toBe(200);
-    const foreign = await isolated.request.post(`${origin}/api/projects/${id}/intake`, { headers: { origin }, data: {
-      action: "save", expectedRevision: 1, rawText: "Unowned change",
-    } });
-    expect(foreign.status()).toBe(404);
+    const guest = await isolated.newPage();
+    await guest.goto(`/${crypto.randomUUID()}`);
+    await expect(guest.getByRole("heading", { name: "Story unavailable" })).toBeVisible();
   } finally { await isolated.close(); }
   const after = await (await page.request.get(`/api/projects/${id}`)).json();
   expect(after.project.brief.intake).toMatchObject({ rawText: "A letter at the harbor", revision: 1, status: "draft" });

@@ -21,7 +21,9 @@ export function configuredReadConnections(signal:AbortSignal):ReadConnectionOpti
   if(![inputUsdPerMillion,outputUsdPerMillion].every(v=>Number.isFinite(v)&&v>0)||!process.env.ANTHROPIC_API_KEY)
     throw new ReadConnectionError("READ_CONFIGURATION_UNAVAILABLE","human_review");
   const model=new AnthropicReadModel(process.env.ANTHROPIC_API_KEY);
-  return {runtime:{model,signal,budget:{maxTokens:limits.tokens,maxCostUsd:limits.costUsd,inputUsdPerMillion,outputUsdPerMillion}},
+  const maxTokens = process.env.STORY_BUDGET_MAX_TOKENS ? Number(process.env.STORY_BUDGET_MAX_TOKENS) : limits.tokens;
+  const maxCostUsd = process.env.STORY_BUDGET_MAX_COST_USD ? Number(process.env.STORY_BUDGET_MAX_COST_USD) : limits.costUsd;
+  return {runtime:{model,signal,budget:{maxTokens,maxCostUsd,inputUsdPerMillion,outputUsdPerMillion}},
     versions:{contract:"read-v1",prompt:"read-v1",harness:"read-connections-v1",model:model.modelId}};
 }
 

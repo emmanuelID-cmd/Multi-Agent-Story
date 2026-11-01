@@ -158,7 +158,7 @@ describe("Phase 4 writer connector", () => {
     });
 
     await writeChapter("run-1", 2, 0);
-    const tokenWrites = () => state.updates.filter((update) => Object.prototype.hasOwnProperty.call(update.values, "usedTokens"));
+    const tokenWrites = () => state.updates.filter((update: { values: Record<string, unknown> }) => Object.prototype.hasOwnProperty.call(update.values, "usedTokens"));
     expect(tokenWrites()).toHaveLength(1);
 
     state.task.status = "pending";

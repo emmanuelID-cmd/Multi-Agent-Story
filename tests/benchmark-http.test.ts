@@ -50,6 +50,38 @@ describe("authenticated project benchmark request boundary", () => {
     }))).toThrow("Request unavailable.");
   });
 
+  it("allows only loopback port 3000 and one configured public origin", () => {
+    vi.stubEnv("APP_URL", "");
+    vi.stubEnv("RENDER_EXTERNAL_URL", "");
+    try {
+      expect(() => verifyBenchmarkOrigin(new Request("http://127.0.0.1:3000/api/research/benchmarks", {
+        headers: { origin: "http://127.0.0.1:3000" },
+      }))).not.toThrow();
+      expect(() => verifyBenchmarkOrigin(new Request("http://localhost:3000/api/research/benchmarks", {
+        headers: { origin: "http://localhost:3001", "x-forwarded-host": "localhost:3001", host: "localhost:3001" },
+      }))).toThrow("Request unavailable.");
+      expect(() => verifyBenchmarkOrigin(new Request("http://localhost:3000/api/research/benchmarks", {
+        headers: { origin: "https://evil.test", "x-forwarded-host": "evil.test", host: "evil.test" },
+      }))).toThrow("Request unavailable.");
+      vi.stubEnv("RENDER_EXTERNAL_URL", "https://story.example.test");
+      expect(() => verifyBenchmarkOrigin(new Request("http://localhost:3000/api/research/benchmarks", {
+        headers: { origin: "https://story.example.test", "x-forwarded-host": "evil.test" },
+      }))).not.toThrow();
+      vi.stubEnv("APP_URL", "https://app.example.test/ignored-path");
+      expect(() => verifyBenchmarkOrigin(new Request("http://localhost:3000/api/research/benchmarks", {
+        headers: { origin: "https://app.example.test" },
+      }))).not.toThrow();
+      expect(() => verifyBenchmarkOrigin(new Request("http://localhost:3000/api/research/benchmarks", {
+        headers: { origin: "https://story.example.test" },
+      }))).toThrow("Request unavailable.");
+      expect(() => verifyBenchmarkOrigin(new Request("http://localhost:3000/api/research/benchmarks", {
+        headers: { origin: "https://app.example.test:444" },
+      }))).toThrow("Request unavailable.");
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("ends a stalled body at five seconds and cancels the reader without waiting for stream cleanup", async () => {
     vi.useFakeTimers();
     try {

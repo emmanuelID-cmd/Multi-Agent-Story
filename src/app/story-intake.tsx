@@ -5,6 +5,7 @@ import { assertIntakeDecisionsReviewed, intakeFields, intakeText, resolveIntake,
 import styles from "./story-intake.module.css";
 import { inspectText } from "../contracts/input-policy";
 import { lcQuerySchema, type LcKind } from "../contracts/vocabulary";
+import ModelStateIndicator, { type ModelRunningState } from "./model-state-indicator";
 
 type Props =
   | { mode: "create"; onCreated: (id: string) => Promise<void> }
@@ -38,6 +39,8 @@ export default function StoryIntake(props: Props) {
   const [textError, setTextError] = useState(false);
   const [scopeError, setScopeError] = useState(false);
   const [now, setNow] = useState(Date.now());
+  const [analyzingSeconds, setAnalyzingSeconds] = useState(0);
+  const [analysisError, setAnalysisError] = useState("");
   const errorRef = useRef<HTMLDivElement>(null);
   const lastRevision = useRef(intake?.revision);
   const preserveOnRevision = useRef(false);
@@ -59,14 +62,50 @@ export default function StoryIntake(props: Props) {
   }, [intake]);
   useEffect(() => { if (error) errorRef.current?.focus(); }, [error]);
   useEffect(() => {
-    if (intake?.status !== "analyzing") return;
-    const timer = window.setInterval(() => setNow(Date.now()), 5_000);
+    if (intake?.status !== "analyzing") {
+      setAnalyzingSeconds(0);
+      return;
+    }
+    const started = intake.startedAt ? Date.parse(intake.startedAt) : Date.now();
+    setAnalyzingSeconds(Math.max(0, Math.floor((Date.now() - started) / 1000)));
+    const timer = window.setInterval(() => {
+      const elapsed = Math.max(0, Math.floor((Date.now() - started) / 1000));
+      setAnalyzingSeconds(elapsed);
+      setNow(Date.now());
+      if (props.mode === "saved" && props.onRefresh) {
+        props.onRefresh().catch(() => undefined);
+      }
+    }, 1500);
     return () => window.clearInterval(timer);
-  }, [intake?.status]);
+  }, [intake?.status, intake?.startedAt, props]);
 
   const edited = !!intake && rawText !== intake.rawText;
   const stalled = intake?.status === "analyzing" && !!intake.startedAt && now - Date.parse(intake.startedAt) >= 45_000;
   const analysis = !edited && intake?.status !== "draft" && intake?.status !== "analyzing" ? intake?.analysis : undefined;
+
+  let intakeModelState: ModelRunningState = "idle";
+  let intakeModelTitle = "";
+  let intakeModelMessage = "";
+
+  if (intake?.status === "analyzing" && !edited) {
+    if (stalled || analyzingSeconds >= 45) {
+      intakeModelState = "timeout";
+      intakeModelTitle = "Analysis Timed Out";
+      intakeModelMessage = "The analysis did not finish within 45 seconds. The model request may be stalled or rate-limited. Click 'Retry analysis' to try again.";
+    } else {
+      intakeModelState = "loading";
+      intakeModelTitle = "Claude is analyzing your story idea";
+      intakeModelMessage = "Extracting narrative premise, setting, characters, arcs, and suggesting genre/structural options. Results will appear automatically.";
+    }
+  } else if (analysisError || (error && error.toLowerCase().includes("analysis"))) {
+    intakeModelState = "fail";
+    intakeModelTitle = "Analysis Failed";
+    intakeModelMessage = analysisError || error;
+  } else if (analysis && intake?.status === "analyzed" && !edited) {
+    intakeModelState = "success";
+    intakeModelTitle = "Analysis Complete";
+    intakeModelMessage = "Claude successfully analyzed your story idea. Review suggestions and confirmed elements below.";
+  }
   const labelFor = (field: IntakeField) => intakeFields.find(item => item.id === field)?.label || field;
   const decisionsFor = (field: IntakeField) => decisions.find(item => item.field === field);
   let values: Partial<Record<IntakeField, string>> = {};
@@ -114,7 +153,7 @@ export default function StoryIntake(props: Props) {
     setError("");
   }
   async function run(work: () => Promise<void>, refreshAfterFailure = false) {
-    setBusy(true); setError(""); setMessage("");
+    setBusy(true); setError(""); setAnalysisError(""); setMessage("");
     try { await work(); }
     catch (cause) {
       const failure = cause as ApiError;
@@ -122,7 +161,11 @@ export default function StoryIntake(props: Props) {
       const detail = failure.fields ? Object.values(failure.fields).flat().join(" ") : "";
       const notice = failure.fields?.vocabulary ? "Search again and select a current Library of Congress term, or use your answer. Your saved story and answers are preserved."
         : failure.status === 409 ? "This project changed elsewhere. Refresh the project, review your text, and try again." : `${failure.message}${detail ? ` ${detail}` : ""}`;
-      setError(notice + (failure.traceId && /^[a-f0-9-]{36}$/i.test(failure.traceId) ? ` Trace ID: ${failure.traceId}${failure.traceAvailability === "UNAVAILABLE" ? " (local trace unavailable)" : failure.traceAvailability === "DISABLED" ? " (local trace disabled)" : ""}.` : ""));
+      const fullError = notice + (failure.traceId && /^[a-f0-9-]{36}$/i.test(failure.traceId) ? ` Trace ID: ${failure.traceId}${failure.traceAvailability === "UNAVAILABLE" ? " (local trace unavailable)" : failure.traceAvailability === "DISABLED" ? " (local trace disabled)" : ""}.` : "");
+      setError(fullError);
+      if (failure.message?.toLowerCase().includes("analysis") || failure.message?.toLowerCase().includes("claude") || failure.message?.toLowerCase().includes("timeout")) {
+        setAnalysisError(fullError);
+      }
       if (refreshAfterFailure && props.mode === "saved") {
         preserveOnRevision.current = true;
         try { const updated = await props.onRefresh(); if (updated?.revision === intake?.revision) preserveOnRevision.current = false; }
@@ -192,6 +235,15 @@ export default function StoryIntake(props: Props) {
         }, true)}>{stalled ? "Retry analysis" : "Analyze with Claude"}</button>}
       </>}
     </div>
+    <ModelStateIndicator
+      state={intakeModelState}
+      title={intakeModelTitle}
+      message={intakeModelMessage}
+      elapsedSeconds={intakeModelState === "loading" ? analyzingSeconds : undefined}
+      maxSeconds={intakeModelState === "loading" ? 45 : undefined}
+      onRetry={stalled ? () => run(async () => { await act({ action: "analyze", expectedRevision: intake!.revision }); }, true) : undefined}
+      retryLabel="Retry analysis"
+    />
     {edited && <p className={styles.notice}>Your text has changed. Save it, then analyze again before reviewing or confirming.</p>}
     {intake?.status === "analyzing" && !edited && <p role="status" className={styles.notice}>{stalled ? "The analysis did not finish. Retry analysis to request a fresh Claude review, or refresh the project to check its latest state." : "Claude is analyzing this saved idea. Use Refresh in Your projects to check for the result."}</p>}
     {props.mode === "saved" && intake?.status === "draft" && !edited && <p className={styles.notice}>Your original idea is saved. Analyze with Claude when you are ready; the call uses paid model tokens.</p>}

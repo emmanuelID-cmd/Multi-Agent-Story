@@ -13,7 +13,16 @@ const hooks = vi.hoisted(() => ({
   traces: [] as { id: string; events: IntakeTraceEvent[] }[],
 }));
 vi.mock("@/contracts/intake", async () => await import("../src/contracts/intake"));
-vi.mock("@/server/projects", async () => await import("../src/server/projects"));
+vi.mock("@/server/projects", async () => {
+  const actual = await import("../src/server/projects");
+  return {
+    ...actual,
+    getProjectById: async (id: string) => {
+      if (id !== "synthetic-project") throw new actual.AppError(404, "Project unavailable.");
+      return { id, ownerId: "synthetic-owner" };
+    },
+  };
+});
 vi.mock("@/server/intake-http", async () => await import("../src/server/intake-http"));
 vi.mock("@/server/http", async () => {
   const { AppError } = await import("../src/server/projects");
@@ -63,6 +72,19 @@ function wire(stopReason: "end_turn" | "max_tokens") {
 
 describe("synthetic authenticated intake trace correlation", () => {
   beforeEach(() => { hooks.traces.length = 0; hooks.repository = undefined; hooks.model = undefined; });
+  it("returns Project unavailable for a missing id and reuses the stored owner for a known id", async () => {
+    const missing = await POST(request(), { params: Promise.resolve({ id: "missing" }) });
+    expect(missing.status).toBe(404);
+    expect(await missing.json()).toEqual({ error: "Project unavailable." });
+    expect(hooks.traces).toHaveLength(0);
+    const state = repository();
+    let seenOwner = "";
+    hooks.repository = { mutate: async (owner, project, change) => { seenOwner = owner; return state.value.mutate(owner, project, change); } };
+    hooks.model = new AnthropicReadModel("synthetic-key-canary", async () => Response.json(wire("end_turn")));
+    const known = await POST(request(), { params: Promise.resolve({ id: "synthetic-project" }) });
+    expect(known.status).toBe(200);
+    expect(seenOwner).toBe("synthetic-owner");
+  });
   it.each([["normal", "end_turn", 200, "SUCCEEDED"], ["model_stop", "max_tokens", 503, "MODEL_STOP_MAX_TOKENS"]] as const)(
     "%s follows POST through the model and persistence boundary", async (name, stopReason, expectedStatus, expectedCode) => {
       const state = repository(); hooks.repository = state.value;

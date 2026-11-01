@@ -66,7 +66,10 @@ async function fixture() {
   const complete = vi.fn(async (call: ModelCall) => {
     const data = call.data as { intent: { confirmedInputHash: string }; research: { dossierHash: string } };
     return { value: { role: call.agent, confirmedInputHash: data.intent.confirmedInputHash, dossierHash: data.research.dossierHash,
-      bible: { facts: [{ id: "F1", text: `Original ${call.agent} story fact.` }], beats: [1, 2, 3].map(chapterIndex => ({ chapterIndex, text: `Original ${call.agent} beat ${chapterIndex}.` })) }, conflicts: [] },
+      bible: { facts: [{ id: "F1", text: `Original ${call.agent} story fact.` }], beats: [1, 2, 3].map(chapterIndex => ({ chapterIndex, text: `Original ${call.agent} beat ${chapterIndex}.` })) },
+      // The saved intake confirms genre. Coverage must point that choice at a real fact.
+      coverage: [{ field: "genre", factId: "F1" }],
+      conflicts: [] },
       usage: { inputTokens: 10, outputTokens: 10 } };
   });
   const model: ReadModel = { modelId: "claude-haiku-5-5", complete };

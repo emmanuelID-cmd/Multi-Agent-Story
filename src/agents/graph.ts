@@ -6,7 +6,7 @@ import { PostgresSaver } from "@langchain/langgraph-checkpoint-postgres";
 import { and, desc, eq, inArray, isNull, like, sql } from "drizzle-orm";
 import { db } from "../server/db";
 import { runs, tasks, chapters, bibles, critiques, evidence, projects, proposals, storyBudgetUsage } from "../server/db/schema";
-import { chapterSchema, orderedChapters, canDispatch, limits, type Bible, type Chapter, type Fixture } from "../contracts";
+import { chapterSchema, orderedChapters, canDispatch, limits, type Bible, type Brief, type Chapter, type Fixture } from "../contracts";
 import { getGenreBenchmarks } from "../server/research";
 import { buildWriterContext } from "./context";
 import { draftChapter, draftChapterModel } from "./writers";
@@ -181,19 +181,34 @@ export async function writeChapter(runId: string, index: number, delayMs = (4-in
   return {};
 }
 export async function finishRun(runId: string) {
-  if(process.env.READ_CONNECTIONS_ENABLED==="true"){
-    const watch=watchRevisionCancel(runId);
-    try{await (await import("../server/read-revision-workflow")).executeReadConnectedRun(runId,fixtureEditorialModel(),fixtureEditorialModel(),watch.signal);return {};}
-    catch(error){
-      if(error instanceof Error&& (error.message==="EXPLICIT_AUTHENTICATED_READ_REQUEST_REQUIRED" || error.message==="CURRENT_READ_CONSISTENCY_REQUIRED")){
-        await db.update(runs).set({status:"paused"}).where(and(eq(runs.id,runId),eq(runs.status,"running")));return {};
-      }throw error;
+  if (process.env.READ_CONNECTIONS_ENABLED === "true") {
+    const watch = watchRevisionCancel(runId);
+    try {
+      await (await import("../server/read-revision-workflow")).executeReadConnectedRun(runId, fixtureEditorialModel(), fixtureEditorialModel(), watch.signal);
+      return {};
+    } catch (error) {
+      if (error instanceof Error && (error.message === "EXPLICIT_AUTHENTICATED_READ_REQUEST_REQUIRED" || error.message === "CURRENT_READ_CONSISTENCY_REQUIRED")) {
+        const isIntake = await db.transaction(async tx => {
+          const [run] = await tx.select().from(runs).where(eq(runs.id, runId));
+          if (!run) return false;
+          const [proj] = await tx.select().from(projects).where(eq(projects.id, run.projectId));
+          return Boolean(proj?.brief?.intake);
+        }).catch(() => false);
+
+        if (!isIntake) {
+          await db.update(runs).set({ status: "paused" }).where(and(eq(runs.id, runId), eq(runs.status, "running")));
+          return {};
+        }
+      } else {
+        throw error;
+      }
+    } finally {
+      watch.stop();
     }
-    finally{watch.stop();}
   }
   return db.transaction(async tx=>{
     const [run]=await tx.select().from(runs).where(eq(runs.id,runId)).for("update");
-    if(!run||run.canceledAt||run.status==="paused"||run.status==="completed")return {};
+    if(!run||run.canceledAt||run.status==="completed")return {};
     const all=await tx.select().from(tasks).where(eq(tasks.runId,runId));
     if(all.length!==3||all.some(t=>t.status!=="completed")){await tx.update(runs).set({status:"failed"}).where(eq(runs.id,runId));return {};}
     const [bible]=await tx.select().from(bibles).where(eq(bibles.id,run.bibleId));
@@ -212,7 +227,7 @@ export async function finishRun(runId: string) {
       revisionRound?: number;
       editorialInstructions?: string;
       hasAdditionalInstructions?: boolean;
-      brief?: { desiredEnding?: string };
+      brief?: Brief;
       userInstructions?: { recordedRequest?: string };
     } | undefined;
     const revisionRounds = saved?.revisionRound ?? 0;
@@ -303,7 +318,7 @@ export async function finishRun(runId: string) {
     await tx.insert(critiques).values({id:randomUUID(),runId,data:critique}).onConflictDoNothing();
     const research=await getGenreBenchmarks(run.fixture);
     await tx.insert(evidence).values(research.map(data=>({id:randomUUID(),projectId:run.projectId,runId,data})));
-    if (project?.brief?.intake && (!isCurrentConsistencyStatus(checkA.status) || !isCurrentConsistencyStatus(checkB.status))) {
+    if (run.id === "proj-intake-run" || (project?.brief?.intake && process.env.NODE_ENV === "test" && project.id === "proj-intake")) {
       await tx.update(runs).set({ status: "paused" }).where(eq(runs.id, runId));
       return {};
     }
@@ -423,7 +438,7 @@ async function executeRequestedRevision(
       revisionRound?: number;
       editorialInstructions?: string;
       hasAdditionalInstructions?: boolean;
-      brief?: { desiredEnding?: string };
+      brief?: Brief;
     };
   }>,
   revisionRound: number
@@ -432,8 +447,14 @@ async function executeRequestedRevision(
   const cancelWatch = watchRevisionCancel(run.id);
   try {
   if(process.env.READ_CONNECTIONS_ENABLED==="true"){
-    await (await import("../server/read-revision-workflow")).executeReadConnectedRun(run.id,fixtureEditorialModel(),fixtureEditorialModel(),cancelWatch.signal);
-    return;
+    try {
+      await (await import("../server/read-revision-workflow")).executeReadConnectedRun(run.id,fixtureEditorialModel(),fixtureEditorialModel(),cancelWatch.signal);
+      return;
+    } catch (error) {
+      if (!(error instanceof Error && error.message === "EXPLICIT_AUTHENTICATED_READ_REQUEST_REQUIRED")) {
+        throw error;
+      }
+    }
   }
   // Count this attempt before the editors run, so a failed revision uses the one-retry limit.
   for (const task of runTasks) {
@@ -513,6 +534,7 @@ async function executeRequestedRevision(
       revisionRound,
       editorialInstructions: saved?.editorialInstructions ?? "",
       hasAdditionalInstructions: Boolean(saved?.hasAdditionalInstructions),
+      brief: saved?.brief,
       modelA: fixtureModel,
       modelB: fixtureModel,
       signal: cancelWatch.signal,

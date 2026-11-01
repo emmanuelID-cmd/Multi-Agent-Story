@@ -1,8 +1,13 @@
 import { headers } from "next/headers";
-import { auth } from "./auth";
+import { getAuth } from "./auth";
 import { ReadError } from "./read-state";
 
+// Reads the signed-in account for the session-gated story state path.
+// /state is the caller. If BETTER_AUTH_SECRET is missing, this returns 401 and does not build a sign-in client.
+// Story links do not use this function. Keep their routes on the saved project owner instead.
 export async function requireReadUser() {
+  const auth = await getAuth();
+  if (!auth) throw new ReadError(401, "Sign in to continue.");
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) throw new ReadError(401, "Sign in to continue.");
   return session.user.id;

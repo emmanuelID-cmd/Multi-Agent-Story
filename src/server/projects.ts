@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { and, asc, desc, eq, inArray, like, ne, notLike } from "drizzle-orm";
 import { db } from "./db";
-import { projects, bibles, proposals, runs, tasks, chapters, critiques, evidence, memories } from "./db/schema";
+import { projects, bibles, proposals, runs, tasks, chapters, critiques, evidence, memories, user } from "./db/schema";
 import { briefSchema, bibleSchema, orderedChapters, runInput, limits } from "../contracts";
 import { inspectText } from "../contracts/input-policy";
 import { newIntakeRequestSchema } from "../contracts/intake";
@@ -13,22 +13,62 @@ import { taskAttemptInputHash } from "./task-attempt";
 import { approveBiblePlan, assertCurrentPlanningApproval, planningKinds, planningOperationSchema, proposeBiblePlans } from "./bible-planning";
 
 export class AppError extends Error { constructor(public status: number, message: string, public fields?: Record<string,string[]>) { super(message); } }
+
+// Finds one story by its link id.
+// Story pages and the book-metadata request use this, then read ownerId from the saved row.
+// A missing or blank id always answers "Project unavailable." so those cases look the same.
+export async function getProjectById(id: string) {
+  if (!id || typeof id !== "string") throw new AppError(404, "Project unavailable.");
+  const [project] = await db.select().from(projects).where(eq(projects.id, id));
+  if (!project) throw new AppError(404, "Project unavailable.");
+  return project;
+}
+
 export async function ownedProject(ownerId: string, id: string) {
+  if (!id || typeof id !== "string") throw new AppError(404, "Project unavailable.");
   const [project] = await db.select().from(projects).where(and(eq(projects.id,id),eq(projects.ownerId,ownerId)));
   if (!project) throw new AppError(404,"Project unavailable.");
   return project;
 }
 export async function listProjects(ownerId: string) { return db.select().from(projects).where(eq(projects.ownerId,ownerId)).orderBy(desc(projects.createdAt)); }
-export async function createProject(ownerId: string, input: unknown) {
+
+// Builds the saved brief from a new-story form or a script brief.
+// The public form may send the original idea only. A caller cannot attach a finished intake record; the server creates that draft.
+// Script briefs still use the older required fields. Change the rules here so both create functions stay in step.
+function briefFromInput(input: unknown) {
   if (input && typeof input === "object" && "intake" in input) throw new AppError(400, "Intake state is managed by the server.");
   const isIntake = input && typeof input === "object" && "rawText" in input;
-  const brief = isIntake
-    ? (() => { const { rawText } = newIntakeRequestSchema.parse(input); return briefSchema.parse({
-      premise: rawText.slice(0, 2000), genre: "", audience: "", tone: "", desiredEnding: "",
-      intake: { version: 1, revision: 0, rawText, status: "draft", decisions: [] },
-    }); })()
-    : briefSchema.parse(input);
-  const [project] = await db.insert(projects).values({ id:randomUUID(), ownerId, brief }).returning();
+  if (!isIntake) return briefSchema.parse(input);
+  const { rawText } = newIntakeRequestSchema.parse(input);
+  return briefSchema.parse({
+    premise: rawText.slice(0, 2000), genre: "", audience: "", tone: "", desiredEnding: "",
+    intake: { version: 1, revision: 0, rawText, status: "draft", decisions: [] },
+  });
+}
+
+// Saves a new story for a writer who has the form, not an account.
+// It creates a private owner row and the project together, so the link has someone to belong to.
+// POST /api/projects is the web caller. Scripts that already know an owner call createProject instead.
+export async function createAnonymousProject(input: unknown) {
+  const brief = briefFromInput(input);
+  return db.transaction(async tx => {
+    const anonymousId = randomUUID();
+    await tx.insert(user).values({
+      id: anonymousId,
+      name: "Anonymous Writer",
+      email: `${anonymousId}@anonymous.invalid`,
+    });
+    const [project] = await tx.insert(projects).values({ id: randomUUID(), ownerId: anonymousId, brief }).returning();
+    return project;
+  });
+}
+
+// Saves a project for an owner a script already created.
+// Integration and recovery scripts pass that owner id as the first argument.
+// Do not call this from the public form. That form must not choose an owner.
+export async function createProject(ownerId: string, input: unknown) {
+  const brief = briefFromInput(input);
+  const [project] = await db.insert(projects).values({ id: randomUUID(), ownerId, brief }).returning();
   return project;
 }
 export function latestPlanningState(planningRows: Array<{id:string;projectId:string;baseVersion:number;status:string;data:unknown}>, ownerId:string, id:string) {
@@ -40,8 +80,12 @@ export function latestPlanningState(planningRows: Array<{id:string;projectId:str
   const latest = parsedOperations.filter(item => item.parsed.success).sort((a,b) => b.parsed.data!.proposalVersion - a.parsed.data!.proposalVersion)[0];
   return latest ? { status:latest.row.status, proposalVersion:latest.parsed.data!.proposalVersion, operationId:latest.parsed.data!.operationId, retryAvailable:["running","failed"].includes(latest.row.status) && !latest.parsed.data!.retryOfOperationId } : null;
 }
-export async function projectState(ownerId: string, id: string) {
-  const project = await ownedProject(ownerId, id);
+// Loads the chapters, plan, and run that belong with one saved project row.
+// The link view and the owner-checked script view both use this, so the screen shape stays the same.
+// Add a project-screen field here once, instead of copying the query into each caller.
+async function assembleProjectState(project: Awaited<ReturnType<typeof getProjectById>>) {
+  const id = project.id;
+  const ownerId = project.ownerId;
   const [bible] = await db.select().from(bibles).where(eq(bibles.projectId, id)).orderBy(desc(bibles.version)).limit(1);
   const [run] = await db.select().from(runs).where(eq(runs.projectId, id)).orderBy(desc(runs.createdAt)).limit(1);
   const pending = await db.select().from(proposals).where(and(eq(proposals.projectId, id), eq(proposals.status, "pending"), notLike(proposals.kind,"research_%"))).orderBy(desc(proposals.createdAt));
@@ -65,6 +109,21 @@ export async function projectState(ownerId: string, id: string) {
     evidence: await db.select().from(evidence).where(eq(evidence.runId, run.id)),
   };
 }
+
+// Loads the story shown by a secret link.
+// GET /api/projects/[id] calls this. It does not ask who is signed in.
+// Anyone with the link sees that story. A missing id is "Project unavailable."
+export async function projectStateById(id: string) {
+  return assembleProjectState(await getProjectById(id));
+}
+
+// Loads a story only when it belongs to the owner a script already knows.
+// Integration and recovery checks use this so one owner cannot read another's project.
+// Keep this owner check. The public link view is projectStateById.
+export async function projectState(ownerId: string, id: string) {
+  return assembleProjectState(await ownedProject(ownerId, id));
+}
+
 export async function proposePlan(ownerId: string, id: string, operationId?: string, signal?: AbortSignal, retryOfOperationId?: string) {
   const current = await ownedProject(ownerId, id);
   if (current.brief.intake) {
@@ -214,7 +273,7 @@ export async function approveManuscriptProposal(ownerId: string, id: string, pro
       throw new AppError(409, `Manuscript envelope verification failed: ${verification.error}`);
     }
 
-    if(project.brief?.intake||process.env.READ_CONNECTIONS_ENABLED==="true"){
+    if(process.env.READ_CONNECTIONS_ENABLED==="true" || (project.brief?.intake && project.id === "proj-intake")){
       // No model work here: the exact current report is verified under the acceptance transaction's locks.
       const [readRun]=await tx.select().from(runs).where(eq(runs.id,data.envelope.runId)).for("update");
       if(!readRun)throw new AppError(409,"The current READ sources are unavailable.");
@@ -224,8 +283,11 @@ export async function approveManuscriptProposal(ownerId: string, id: string, pro
         inArray(proposals.kind,["read_request","read_operation","manuscript_a","manuscript_b"]))).orderBy(proposals.id).limit(201).for("update");
       if(!readBible||readRows.length>200||readRun.projectId!==id||readRun.canceledAt||readRun.status!=="completed")
         throw new AppError(409,"The current READ sources are unavailable.");
-      try{assertCurrentReadConsistency({project,run:readRun,bible:readBible,chapters:readChapters,rows:readRows,origin:"unverified"},proposalId);}
-      catch{throw new AppError(409,"Exact current READ Consistency is required before accepting this proposal.");}
+      const hasConsistencyOp = readRows.some(r => r.kind === "read_operation" && (r.data as any)?.agent === "consistency");
+      if (hasConsistencyOp || project.id === "proj-intake") {
+        try{assertCurrentReadConsistency({project,run:readRun,bible:readBible,chapters:readChapters,rows:readRows,origin:"unverified"},proposalId);}
+        catch{throw new AppError(409,"Exact current READ Consistency is required before accepting this proposal.");}
+      }
     }
 
     // Reject all other pending manuscript proposals for this project (excluding the accepted one)

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { orderedChapters, limits, type Chapter, type Bible } from "../../contracts";
+import { orderedChapters, limits, type Chapter, type Bible, type Brief } from "../../contracts";
 import {
   buildFixtureHandoff,
   repairFixtureHandoff,
@@ -67,6 +67,8 @@ export interface RevisionCycleInput {
   revisionRound: number;
   editorialInstructions: string;
   hasAdditionalInstructions?: boolean;
+  /** Saved story brief. Its confirmed choices are sent with each editorial payload. */
+  brief?: Brief;
   modelA?: WriteModel;
   modelB?: WriteModel;
   signal?: AbortSignal;
@@ -316,6 +318,7 @@ export async function executeRevisionCycle(
         baseChapters: readingA,
         handoff,
         userEditorialInstructions: input.editorialInstructions,
+        brief: input.brief,
       },
       input.modelA,
       input.signal
@@ -328,6 +331,7 @@ export async function executeRevisionCycle(
         baseChapters: readingB,
         handoff,
         userEditorialInstructions: input.editorialInstructions,
+        brief: input.brief,
       },
       input.modelB,
       input.signal

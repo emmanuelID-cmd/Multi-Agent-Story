@@ -273,6 +273,19 @@ export const revisedProposalWireSchema = z.object({
   ).min(1),
 });
 
+/**
+ * Reads the choices the writer already confirmed on the saved intake.
+ * Chapter writers and editors both receive this same list, beside the short premise, audience, genre, tone, and ending.
+ * A story with no confirmed intake sends an empty list, so older projects keep working.
+ * Leave every kind of choice in this one list. Do not add a separate rule for language, relationships, or any other single detail.
+ */
+export function confirmedDimensionsFromBrief(brief?: Brief): Array<{ field: string; value: string }> {
+  const dimensions = brief?.intake?.status === "confirmed" ? brief.intake.confirmed?.scope.dimensions ?? [] : [];
+  return dimensions
+    .filter(item => item.value.trim().length > 0)
+    .map(item => ({ field: item.field, value: item.value }));
+}
+
 export interface GenerateChapterInput {
   chapterIndex: 1 | 2 | 3;
   bibleVersion: number;
@@ -294,6 +307,8 @@ export interface GenerateEditorialProposalInput {
   baseChapters: Chapter[];
   handoff?: ReaderToEditorHandoff;
   userEditorialInstructions?: string;
+  /** Saved story brief. Confirmed intake choices are copied onto the editorial payload. */
+  brief?: Brief;
 }
 
 export interface GenerateEditorialProposalResult {
@@ -338,6 +353,7 @@ export async function generateChapterProse(
           desiredEnding: input.brief.desiredEnding,
         }
       : undefined,
+    confirmedDimensions: confirmedDimensionsFromBrief(input.brief),
     precedingChapters: input.precedingChapters
       ? input.precedingChapters
           .filter((c) => c.chapterIndex < input.chapterIndex)
@@ -398,6 +414,7 @@ export async function generateEditorialProposal(
     editorialLens,
     bibleVersion: input.bibleVersion,
     approvedFacts: input.approvedBible.facts,
+    confirmedDimensions: confirmedDimensionsFromBrief(input.brief),
     baseChapters: input.baseChapters.map((c) => ({
       chapterIndex: c.chapterIndex,
       text: c.text,

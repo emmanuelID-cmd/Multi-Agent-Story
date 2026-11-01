@@ -1,0 +1,168 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 18px;
+  border-radius: 10px;
+  margin: 16px 0;
+  font-size: 14px;
+  line-height: 1.5;
+  transition: all 0.2s ease-in-out;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 14px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  line-height: 1;
+}
+
+.title {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.timer {
+  margin-left: auto;
+  font-size: 12px;
+  font-family: ui-monospace, monospace;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.message {
+  margin: 0;
+  font-size: 13px;
+  opacity: 0.95;
+}
+
+.details {
+  margin: 4px 0 0 0;
+  font-size: 12px;
+  font-family: ui-monospace, monospace;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.04);
+  word-break: break-word;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.retryButton {
+  min-height: 32px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 6px;
+  border: 1px solid currentColor;
+  background: transparent;
+  cursor: pointer;
+  color: inherit;
+}
+
+.retryButton:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+/* State: loading */
+.loading {
+  background: #f0f7fd;
+  border: 1px solid #99cbee;
+  color: #0b4570;
+}
+
+.loading .badge {
+  background: #0d548b;
+  color: #ffffff;
+}
+
+/* State: success */
+.success {
+  background: #f0f9f2;
+  border: 1px solid #92d49b;
+  color: #155724;
+}
+
+.success .badge {
+  background: #206d33;
+  color: #ffffff;
+}
+
+/* State: fail */
+.fail {
+  background: #fdf2f2;
+  border: 1px solid #f19f9f;
+  color: #721c24;
+}
+
+.fail .badge {
+  background: #aa2c2c;
+  color: #ffffff;
+}
+
+/* State: timeout */
+.timeout {
+  background: #fff9e6;
+  border: 1px solid #f3cb69;
+  color: #7a4b00;
+}
+
+.timeout .badge {
+  background: #b56b00;
+  color: #ffffff;
+}
+
+/* Spinner and Animations */
+.spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+  display: inline-block;
+}
+
+.pulseDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ffffff;
+  animation: pulse 1.2s ease-in-out infinite;
+  display: inline-block;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.35;
+    transform: scale(0.8);
+  }
+}
