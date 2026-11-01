@@ -1,5 +1,22 @@
 # Project Handoff
 
+## Current verified state: Phase 4 continuation after PR #32
+
+Prepared: 2026-11-01T00:57:41-04:00.
+
+- Summary file: [docs/HANDOFF-TO-CONTINUING-LLM.md](docs/HANDOFF-TO-CONTINUING-LLM.md).
+- PR #32 merged `shared/phase-4-planning-orchestration` into `developer` at `7174bc8acbd6d8d29789302610729c62585288fa`. The safe non-main remote branches were fast-forwarded and verified at that commit; `main` remains unchanged at `4b340485bd0cf94b52294150c44b28d4ba890aa3`.
+- The obsolete `shared/remove-helloworld-test` remote branch was already absent. Its local branch ref was deleted after confirming its tip equaled `developer`; its worktree is detached at that commit and its ignored `node_modules/` is preserved.
+- The root `docs/temp/` directory's 20 files remain untracked and preserved. Four Git stashes remain intact. The continuation handoff is being included with this documentation update.
+- I01 and I02 remain open. No migration was applied and no live model/provider call was made.
+- This current-state entry supersedes the pending-publication wording in the dated PR #31 correction entry below; that wording recorded the state before PR #32 merged and is retained as history.
+
+### Next
+
+- Continue the approved Shared Phase 4.1 ledger integration and Shared Phase 4.2 graph work from the existing phase documents. Preserve unfinished work and the user's HAND-OFF meaning; do not change `main` or run live providers/migrations without explicit authorization.
+
+---
+
 ## Current task: PR #31 merge status and safe tree reconciliation
 
 Prepared: 2026-11-01T00:07:54-04:00.
