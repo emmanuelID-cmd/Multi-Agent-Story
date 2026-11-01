@@ -82,6 +82,31 @@ Verified move hashes:
   opened into `main`; no merge performed. Timestamp is the immediate post-push check.
 
 # Handoffs prepared for push
+## 2026-11-01T12:55:00-05:00 - Phase 4 Live Execution, Midnight Scribe UI, and Story Completion
+
+Summary file: PROJECT-HANDOFF.md
+
+### Done
+
+- [x] Adopted Midnight Scribe UI: deep navy/amber palette, top-left merged scroll + ink pen badge, Threadmiller logo anchored in top-right, story switcher dropdown, plagiarism warning banner, and workspace button order (Plan -> Research -> Draft).
+- [x] Research excerpt auto-population and 1-click clipboard copy button implemented in `src/app/research-review.tsx`.
+- [x] Connected and executed live Phase 4.1 / I01: 3 candidate bibles generated via live Claude Haiku (`claude-haiku-5-5`), Candidate A accepted (Bible v1), shared durable budget ledger active.
+- [x] Connected and executed live Phase 4.2 / I02: 3 chapters drafted via Claude Haiku across Writers 1, 2, 3; Reader narrative analysis executed; Critic Editors A (Fontaine) and B (Lang) produced full 3-chapter manuscript proposals.
+- [x] Dual Consistency Checks (M06) executed via live Claude Haiku (`CONSISTENCY_CANDIDATE`, status `complete`).
+- [x] Human Gate #2: Manuscript B (Lang: Voice & Atmosphere) approved via `approveManuscriptProposal`.
+- [x] Phase 5.2 / I06 export: full 29,137-character Markdown story exported via `/api/projects/:id` (`export`).
+- [x] Codebase health: 0 TypeScript errors (`npm run typecheck`), 62/62 test files and 605/605 tests passing (`npm test`).
+- [x] Commits pushed to `origin/shared/phase-4-planning-orchestration`: `2bf3c25` and `750bd77`.
+
+### Not completed
+
+- [ ] Merge `shared/phase-4-planning-orchestration` into `developer` via Pull Request.
+- [ ] Refactor `isMaraFixture()` in `editors.ts` to use explicit metadata flag rather than text matching.
+- [ ] Remove hardcoded `"proj-intake"` test IDs from production execution branches in `graph.ts` and `projects.ts`.
+
+- Verified destination baseline: `shared/phase-4-planning-orchestration` at `750bd77`.
+- Next: Open PR into `developer`, verify CI checks, and merge. Keep `main` untouched.
+
 ## 2026-11-01T00:57:41-04:00 - Phase 4 continuation handoff and PR #32 reconciliation
 
 Summary file: PROJECT-HANDOFF.md

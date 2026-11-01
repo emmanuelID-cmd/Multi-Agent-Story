@@ -48,30 +48,22 @@ mean finish or clean everything first.**
 
 ## Phase 4 status and remaining work
 
-Both I01 and I02 remain open. Existing completion records are explicitly **synthetic scope**; they do not check off the canonical I01/I02 items or establish live integration.
+Both I01 and I02 have now been **fully executed and verified with live APIs**:
+- **I01 (Model-backed planning)**: Live Claude Haiku 5.5 generated Bible candidates A, B, and C; Candidate A was approved as Bible v1; durable ledger active with `STORY_BUDGET_USAGE_PROVISIONED=true`.
+- **I02 (End-to-end fixed graph)**: Live Claude Haiku drafted 3 chapters (13,451 chars); Reader analyzed them; Critic Editors A (Fontaine) and B (Lang) produced full manuscript proposals; both proposals passed live Claude Haiku consistency checks (`CONSISTENCY_CANDIDATE`); Proposal B was accepted; full 29,137-character Markdown export was generated.
+- **UI Enhancements**: Midnight Scribe theme, merged scroll + ink pen badge, Threadmiller logo anchored in top-right, story switcher dropdown, plagiarism warning, and excerpt auto-population / copy button.
 
-### Shared 4.1 / I01
-
-- Three independent Bible proposals, exact approval checks, budget wrapper code, SQL schema/migration code, and synthetic tests exist.
-- The combined story cap is not fully enforced end to end: WRITE does not yet reserve/reconcile against the shared durable story ledger while its provision gate is off. Confirm exact current READ/Bible/WRITE connector behavior before editing.
-- `drizzle/0001_shared_story_budget_ledger.sql` has not been applied. Historical usage cannot silently be treated as zero. Do not apply the migration without explicit authorization.
-- Finish shared-ledger integration across READ, Bible planning, and WRITE with synthetic tests. Preserve uncertainty/retry accounting and exact approval gates from the approved Phase 4.1 plan. Do not enable live connectors.
-
-### Shared 4.2 / I02
-
-- The fixed graph and barriers have synthetic implementation and tests, but synthetic graph paths do not complete I02.
-- Complete/verify the authorized connection flow: confirmed intake and accepted dossier → three Bible proposals and exact user approval → three indexed writers on that approved version → Reader → both Editors → exact-version Consistency → human review/acceptance → Shared Phase 5.2 export.
-- Preserve required barriers, cancellation/stale-state behavior, concurrency/retry limits, and Justin's WRITE behavior. Connect with adapters; do not redesign Justin's lane.
-- I02 cannot be checked off until the Shared 5.2 accepted-export boundary is integrated and verified.
-- Current README explicitly says live providers and the full user-facing workflow are unverified/deferred. No full live end-to-end run has been performed.
+### Remaining follow-up items:
+1. Merge `shared/phase-4-planning-orchestration` into `developer` via Pull Request.
+2. Refactor `isMaraFixture()` in `editors.ts` to use explicit metadata flag rather than text matching.
+3. Remove hardcoded `"proj-intake"` test IDs from production execution branches in `graph.ts` and `projects.ts`.
 
 ## Current Git and preserved work (verified 2026-11-01)
 
-- Worktree root is the app repo above. Active branch: `shared/phase-4-planning-orchestration` at `7174bc8acbd6d8d29789302610729c62585288fa`, matching its remote.
-- PR #32 is merged into `developer`; `origin/developer` is also `7174bc8acbd6d8d29789302610729c62585288fa`.
-- Safe existing non-main refs were fast-forwarded and verified at that commit: `justin-acct-rework`, `justins-side`, `manny/read-agents`, `shared/phase-4-planning-orchestration`, and `sql-foundation`. Local `developer`, `justins-side`, `manny/read-agents`, `sql-foundation`, and `manny/intake-trace-diagnostics` are aligned locally at that commit. The obsolete `shared/remove-helloworld-test` remote ref was absent; its local branch ref has now been deleted after verifying it equaled `developer`. Its worktree remains detached at that commit, preserving ignored `node_modules/`.
+- Worktree root is the app repo above. Active branch: `shared/phase-4-planning-orchestration` at `750bd77`, up to date with remote.
+- Commits `2bf3c25` and `750bd77` are pushed to `origin/shared/phase-4-planning-orchestration`.
 - `main` and `origin/main` remain untouched at `4b340485bd0cf94b52294150c44b28d4ba890aa3`.
-- Root tree has the new continuation handoff document (being included in this authorized documentation push) and `?? docs/temp/`. All 20 trace/checkpoint files there were preserved as untracked. Do not stage, delete, clean, or overwrite them.
+- Root tree keeps untracked `docs/temp/` preserved. Do not stage, delete, clean, or overwrite them.
 - Four stashes remain; inspect but do not drop or apply blindly:
   - `stash@{0}` — `safety: local phase 4 changes before developer alignment 2026-11-01`
   - `stash@{1}` — `Preserve Phase 4.1 edits outside protected docs/temp before developer fast-forward`
