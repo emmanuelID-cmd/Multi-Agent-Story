@@ -95,7 +95,7 @@ export class AnthropicReadModel implements ReadModel {
         model: this.modelId, max_tokens: call.maxOutputTokens,
         system: call.system,
         messages: [{ role: "user", content: JSON.stringify({ evidenceData: call.data }) }],
-        output_config: { effort: "medium", format: { type: "json_schema", schema: modelWireSchema(call.schema) } },
+        output_config: { effort: "low", format: { type: "json_schema", schema: modelWireSchema(call.schema) } },
       }),
     });
     if (!response.ok) {

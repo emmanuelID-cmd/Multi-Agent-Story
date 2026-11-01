@@ -1,16 +1,354 @@
-.card{background:#fffefa;padding:28px;border:1px solid #d6ddd2;border-radius:14px;margin:24px 0}
-.card>p,.hint{color:#5e6a62;font-size:14px}
-.guide{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin:22px 0;padding:18px;background:#f6f5ef;border-radius:10px}
-.guide h3{margin-bottom:8px}.guide ul{padding-left:18px;margin:0}.guide li{font-size:13px;line-height:1.6}
-.inputSection{max-width:750px}.inputSection textarea,.fieldset textarea{display:block;width:100%;min-height:90px;padding:10px 12px;background:#fffefa;color:#23372f;border:1px solid #b7c4b4;border-radius:8px;font:inherit;resize:vertical}
-.inputSection textarea{min-height:170px}.inputSection textarea[aria-invalid=true]{border:2px solid #aa3030}
-.count{display:block;text-align:right;color:#5e6a62;font-size:12px}
-.actions{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}.primary{background:#254d3e;color:#fff}.primary:hover:not(:disabled){background:#193b2d}
-.error{background:#fff0ed;border-left:4px solid #aa3030;color:#812222;padding:14px 18px;margin:16px 0;border-radius:6px}
-.notice{padding:12px 16px;background:#f2ddb3;border-radius:8px;color:#584017}
-.review{border-top:1px solid #d6ddd2;padding-top:22px;margin-top:24px}.review ul{padding-left:22px}.review li{margin-bottom:7px;overflow-wrap:anywhere}.review h4{margin:22px 0 8px}.review em{color:#5e6a62;font-size:13px}
-.fieldset{min-width:0;border:1px solid #d6ddd2;border-radius:10px;margin:12px 0;padding:16px}.fieldset legend{font-weight:700;padding:0 6px}.fieldset:disabled{opacity:.65}.fieldset p{margin-bottom:8px}.options{display:grid;gap:8px;margin:10px 0 18px}.options label{display:flex;gap:10px;align-items:start;border:1px solid #d6ddd2;border-radius:8px;padding:9px;font-weight:400}.options input,.checkbox input{width:auto;min-height:0;margin:5px 0 0;flex:none}.checkbox{display:flex;align-items:start;gap:10px;margin:16px 0}.blocker{color:#972626;font-weight:700}
-.fieldset textarea[aria-invalid=true],.checkbox input[aria-invalid=true]{outline:2px solid #aa3030;outline-offset:2px}.optional{margin:10px 0}.optional summary{cursor:pointer;padding:10px 12px;border:1px solid #d6ddd2;border-radius:8px;color:#254d3e;font-weight:600}.optional .fieldset{margin-top:8px}
-.fieldset[aria-invalid=true]{border:2px solid #aa3030}
-.vocabulary{border:1px solid #d6ddd2;border-radius:10px;padding:16px;margin:12px 0}.vocabulary>label{font-weight:700}.vocabulary input[type=text]{min-width:min(100%,300px);padding:10px 12px;border:1px solid #b7c4b4;border-radius:8px;font:inherit}.vocabulary input[aria-invalid=true]{border:2px solid #aa3030}
-@media(max-width:760px){.card{padding:22px}.guide{grid-template-columns:1fr;gap:12px}.actions button{max-width:100%}}
+/* Weaver Story Intake — Midnight Scribe (Nocturne) Theme */
+.card {
+  background: #121829;
+  padding: 18px 22px;
+  border: 1px solid #222f4c;
+  border-radius: 12px;
+  margin: 14px 0;
+  color: #e2e8f0;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+.card > p, .hint {
+  color: #94a3b8;
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 4px 0;
+}
+.guide {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 14px 0;
+  padding: 12px 14px;
+  background: #0d1322;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+}
+.guide h3 {
+  margin: 0 0 6px;
+  font-size: 13px;
+  color: #fef08a;
+}
+.guide ul {
+  padding-left: 16px;
+  margin: 0;
+}
+.guide li {
+  font-size: 12px;
+  line-height: 1.5;
+  color: #94a3b8;
+}
+
+/* Story Switcher Bar (Above Textarea) */
+.storySwitcherBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  background: #0d1322;
+  border: 1px solid #222f4c;
+  border-radius: 8px;
+}
+.storyDropdown {
+  background: #121829;
+  color: #f1f5f9;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  outline: none;
+  cursor: pointer;
+  max-width: 420px;
+}
+.storyDropdown:focus {
+  border-color: #d4af37;
+  box-shadow: 0 0 6px rgba(212, 175, 55, 0.25);
+}
+.revisionBadge {
+  font-size: 11px;
+  font-weight: 600;
+  color: #c4b5fd;
+  background: #1f1938;
+  border: 1px solid #4c3b7a;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+/* Textarea & Warning */
+.inputSection {
+  max-width: 820px;
+}
+.inputSection label {
+  font-weight: 700;
+  font-size: 13px;
+  color: #fef08a;
+  display: block;
+  margin-bottom: 4px;
+}
+.inputSection textarea, .fieldset textarea {
+  display: block;
+  width: 100%;
+  min-height: 80px;
+  padding: 10px 12px;
+  background: #0d1322;
+  color: #f1f5f9;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  resize: vertical;
+  transition: border-color 0.15s ease;
+}
+.inputSection textarea:focus, .fieldset textarea:focus {
+  outline: none;
+  border-color: #d4af37;
+  box-shadow: 0 0 8px rgba(212, 175, 55, 0.2);
+}
+.inputSection textarea {
+  min-height: 120px;
+}
+.inputSection textarea[aria-invalid=true] {
+  border: 2px solid #ef4444;
+}
+
+/* Mandatory Plagiarism Warning Box */
+.plagiarismWarning {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: rgba(69, 26, 3, 0.5);
+  border-left: 4px solid #f59e0b;
+  border-top: 1px solid rgba(245, 158, 11, 0.2);
+  border-right: 1px solid rgba(245, 158, 11, 0.2);
+  border-bottom: 1px solid rgba(245, 158, 11, 0.2);
+  color: #fef3c7;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.count {
+  display: block;
+  text-align: right;
+  color: #64748b;
+  font-size: 11px;
+  margin-top: 4px;
+}
+
+/* Actions & Buttons */
+.actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+}
+.primary {
+  background: #1a233a;
+  color: #fef08a;
+  border: 1px solid #d4af37;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 6px rgba(212, 175, 55, 0.15);
+}
+.primary:hover:not(:disabled) {
+  background: #253354;
+  border-color: #fef08a;
+  box-shadow: 0 2px 10px rgba(212, 175, 55, 0.3);
+}
+.primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Alerts */
+.error {
+  background: #450a0a;
+  border-left: 4px solid #ef4444;
+  color: #fecaca;
+  padding: 10px 14px;
+  margin: 12px 0;
+  border-radius: 6px;
+  font-size: 13px;
+}
+.notice {
+  padding: 10px 14px;
+  background: #1f1938;
+  border: 1px solid #4c3b7a;
+  border-radius: 8px;
+  color: #ddd6fe;
+  font-size: 13px;
+}
+.review {
+  border-top: 1px solid #222f4c;
+  padding-top: 16px;
+  margin-top: 16px;
+}
+.review ul {
+  padding-left: 18px;
+  margin: 8px 0;
+}
+.review li {
+  margin-bottom: 5px;
+  overflow-wrap: anywhere;
+  color: #cbd5e1;
+  font-size: 13px;
+}
+.review h3 {
+  color: #fef08a;
+  margin: 0 0 6px;
+  font-size: 15px;
+}
+.review h4 {
+  margin: 14px 0 6px;
+  font-size: 13px;
+  color: #f8fafc;
+}
+.review em {
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+/* Compact Suggestion Fieldsets */
+.fieldset {
+  min-width: 0;
+  border: 1px solid #222f4c;
+  border-radius: 8px;
+  margin: 10px 0;
+  padding: 12px 14px;
+  background: #0d1322;
+}
+.fieldset legend {
+  font-weight: 700;
+  font-size: 13px;
+  color: #fef08a;
+  padding: 0 6px;
+}
+.fieldset:disabled {
+  opacity: 0.6;
+}
+.fieldset p {
+  margin: 0 0 6px;
+  font-size: 13px;
+  color: #cbd5e1;
+}
+
+/* Clickable Chips (Replacing Radio Buttons) */
+.chipContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0 10px;
+}
+.chip {
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  background: #121829;
+  color: #cbd5e1;
+  border: 1px solid #334155;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+.chip:hover:not(:disabled) {
+  border-color: #64748b;
+  color: #f8fafc;
+  background: #1a233a;
+}
+.chipSelected {
+  background: #1e1b4b !important;
+  border: 2px solid #d4af37 !important;
+  color: #fef08a !important;
+  font-weight: 700 !important;
+  box-shadow: 0 0 8px rgba(212, 175, 55, 0.25);
+}
+.chipRecommended {
+  border-color: #d4af37;
+}
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0;
+  color: #e2e8f0;
+  font-size: 13px;
+  font-weight: 500;
+}
+.checkbox input {
+  width: 16px;
+  height: 16px;
+  accent-color: #d4af37;
+}
+.blocker {
+  color: #f87171;
+  font-weight: 700;
+  font-size: 13px;
+}
+.fieldset textarea[aria-invalid=true], .checkbox input[aria-invalid=true] {
+  outline: 2px solid #ef4444;
+  outline-offset: 2px;
+}
+.optional {
+  margin: 8px 0;
+}
+.optional summary {
+  cursor: pointer;
+  padding: 8px 12px;
+  border: 1px solid #222f4c;
+  border-radius: 6px;
+  color: #d4af37;
+  font-weight: 600;
+  font-size: 12px;
+  background: #0d1322;
+}
+.optional .fieldset {
+  margin-top: 6px;
+}
+.fieldset[aria-invalid=true] {
+  border: 2px solid #ef4444;
+}
+
+/* Vocabulary Lookup */
+.vocabulary {
+  border: 1px solid #222f4c;
+  border-radius: 8px;
+  padding: 12px;
+  margin: 10px 0;
+  background: #0d1322;
+}
+.vocabulary > label {
+  font-weight: 700;
+  color: #fef08a;
+  font-size: 13px;
+}
+.vocabulary input[type=text] {
+  min-width: min(100%, 280px);
+  padding: 8px 10px;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  background: #121829;
+  color: #f1f5f9;
+  font: inherit;
+  font-size: 13px;
+}
+.vocabulary input[aria-invalid=true] {
+  border: 2px solid #ef4444;
+}
+
+@media (max-width: 760px) {
+  .card { padding: 16px; }
+  .guide { grid-template-columns: 1fr; gap: 8px; }
+  .actions button { max-width: 100%; }
+}

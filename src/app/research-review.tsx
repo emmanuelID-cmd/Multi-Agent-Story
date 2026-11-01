@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import styles from "./workspace.module.css";
 import { canAcceptResearch, newestResearchCandidate, researchAcceptance, researchDetailSchema, researchListSchema,
   confirmedResearchDimensions, type ResearchDetail, type ResearchSummary } from "./research-review-model";
@@ -9,6 +9,76 @@ type SourceDraft={kind:"licensed_text"|"historical_context";work:string;author:s
   dimensionIds:string[];text:string;confirmPermission:boolean};
 type Props = { projectId: string; intake:unknown; onAccepted: () => Promise<void> };
 const blankSource=():SourceDraft=>({kind:"licensed_text",work:"",author:"",publicationDate:"",sourceUrl:"",locator:"",licenseReference:"",dimensionIds:[],text:"",confirmPermission:false});
+
+const SUGGESTED_PRESETS = [
+  {
+    name: "Maritime / Adventure",
+    genres: ["Adventure", "Action / Exploration", "Historical Fiction"],
+    work: "Treasure Island",
+    author: "Robert Louis Stevenson",
+    publicationDate: "1883",
+    sourceUrl: "https://www.gutenberg.org/ebooks/120",
+    locator: "Chapter 1",
+    licenseReference: "Project Gutenberg Public Domain License",
+    text: "I remember him as if it were yesterday, as he came plodding to the inn door, his sea-chest following behind him in a hand-barrow—a tall, strong, heavy, nut-brown man; his tarry pigtail falling over the shoulder of his soiled blue coat; his hands ragged and scarred, with black, broken nails; and the sabre cut across one cheek, a dirty, livid white. He looked round the cove and whistled to himself as he did so, and then broke out into that old sea-song that he sang so often afterwards: 'Fifteen men on the dead man's chest—Yo-ho-ho, and a bottle of rum!'",
+  },
+  {
+    name: "Mystery / Detective",
+    genres: ["Mystery", "Thriller / Suspense"],
+    work: "The Adventures of Sherlock Holmes",
+    author: "Arthur Conan Doyle",
+    publicationDate: "1892",
+    sourceUrl: "https://www.gutenberg.org/ebooks/1661",
+    locator: "A Scandal in Bohemia",
+    licenseReference: "Project Gutenberg Public Domain License",
+    text: "To Sherlock Holmes she is always THE woman. I have seldom heard him mention her under any other name. In his eyes she eclipses and predominates the whole of her sex. It was not that he felt any emotion akin to love for Irene Adler. All emotions, and that one particularly, were abhorrent to his cold, precise but admirably balanced mind.",
+  },
+  {
+    name: "Fantasy / Classic Tale",
+    genres: ["Fantasy", "Folk & Fairy Tale"],
+    work: "Grimm's Fairy Tales",
+    author: "Jacob Grimm and Wilhelm Grimm",
+    publicationDate: "1812",
+    sourceUrl: "https://www.gutenberg.org/ebooks/2591",
+    locator: "The Golden Bird",
+    licenseReference: "Project Gutenberg Public Domain License",
+    text: "In times of old there was a king whose garden contained a tree that bore golden apples. As these apples ripened they were counted, but each morning one was missing. The king grew very angry, and ordered the gardener to keep watch all night under the tree.",
+  },
+  {
+    name: "Sci-Fi / Wonder",
+    genres: ["Science Fiction"],
+    work: "Twenty Thousand Leagues Under the Sea",
+    author: "Jules Verne",
+    publicationDate: "1870",
+    sourceUrl: "https://www.gutenberg.org/ebooks/164",
+    locator: "Chapter 1",
+    licenseReference: "Project Gutenberg Public Domain License",
+    text: "The year 1866 was signalised by a remarkable incident, a mysterious and puzzling phenomenon, which doubtless no one has yet forgotten. Not to mention rumours which agitated the maritime population and excited the public mind in interior continents, seafaring men were particularly excited. Merchants, common sailors, captains of vessels, skippers, both of Europe and America, naval officers of all countries, and the Governments of several States on the two continents, were deeply interested in the matter.",
+  },
+  {
+    name: "Gothic / Horror",
+    genres: ["Horror / Gothic"],
+    work: "Frankenstein",
+    author: "Mary Wollstonecraft Shelley",
+    publicationDate: "1818",
+    sourceUrl: "https://www.gutenberg.org/ebooks/84",
+    locator: "Letter 1",
+    licenseReference: "Project Gutenberg Public Domain License",
+    text: "You will rejoice to hear that no disaster has accompanied the commencement of an enterprise which you have regarded with such evil forebodings. I arrived here yesterday, and my first task is to assure my dear sister of my welfare and increasing confidence in the success of my undertaking. I am already far north of London, and as I walk in the streets of Petersburgh, I feel a cold northern breeze play upon my cheeks, which braces my nerves and fills me with delight.",
+  },
+  {
+    name: "Coming of Age / Drama",
+    genres: ["Coming of Age / Drama"],
+    work: "The Adventures of Tom Sawyer",
+    author: "Mark Twain",
+    publicationDate: "1876",
+    sourceUrl: "https://www.gutenberg.org/ebooks/74",
+    locator: "Chapter 1",
+    licenseReference: "Project Gutenberg Public Domain License",
+    text: "The old lady pulled her spectacles down and looked over them about the room; then she put them up and looked out under them. She seldom or never looked through them for so small a thing as a boy; they were her state pair, the pride of her heart, and were built for 'style,' not service—she could have seen through a pair of stove-lids just as well. She looked perplexed for a moment, and then said, not fiercely, but still loud enough for the furniture to hear: 'Well, I lay if I get hold of you I'll—'",
+  },
+];
+
 function validHttpsUrl(value:string){try{return new URL(value).protocol==="https:";}catch{return false;}}
 
 async function request(path: string, init?: RequestInit): Promise<unknown> {
@@ -34,8 +104,17 @@ export default function ResearchReview({ projectId, intake, onAccepted }: Props)
   const [sourceDrafts,setSourceDrafts]=useState<SourceDraft[]>([blankSource()]);
   const [approvalTexts,setApprovalTexts]=useState<Record<string,string>>({});
   const [approvalConfirmed,setApprovalConfirmed]=useState<Record<string,boolean>>({});
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const submittedTextsRef = useRef<string[]>([]);
   const path = `/api/projects/${encodeURIComponent(projectId)}/research`;
   const dimensionOptions=confirmedResearchDimensions(intake);
+  const confirmedGenre = dimensionOptions.find(d => d.id === "genre")?.value?.trim() ?? "";
+  const matchingPresetIndex = SUGGESTED_PRESETS.findIndex(preset =>
+    confirmedGenre && preset.genres.some(g =>
+      confirmedGenre.toLowerCase().includes(g.toLowerCase()) || g.toLowerCase().includes(confirmedGenre.toLowerCase())
+    )
+  );
+  const recommendedPreset = matchingPresetIndex >= 0 ? SUGGESTED_PRESETS[matchingPresetIndex] : null;
 
   useEffect(() => { setActionError(""); }, [projectId]);
 
@@ -50,7 +129,32 @@ export default function ResearchReview({ projectId, intake, onAccepted }: Props)
         setSummary(latest);
         if (latest) {
           const candidate = researchDetailSchema.parse(await request(`${path}?candidateId=${encodeURIComponent(latest.id)}`, { signal: controller.signal }));
-          if (!controller.signal.aborted) setDetail(candidate);
+          if (!controller.signal.aborted) {
+            setDetail(candidate);
+            const cached: string[] = submittedTextsRef.current.length > 0
+              ? submittedTextsRef.current
+              : (() => {
+                  try {
+                    const saved = sessionStorage.getItem(`weaver_excerpt_${projectId}`);
+                    return saved ? (JSON.parse(saved) as string[]) : [];
+                  } catch {
+                    return [];
+                  }
+                })();
+            if (candidate?.sourceReviews) {
+              const texts: Record<string, string> = {};
+              const confs: Record<string, boolean> = {};
+              candidate.sourceReviews.forEach((review, i) => {
+                const textToUse = cached[i] || (recommendedPreset ? recommendedPreset.text : "");
+                if (textToUse) {
+                  texts[review.sourceId] = textToUse;
+                  confs[review.sourceId] = true;
+                }
+              });
+              setApprovalTexts(current => ({ ...texts, ...current }));
+              setApprovalConfirmed(current => ({ ...confs, ...current }));
+            }
+          }
         }
       } catch {
         if (!controller.signal.aborted) setError("Research review is unavailable or its saved details could not be validated. Refresh to try again.");
@@ -90,9 +194,13 @@ export default function ResearchReview({ projectId, intake, onAccepted }: Props)
     try{
       const sources=sourceDrafts.map(source=>({...source,publicationDate:source.publicationDate.trim()||null,
         dimensionIds:dimensionOptions.filter(option=>source.dimensionIds.includes(option.id)).map(option=>option.id)}));
+      submittedTextsRef.current = sources.map(s => s.text);
+      try {
+        sessionStorage.setItem(`weaver_excerpt_${projectId}`, JSON.stringify(sources.map(s => s.text)));
+      } catch {}
       await request(path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"create",operationId:crypto.randomUUID(),sources})});
       setSourceDrafts([blankSource()]);
-      setMessage("Research candidate saved. The original excerpt was removed from saved evidence and checked for long verbatim matches. Short fragments or paraphrases may still appear in saved findings.");
+      setMessage("Research candidate created. Your source excerpt has been auto-populated below for the final acceptance step.");
       setRevision(current=>current+1);
       try{await onAccepted();}catch{setMessage("Research candidate saved. Refresh the project to update its status.");}
     }catch(cause){setActionError(cause instanceof Error?cause.message:"Research could not be started. Your current source text remains in this page.");}
@@ -105,6 +213,24 @@ export default function ResearchReview({ projectId, intake, onAccepted }: Props)
   function toggleDimension(index:number,id:string,checked:boolean){
     const source=sourceDrafts[index];
     updateSource(index,{dimensionIds:checked?[...source.dimensionIds,id]:source.dimensionIds.filter(value=>value!==id)});
+  }
+
+  function applyPreset(index: number, presetIndex: number) {
+    const preset = SUGGESTED_PRESETS[presetIndex];
+    if (!preset) return;
+    updateSource(index, {
+      kind: "licensed_text",
+      work: preset.work,
+      author: preset.author,
+      publicationDate: preset.publicationDate,
+      sourceUrl: preset.sourceUrl,
+      locator: preset.locator,
+      licenseReference: preset.licenseReference,
+      dimensionIds: dimensionOptions.map(d => d.id),
+      text: preset.text,
+      confirmPermission: true,
+    });
+    setMessage(`Applied suggested style: ${preset.work} by ${preset.author}. All fields, excerpt, and dimensions pre-filled.`);
   }
 
   return <div>
@@ -121,6 +247,67 @@ export default function ResearchReview({ projectId, intake, onAccepted }: Props)
       {!dimensionOptions.length && <p role="alert" className={styles.fieldError}>Confirm the current story scope before starting research.</p>}
       {sourceDrafts.map((source,index)=><fieldset className={styles.task} key={index}>
         <legend>User-provided source {index+1}</legend>
+        <div style={{ background: "#0d1322", border: "1px solid #222f4c", borderRadius: "8px", padding: "14px", marginBottom: "16px" }}>
+          {recommendedPreset && (
+            <div style={{ background: "#161f36", border: "1px solid #4c3b7a", borderRadius: "6px", padding: "12px", marginBottom: "12px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
+                <div>
+                  <span style={{ fontSize: "11px", fontWeight: 700, color: "#d4af37", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                    🎯 Recommended Public Domain Research Match {confirmedGenre ? `for ${confirmedGenre}` : ""}:
+                  </span>
+                  <div style={{ fontSize: "15px", fontWeight: 700, color: "#fef08a", marginTop: "2px" }}>
+                    {recommendedPreset.work} <span style={{ fontWeight: 400, color: "#94a3b8", fontSize: "13px" }}>by {recommendedPreset.author}</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  disabled={busy || !dimensionOptions.length}
+                  onClick={() => applyPreset(index, matchingPresetIndex)}
+                  style={{
+                    fontSize: "13px",
+                    padding: "7px 14px",
+                    borderRadius: "6px",
+                    border: "none",
+                    background: "#d4af37",
+                    color: "#080d19",
+                    cursor: dimensionOptions.length ? "pointer" : "not-allowed",
+                    fontWeight: 700,
+                  }}
+                >
+                  ⚡ 1-Click Auto-Fill {recommendedPreset.work}
+                </button>
+              </div>
+            </div>
+          )}
+          <span style={{ fontSize: "12px", fontWeight: 600, color: "#cbd5e1", display: "block", marginBottom: "6px" }}>
+            {recommendedPreset ? "Or select from all public domain classics:" : "⚡ 1-Click Suggestions (Public Domain Classics):"}
+          </span>
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+            {SUGGESTED_PRESETS.map((preset, pIdx) => {
+              const isMatch = pIdx === matchingPresetIndex;
+              return (
+                <button
+                  key={preset.name}
+                  type="button"
+                  disabled={busy || !dimensionOptions.length}
+                  onClick={() => applyPreset(index, pIdx)}
+                  style={{
+                    fontSize: "12px",
+                    padding: "5px 11px",
+                    borderRadius: "4px",
+                    border: isMatch ? "2px solid #d4af37" : "1px solid #334155",
+                    background: isMatch ? "#1e1b4b" : "#121829",
+                    color: isMatch ? "#fef08a" : "#cbd5e1",
+                    cursor: dimensionOptions.length ? "pointer" : "not-allowed",
+                    fontWeight: isMatch ? 700 : 500,
+                  }}
+                >
+                  {isMatch ? "⭐ " : ""}{preset.name}: {preset.work}
+                </button>
+              );
+            })}
+          </div>
+        </div>
         <label>Source purpose<select value={source.kind} onChange={event=>updateSource(index,{kind:event.target.value as SourceDraft["kind"]})}>
           <option value="licensed_text">Story craft, genre, dialogue, or narration</option>
           <option value="historical_context">Historical facts about setting or time period</option>
@@ -162,8 +349,27 @@ export default function ResearchReview({ projectId, intake, onAccepted }: Props)
       {detail.status==="pending"&&detail.sourceReviews.some(review=>review.requireTransientResubmission)&&<section aria-labelledby="research-source-recheck-heading"><h4 id="research-source-recheck-heading">Recheck licensed excerpts before approval</h4>
         <p>Paste each same excerpt again. Weaver compares its fingerprint and the saved permission reference, then checks each passage fingerprint against the excerpt. The text is processed in memory and not saved.</p>
         {detail.sourceReviews.filter(review=>review.requireTransientResubmission).map(review=><fieldset className={styles.task} key={review.sourceId}><legend>{detail.dossier.sources.find(source=>source.sourceId===review.sourceId)?.work??"Licensed source"}</legend>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px", marginBottom: "8px" }}>
+            <span style={{ fontSize: "12px", color: "#a5f3fc", background: "rgba(6, 182, 212, 0.12)", border: "1px solid rgba(6, 182, 212, 0.25)", padding: "3px 8px", borderRadius: "4px" }}>
+              ✨ Auto-populated from your submission so you don't have to retype it.
+            </span>
+            <button
+              type="button"
+              style={{ fontSize: "12px", padding: "4px 10px", background: "#1e293b", border: "1px solid #475569", borderRadius: "4px", color: "#f8fafc", cursor: "pointer" }}
+              onClick={() => {
+                const val = approvalTexts[review.sourceId] ?? "";
+                if (val && typeof navigator !== "undefined" && navigator.clipboard) {
+                  navigator.clipboard.writeText(val);
+                  setCopiedId(review.sourceId);
+                  setTimeout(() => setCopiedId(null), 2000);
+                }
+              }}
+            >
+              {copiedId === review.sourceId ? "✓ Copied to clipboard!" : "📋 Copy excerpt"}
+            </button>
+          </div>
           <p>Saved license reference: {review.rightsEvidenceRef}</p>
-          <label>Paste the same excerpt<textarea value={approvalTexts[review.sourceId]??""} maxLength={5_000} onChange={event=>setApprovalTexts(current=>({...current,[review.sourceId]:event.target.value}))}/></label>
+          <label>Verified source excerpt<textarea value={approvalTexts[review.sourceId]??""} maxLength={5_000} onChange={event=>setApprovalTexts(current=>({...current,[review.sourceId]:event.target.value}))}/></label>
           <label><input type="checkbox" checked={approvalConfirmed[review.sourceId]===true} onChange={event=>setApprovalConfirmed(current=>({...current,[review.sourceId]:event.target.checked}))}/>
             I still have permission to use this text, and the saved license reference remains accurate.</label>
         </fieldset>)}

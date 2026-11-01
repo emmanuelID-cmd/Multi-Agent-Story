@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Weaver UI Variations — Pre-Agreement Preview</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=Inter:wght@400;500;600;700&display=swap');
+    
+    .font-cinzel { font-family: 'Cinzel', Georgia, serif; }
+    .font-literary { font-family: 'Newsreader', Georgia, serif; }
+    .font-ui { font-family: 'Inter', system-ui, sans-serif; }
+    
+    /* Parchment book-like texture */
+    .parchment-pattern {
+      background-color: #fbf9f4;
+      background-image: radial-gradient(#ecdcc2 0.75px, transparent 0.75px), radial-gradient(#ecdcc2 0.75px, #fbf9f4 0.75px);
+      background-size: 30px 30px;
+      background-position: 0 0, 15px 15px;
+    }
+    
+    /* Midnight parchment pattern */
+    .midnight-pattern {
+      background-color: #0c111e;
+      background-image: radial-gradient(#1e2742 0.75px, transparent 0.75px), radial-gradient(#1e2742 0.75px, #0c111e 0.75px);
+      background-size: 30px 30px;
+      background-position: 0 0, 15px 15px;
+    }
+
+    /* Minimal linen pattern */
+    .linen-pattern {
+      background-color: #f8fafc;
+      background-image: radial-gradient(#e2e8f0 0.8px, transparent 0.8px);
+      background-size: 24px 24px;
+    }
+    
+    .gold-foil-border {
+      border: 1px solid #d4af37;
+      box-shadow: 0 0 10px rgba(212, 175, 55, 0.15);
+    }
+  </style>
+</head>
+<body class="font-ui antialiased text-slate-800 bg-slate-100 p-4 md:p-6 min-h-screen">
+
+  <!-- Top Controller to Switch Variations -->
+  <div class="max-w-6xl mx-auto mb-6 bg-white border border-slate-300 rounded-xl p-3 shadow-md flex flex-wrap items-center justify-between gap-4">
+    <div class="flex items-center gap-2">
+      <span class="text-xl">✒️</span>
+      <div>
+        <h1 class="text-sm font-bold text-slate-900 uppercase tracking-wide">Pre-Agreement UI Previews</h1>
+        <p class="text-xs text-slate-500">Toggle between the 3 aesthetic variations below</p>
+      </div>
+    </div>
+    
+    <div class="inline-flex rounded-lg border border-slate-300 bg-slate-50 p-1">
+      <button id="btn-var1" onclick="switchVariation('var1')" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-all bg-emerald-800 text-white shadow-sm">
+        Variation 1: Threadkeeper Parchment
+      </button>
+      <button id="btn-var2" onclick="switchVariation('var2')" class="px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 rounded-md transition-all">
+        Variation 2: Midnight Scribe (Nocturne)
+      </button>
+      <button id="btn-var3" onclick="switchVariation('var3')" class="px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 rounded-md transition-all">
+        Variation 3: Minimalist Folio
+      </button>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- VARIATION 1: THREADKEEPER PARCHMENT (Forest Green + Antique Gold + Warm Book Texture) -->
+  <!-- ========================================================================= -->
+  <div id="variation-1" class="max-w-6xl mx-auto rounded-2xl overflow-hidden border border-amber-900/20 shadow-xl parchment-pattern transition-all">
+    
+    <!-- Top Narrative Banner with Weaver Logo in FAR TOP RIGHT (per consistency-page skill) -->
+    <header class="bg-[#183327] text-[#f4efe4] px-6 py-4 border-b-2 border-[#d4af37] flex items-center justify-between relative overflow-hidden">
+      <div class="flex items-center gap-3 z-10">
+        <span class="text-2xl text-[#d4af37]">📜</span>
+        <div>
+          <div class="flex items-center gap-2">
+            <h2 class="font-cinzel text-xl font-bold tracking-wider text-[#fdfbf7]">WEAVER</h2>
+            <span class="text-[11px] font-semibold tracking-widest uppercase px-2 py-0.5 rounded bg-[#274c3b] text-[#ecd8a5] border border-[#d4af37]/40">
+              Threadkeeper Engine
+            </span>
+          </div>
+          <p class="font-literary text-xs text-[#c8d9ce] italic mt-0.5">
+            One narrative foundation · Three harmonized chapters · Live AI storytelling
+          </p>
+        </div>
+      </div>
+
+      <!-- Far Top Right Logo (per consistency skill) -->
+      <div class="flex items-center gap-3 z-10">
+        <div class="text-right hidden sm:block">
+          <span class="text-[11px] text-[#ecd8a5] font-cinzel block">Project Weaver</span>
+          <span class="text-[10px] text-[#a1beac] block">Phase 4 Orchestration</span>
+        </div>
+        <img src="weaver-logo.png" alt="Weaver Logo" class="w-11 h-11 rounded-lg border border-[#d4af37] shadow-sm bg-[#12241b] object-contain p-0.5" />
+      </div>
+
+      <!-- Subtle background flourish -->
+      <div class="absolute right-24 -bottom-10 opacity-10 font-cinzel text-9xl pointer-events-none text-[#d4af37]">W</div>
+    </header>
+
+    <div class="p-6 space-y-4">
+
+      <!-- 1) Story Switcher Toolbar (Above Story Input) -->
+      <div class="bg-white/80 border border-amber-900/15 rounded-lg p-3 flex flex-wrap items-center justify-between gap-3 shadow-sm backdrop-blur-sm">
+        <div class="flex items-center gap-2">
+          <span class="text-base text-amber-800">📖</span>
+          <label for="story-select-v1" class="text-xs font-bold font-cinzel uppercase tracking-wider text-slate-800">
+            Active Story:
+          </label>
+          <select id="story-select-v1" class="text-xs font-ui bg-white border border-amber-900/30 rounded-md px-2.5 py-1.5 text-slate-800 font-medium focus:ring-1 focus:ring-amber-800 outline-none">
+            <option value="story-1" selected>Story 1: Two kids spot a secret ship at the docks (Analyzed)</option>
+            <option value="story-2">Story 2: The alchemist's lost apprentice (Drafting)</option>
+            <option value="new">➕ Start a new story...</option>
+          </select>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <span class="text-[11px] bg-amber-100 text-amber-900 px-2 py-0.5 rounded border border-amber-300 font-medium">
+            Revision 4 · Live Claude Model
+          </span>
+          <button class="text-xs font-semibold text-emerald-900 hover:text-emerald-700 underline">Refresh Project</button>
+        </div>
+      </div>
+
+      <!-- 2) Story Input Box with Plagiarism Warning -->
+      <div class="bg-white border border-amber-900/20 rounded-xl p-4 shadow-sm relative">
+        <div class="flex items-center justify-between mb-2">
+          <label class="text-xs font-bold font-cinzel text-slate-900 uppercase tracking-wide flex items-center gap-1.5">
+            <span>✒️</span> Your Story Premise & Idea
+          </label>
+          <span class="text-[11px] text-slate-400 font-mono">168 / 12,000 characters</span>
+        </div>
+
+        <textarea rows="3" class="w-full text-sm font-literary p-3 rounded-lg border border-amber-900/20 bg-[#fffdfa] text-slate-800 focus:outline-none focus:border-emerald-700 shadow-inner resize-none">Two kids are playing in the field when they spot a ship at the docks that is unfamiliar, little did they know this ship would hold a secret that would change their lives forever.</textarea>
+
+        <!-- Mandatory Plagiarism Warning -->
+        <div class="mt-2 text-[12px] text-amber-900/90 bg-amber-50 border-l-4 border-amber-600 px-3 py-1.5 rounded flex items-center gap-2">
+          <span>⚠️</span>
+          <span><strong>Warning:</strong> do not copy text word for word (verbatim) when writing the context for your writing assistant story building.</span>
+        </div>
+
+        <!-- Preserved Save Button -->
+        <div class="mt-3 flex items-center justify-between">
+          <p class="text-[11px] text-slate-500 italic">Saved to Weaver memory in PostgreSQL.</p>
+          <button class="bg-[#183327] hover:bg-[#11241c] text-[#f4efe4] font-cinzel text-xs font-bold px-4 py-2 rounded-lg border border-[#d4af37]/60 shadow transition-colors flex items-center gap-1.5">
+            <span>💾</span> Save story idea
+          </button>
+        </div>
+      </div>
+
+      <!-- 3) Context Suggestions (No Radio Buttons, Filtered Clickable Chips, Up to 3 Choices) -->
+      <div class="bg-white border border-amber-900/20 rounded-xl p-4 shadow-sm">
+        <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-200">
+          <div>
+            <h3 class="text-xs font-bold font-cinzel text-slate-900 uppercase tracking-wide flex items-center gap-1.5">
+              <span>✨</span> Narrative Context & Missing Elements
+            </h3>
+            <p class="text-xs text-slate-500 font-literary italic">
+              Claude analyzed your premise. Click chips to weave details into the brief (select up to 3 for each).
+            </p>
+          </div>
+          <span class="text-[11px] bg-emerald-50 text-emerald-800 border border-emerald-300 font-semibold px-2 py-0.5 rounded">
+            Analysis Complete
+          </span>
+        </div>
+
+        <!-- Genre Selection (Dropdown + AI Chips) -->
+        <div class="mb-4 bg-emerald-50/60 border border-emerald-200 rounded-lg p-3">
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="text-xs font-bold text-emerald-950 flex items-center gap-1">
+              <span>🎯</span> Story Genre <span class="text-emerald-700 font-normal">(Required for research & pacing)</span>
+            </span>
+            <span class="text-xs text-emerald-800 font-semibold bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300">
+              ✓ Selected: Adventure
+            </span>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2 mt-2">
+            <span class="text-[11px] font-semibold text-slate-500">AI Contextual Matches:</span>
+            <button class="px-2.5 py-1 text-xs font-semibold rounded-md border-2 border-emerald-800 bg-emerald-700 text-white shadow-xs">✓ Adventure</button>
+            <button class="px-2.5 py-1 text-xs font-medium rounded-md border border-slate-300 bg-white text-slate-700 hover:border-emerald-700">Mystery</button>
+            <button class="px-2.5 py-1 text-xs font-medium rounded-md border border-slate-300 bg-white text-slate-700 hover:border-emerald-700">Coming of Age / Drama</button>
+            <button class="px-2.5 py-1 text-xs font-medium rounded-md border border-slate-300 bg-white text-slate-700 hover:border-emerald-700">Historical Fiction</button>
+            
+            <span class="text-slate-300 mx-1">|</span>
+            <select class="text-xs bg-white border border-slate-300 rounded px-2 py-1 text-slate-700 font-medium">
+              <option>Or select standard genre...</option>
+              <option selected>Adventure</option>
+              <option>Mystery</option>
+              <option>Fantasy</option>
+              <option>Science Fiction</option>
+              <option>Horror / Gothic</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Filtered Missing Context Grid (Clickable Chips, No Radio Buttons, Up to 3 Choices) -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+          
+          <!-- Element 1: Time Period & Setting -->
+          <div class="border border-slate-200 rounded-lg p-3 bg-slate-50/50">
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="font-bold text-slate-800 flex items-center gap-1">
+                <span>⚓</span> Setting & Time Period
+              </span>
+              <span class="text-[10px] text-slate-400">1/3 selected</span>
+            </div>
+            <div class="flex flex-wrap gap-1.5 mt-1">
+              <button class="px-2 py-1 rounded border border-emerald-700 bg-emerald-50 text-emerald-900 font-semibold text-[11px]">
+                ✓ Coastal 19th-Century Seaport <span class="text-amber-600">⭐</span>
+              </button>
+              <button class="px-2 py-1 rounded border border-slate-200 bg-white text-slate-600 hover:border-slate-400 text-[11px]">
+                Fog-shrouded fishing village
+              </button>
+              <button class="px-2 py-1 rounded border border-slate-200 bg-white text-slate-600 hover:border-slate-400 text-[11px]">
+                Colonial trade outpost
+              </button>
+            </div>
+          </div>
+
+          <!-- Element 2: Protagonist Dynamics -->
+          <div class="border border-slate-200 rounded-lg p-3 bg-slate-50/50">
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="font-bold text-slate-800 flex items-center gap-1">
+                <span>👥</span> The Two Children
+              </span>
+              <span class="text-[10px] text-slate-400">2/3 selected</span>
+            </div>
+            <div class="flex flex-wrap gap-1.5 mt-1">
+              <button class="px-2 py-1 rounded border border-emerald-700 bg-emerald-50 text-emerald-900 font-semibold text-[11px]">
+                ✓ Bold older sibling & cautious younger <span class="text-amber-600">⭐</span>
+              </button>
+              <button class="px-2 py-1 rounded border border-emerald-700 bg-emerald-50 text-emerald-900 font-semibold text-[11px]">
+                ✓ Inseparable village dreamers
+              </button>
+              <button class="px-2 py-1 rounded border border-slate-200 bg-white text-slate-600 hover:border-slate-400 text-[11px]">
+                Harbormaster's runaway apprentices
+              </button>
+            </div>
+          </div>
+
+          <!-- Element 3: The Secret on Board -->
+          <div class="border border-slate-200 rounded-lg p-3 bg-slate-50/50">
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="font-bold text-slate-800 flex items-center gap-1">
+                <span>🗝️</span> Nature of the Ship's Secret
+              </span>
+              <span class="text-[10px] text-slate-400">1/3 selected</span>
+            </div>
+            <div class="flex flex-wrap gap-1.5 mt-1">
+              <button class="px-2 py-1 rounded border border-emerald-700 bg-emerald-50 text-emerald-900 font-semibold text-[11px]">
+                ✓ A locked brass chronometer & map <span class="text-amber-600">⭐</span>
+              </button>
+              <button class="px-2 py-1 rounded border border-slate-200 bg-white text-slate-600 hover:border-slate-400 text-[11px]">
+                An abandoned ghost crew
+              </button>
+              <button class="px-2 py-1 rounded border border-slate-200 bg-white text-slate-600 hover:border-slate-400 text-[11px]">
+                A smuggled relic from a lost island
+              </button>
+            </div>
+          </div>
+
+          <!-- Element 4: Tone & Narrative Pacing -->
+          <div class="border border-slate-200 rounded-lg p-3 bg-slate-50/50">
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="font-bold text-slate-800 flex items-center gap-1">
+                <span>🎭</span> Tone & Stakes
+              </span>
+              <span class="text-[10px] text-slate-400">1/3 selected</span>
+            </div>
+            <div class="flex flex-wrap gap-1.5 mt-1">
+              <button class="px-2 py-1 rounded border border-emerald-700 bg-emerald-50 text-emerald-900 font-semibold text-[11px]">
+                ✓ Atmospheric & Wonder-filled <span class="text-amber-600">⭐</span>
+              </button>
+              <button class="px-2 py-1 rounded border border-slate-200 bg-white text-slate-600 hover:border-slate-400 text-[11px]">
+                Tense maritime suspense
+              </button>
+              <button class="px-2 py-1 rounded border border-slate-200 bg-white text-slate-600 hover:border-slate-400 text-[11px]">
+                Nostalgic folk adventure
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Confirm Scope Button -->
+        <div class="mt-4 pt-3 border-t border-slate-200 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <input type="checkbox" id="confirm-check" checked class="w-4 h-4 text-emerald-800 rounded border-slate-300" />
+            <label for="confirm-check" class="text-xs font-medium text-slate-700">
+              I confirm this story brief and research scope
+            </label>
+          </div>
+          <button class="bg-emerald-800 hover:bg-emerald-900 text-white font-ui font-semibold text-xs px-4 py-2 rounded-lg shadow-sm">
+            Confirm brief and research scope →
+          </button>
+        </div>
+      </div>
+
+      <!-- 4) Tabs Reordered in Correct Sequence: Plan -> Research -> Draft -->
+      <div class="pt-2">
+        <div class="flex border-b border-amber-900/30 gap-1 text-xs font-cinzel font-bold">
+          <button class="px-4 py-2.5 border-b-2 border-[#183327] text-[#183327] bg-white/70 rounded-t-lg flex items-center gap-1.5">
+            <span>📜</span> Plan & approve (3 Bibles)
+          </button>
+          <button class="px-4 py-2.5 text-slate-600 hover:text-slate-900 rounded-t-lg flex items-center gap-1.5">
+            <span>🔍</span> Research Dossier
+          </button>
+          <button class="px-4 py-2.5 text-slate-600 hover:text-slate-900 rounded-t-lg flex items-center gap-1.5">
+            <span>✒️</span> Draft & review (Chapters 1–3)
+          </button>
+        </div>
+
+        <!-- Plan Panel: 3 Candidate Bibles with Accept/Reject -->
+        <div class="bg-white border border-amber-900/20 rounded-b-xl p-4 shadow-sm space-y-3">
+          <div class="flex items-center justify-between">
+            <div>
+              <h4 class="text-xs font-bold font-cinzel text-slate-900 uppercase">Review 3 Candidate Story Bibles</h4>
+              <p class="text-xs text-slate-500 font-literary italic">Generated by Claude Haiku in parallel. Select 1 to approve, or reject to re-plan.</p>
+            </div>
+            <div class="flex gap-2">
+              <button class="text-xs border border-slate-300 px-3 py-1 rounded text-slate-700 hover:bg-slate-50">
+                🔄 Reject All & Re-plan
+              </button>
+              <button class="text-xs border border-slate-300 px-3 py-1 rounded text-slate-700 hover:bg-slate-50">
+                ✏️ Return to Story Idea
+              </button>
+            </div>
+          </div>
+
+          <!-- 3 Directional Bible Cards -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            
+            <!-- Bible A -->
+            <div class="border-2 border-emerald-800 bg-emerald-50/40 rounded-xl p-3 text-xs flex flex-col justify-between shadow-xs">
+              <div>
+                <div class="flex items-center justify-between mb-1">
+                  <span class="font-cinzel font-bold text-emerald-950">Candidate A</span>
+                  <span class="bg-blue-100 text-blue-800 text-[10px] font-semibold px-2 py-0.5 rounded">Plot & Mystery</span>
+                </div>
+                <p class="font-literary text-[12px] text-slate-700 mb-2">
+                  Focuses on the clockwork secret in the hull and the mystery of the vanishing crew.
+                </p>
+                <div class="text-[11px] text-slate-500 space-y-0.5 border-t border-slate-200 pt-1.5">
+                  <div>• Chapter 1: The Hollow Keel</div>
+                  <div>• Chapter 2: The Brass Chronometer</div>
+                  <div>• Chapter 3: The Midnight Fog</div>
+                </div>
+              </div>
+              <button class="mt-3 w-full bg-[#183327] text-white py-1.5 rounded font-medium text-xs shadow-xs">
+                Approve Direction A
+              </button>
+            </div>
+
+            <!-- Bible B -->
+            <div class="border border-slate-300 bg-white rounded-xl p-3 text-xs flex flex-col justify-between hover:border-slate-400">
+              <div>
+                <div class="flex items-center justify-between mb-1">
+                  <span class="font-cinzel font-bold text-slate-900">Candidate B</span>
+                  <span class="bg-amber-100 text-amber-800 text-[10px] font-semibold px-2 py-0.5 rounded">Character & Stakes</span>
+                </div>
+                <p class="font-literary text-[12px] text-slate-700 mb-2">
+                  Emphasizes the bond between the siblings and the emotional cost of their discovery.
+                </p>
+                <div class="text-[11px] text-slate-500 space-y-0.5 border-t border-slate-200 pt-1.5">
+                  <div>• Chapter 1: Whispers on the Tide</div>
+                  <div>• Chapter 2: The Keeper's Oath</div>
+                  <div>• Chapter 3: Choices at Dawn</div>
+                </div>
+              </div>
+              <button class="mt-3 w-full border border-slate-300 hover:bg-slate-50 text-slate-800 py-1.5 rounded font-medium text-xs">
+                Select Direction B
+              </button>
+            </div>
+
+            <!-- Bible C -->
+            <div class="border border-slate-300 bg-white rounded-xl p-3 text-xs flex flex-col justify-between hover:border-slate-400">
+              <div>
+                <div class="flex items-center justify-between mb-1">
+                  <span class="font-cinzel font-bold text-slate-900">Candidate C</span>
+                  <span class="bg-purple-100 text-purple-800 text-[10px] font-semibold px-2 py-0.5 rounded">World & Atmosphere</span>
+                </div>
+                <p class="font-literary text-[12px] text-slate-700 mb-2">
+                  Rich maritime folklore, harbor superstitions, and evocative nautical terminology.
+                </p>
+                <div class="text-[11px] text-slate-500 space-y-0.5 border-t border-slate-200 pt-1.5">
+                  <div>• Chapter 1: The Stranger from the Deep</div>
+                  <div>• Chapter 2: Lanterns over Salt</div>
+                  <div>• Chapter 3: An Uncharted Horizon</div>
+                </div>
+              </div>
+              <button class="mt-3 w-full border border-slate-300 hover:bg-slate-50 text-slate-800 py-1.5 rounded font-medium text-xs">
+                Select Direction C
+              </button>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ========================================================================= -->
+  <!-- VARIATION 2: THE MIDNIGHT SCRIBE (Deep Navy + Gold Foliage + Nocturne Vibe) -->
+  <!-- ========================================================================= -->
+  <div id="variation-2" class="max-w-6xl mx-auto rounded-2xl overflow-hidden border border-[#d4af37]/40 shadow-2xl midnight-pattern hidden transition-all text-slate-200">
+    
+    <!-- Top Narrative Banner with Weaver Logo in FAR TOP RIGHT -->
+    <header class="bg-[#080d19] text-[#f4efe4] px-6 py-4 border-b border-[#d4af37]/60 flex items-center justify-between relative overflow-hidden">
+      <div class="flex items-center gap-3 z-10">
+        <!-- Merged Design: Scroll with Ink Pen Writing -->
+        <div class="relative flex items-center justify-center w-11 h-11 bg-[#161f36] border border-[#d4af37] rounded-lg shadow-[0_0_12px_rgba(212,175,55,0.25)] select-none flex-shrink-0">
+          <span class="text-2xl transform -translate-x-0.5">📜</span>
+          <span class="absolute text-lg -right-0.5 -bottom-0.5 transform -rotate-12 drop-shadow-md">🖋️</span>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h2 class="font-cinzel text-xl font-bold tracking-wider text-[#d4af37]">WEAVER</h2>
+            <span class="text-[11px] font-semibold tracking-widest uppercase px-2 py-0.5 rounded bg-[#1f1938] text-[#c4b5fd] border border-[#a855f7]/40">
+              Midnight Folio
+            </span>
+          </div>
+          <p class="font-literary text-xs text-slate-400 italic mt-0.5">
+            Illuminated storytelling workbench · Pure live model intelligence
+          </p>
+        </div>
+      </div>
+
+      <!-- Far Top Right Logo -->
+      <div class="flex items-center gap-3 z-10">
+        <div class="text-right hidden sm:block">
+          <span class="text-[11px] text-[#d4af37] font-cinzel block">Weaver Engine</span>
+          <span class="text-[10px] text-slate-400 block">Editorial Nocturne</span>
+        </div>
+        <img src="weaver-logo.png" alt="Weaver Logo" class="w-11 h-11 rounded-lg border border-[#d4af37] shadow-md bg-[#080d19] object-contain p-0.5" />
+      </div>
+
+      <!-- Glowing aura -->
+      <div class="absolute -right-10 -top-10 w-48 h-48 bg-purple-900/20 rounded-full blur-2xl pointer-events-none"></div>
+    </header>
+
+    <div class="p-6 space-y-4">
+
+      <!-- Story Switcher Toolbar -->
+      <div class="bg-[#121829] border border-slate-700/80 rounded-lg p-3 flex flex-wrap items-center justify-between gap-3 shadow-md">
+        <div class="flex items-center gap-2">
+          <span class="text-base text-amber-400">📖</span>
+          <label class="text-xs font-bold font-cinzel uppercase tracking-wider text-amber-200">
+            Active Story:
+          </label>
+          <select class="text-xs font-ui bg-[#1b233a] border border-slate-600 rounded-md px-2.5 py-1.5 text-slate-100 font-medium focus:ring-1 focus:ring-amber-400 outline-none">
+            <option selected>Story 1: Two kids spot a secret ship at the docks (Analyzed)</option>
+            <option>Story 2: The alchemist's lost apprentice (Drafting)</option>
+            <option>➕ Start a new story...</option>
+          </select>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <span class="text-[11px] bg-purple-950 text-purple-200 px-2 py-0.5 rounded border border-purple-700/60 font-medium">
+            Revision 4 · Claude Haiku Live
+          </span>
+          <button class="text-xs font-semibold text-amber-400 hover:text-amber-300 underline">Refresh Project</button>
+        </div>
+      </div>
+
+      <!-- Story Input Box with Warning -->
+      <div class="bg-[#121829] border border-slate-700/80 rounded-xl p-4 shadow-md">
+        <div class="flex items-center justify-between mb-2">
+          <label class="text-xs font-bold font-cinzel text-amber-200 uppercase tracking-wide flex items-center gap-1.5">
+            <span>✒️</span> Your Story Premise & Idea
+          </label>
+          <span class="text-[11px] text-slate-500 font-mono">168 / 12,000 characters</span>
+        </div>
+
+        <textarea rows="3" class="w-full text-sm font-literary p-3 rounded-lg border border-slate-700 bg-[#0d1322] text-slate-200 focus:outline-none focus:border-amber-400 shadow-inner resize-none">Two kids are playing in the field when they spot a ship at the docks that is unfamiliar, little did they know this ship would hold a secret that would change their lives forever.</textarea>
+
+        <!-- Plagiarism Warning -->
+        <div class="mt-2 text-[12px] text-amber-300 bg-amber-950/40 border-l-4 border-amber-500 px-3 py-1.5 rounded flex items-center gap-2">
+          <span>⚠️</span>
+          <span><strong>Warning:</strong> do not copy text word for word (verbatim) when writing the context for your writing assistant story building.</span>
+        </div>
+
+        <!-- Preserved Save Button -->
+        <div class="mt-3 flex items-center justify-between">
+          <p class="text-[11px] text-slate-400 italic">Saved to persistent storage.</p>
+          <button class="bg-[#1f293d] hover:bg-[#28354f] text-[#d4af37] font-cinzel text-xs font-bold px-4 py-2 rounded-lg border border-[#d4af37]/60 shadow transition-colors flex items-center gap-1.5">
+            <span>💾</span> Save story idea
+          </button>
+        </div>
+      </div>
+
+      <!-- Context Suggestions (Chips, Up to 3 Choices) -->
+      <div class="bg-[#121829] border border-slate-700/80 rounded-xl p-4 shadow-md">
+        <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-800">
+          <div>
+            <h3 class="text-xs font-bold font-cinzel text-amber-200 uppercase tracking-wide flex items-center gap-1.5">
+              <span>✨</span> Narrative Context & Missing Elements
+            </h3>
+            <p class="text-xs text-slate-400 font-literary italic">
+              Interactive tags (select up to 3). No clunky radios, no clutter.
+            </p>
+          </div>
+          <span class="text-[11px] bg-emerald-950 text-emerald-300 border border-emerald-700 font-semibold px-2 py-0.5 rounded">
+            Analysis Complete
+          </span>
+        </div>
+
+        <!-- Genre Selection -->
+        <div class="mb-4 bg-[#1a233a] border border-slate-700 rounded-lg p-3">
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="text-xs font-bold text-amber-100 flex items-center gap-1">
+              <span>🎯</span> Story Genre
+            </span>
+            <span class="text-xs text-emerald-400 font-semibold bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-700">
+              ✓ Selected: Adventure
+            </span>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2 mt-2">
+            <button class="px-2.5 py-1 text-xs font-semibold rounded-md border border-amber-400 bg-amber-400/20 text-amber-200">✓ Adventure</button>
+            <button class="px-2.5 py-1 text-xs font-medium rounded-md border border-slate-700 bg-[#121829] text-slate-300 hover:border-slate-500">Mystery</button>
+            <button class="px-2.5 py-1 text-xs font-medium rounded-md border border-slate-700 bg-[#121829] text-slate-300 hover:border-slate-500">Coming of Age / Drama</button>
+            <button class="px-2.5 py-1 text-xs font-medium rounded-md border border-slate-700 bg-[#121829] text-slate-300 hover:border-slate-500">Historical Fiction</button>
+          </div>
+        </div>
+
+        <!-- Filtered Elements -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+          <div class="border border-slate-800 rounded-lg p-3 bg-[#0d1322]">
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="font-bold text-slate-200 flex items-center gap-1">⚓ Setting</span>
+              <span class="text-[10px] text-slate-500">1/3 selected</span>
+            </div>
+            <div class="flex flex-wrap gap-1.5 mt-1">
+              <button class="px-2 py-1 rounded border border-amber-400/80 bg-amber-950/40 text-amber-200 font-semibold text-[11px]">
+                ✓ Coastal 19th-Century Seaport ⭐
+              </button>
+              <button class="px-2 py-1 rounded border border-slate-800 bg-[#121829] text-slate-400 hover:text-slate-200 text-[11px]">
+                Fog-shrouded fishing village
+              </button>
+            </div>
+          </div>
+
+          <div class="border border-slate-800 rounded-lg p-3 bg-[#0d1322]">
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="font-bold text-slate-200 flex items-center gap-1">👥 Characters</span>
+              <span class="text-[10px] text-slate-500">2/3 selected</span>
+            </div>
+            <div class="flex flex-wrap gap-1.5 mt-1">
+              <button class="px-2 py-1 rounded border border-amber-400/80 bg-amber-950/40 text-amber-200 font-semibold text-[11px]">
+                ✓ Bold older sibling & cautious younger ⭐
+              </button>
+              <button class="px-2 py-1 rounded border border-amber-400/80 bg-amber-950/40 text-amber-200 font-semibold text-[11px]">
+                ✓ Inseparable village dreamers
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between">
+          <label class="flex items-center gap-2 text-xs font-medium text-slate-300">
+            <input type="checkbox" checked class="w-4 h-4 text-amber-500 rounded border-slate-700 bg-slate-900" />
+            <span>I confirm this story brief and research scope</span>
+          </label>
+          <button class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-ui font-semibold text-xs px-4 py-2 rounded-lg shadow-sm">
+            Confirm brief and research scope →
+          </button>
+        </div>
+      </div>
+
+      <!-- Tab Sequence -->
+      <div class="flex border-b border-slate-800 gap-1 text-xs font-cinzel font-bold pt-2">
+        <button class="px-4 py-2.5 border-b-2 border-amber-400 text-amber-300 bg-[#121829] rounded-t-lg flex items-center gap-1.5">
+          <span>📜</span> Plan & approve (3 Bibles)
+        </button>
+        <button class="px-4 py-2.5 text-slate-400 hover:text-slate-200 rounded-t-lg flex items-center gap-1.5">
+          <span>🔍</span> Research Dossier
+        </button>
+        <button class="px-4 py-2.5 text-slate-400 hover:text-slate-200 rounded-t-lg flex items-center gap-1.5">
+          <span>✒️</span> Draft & review
+        </button>
+      </div>
+
+      <!-- Plan Panel: 3 Candidate Bibles (Nocturne Styling) -->
+      <div class="bg-[#121829] border border-slate-700/80 rounded-b-xl p-4 shadow-md space-y-3">
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <div>
+            <h4 class="text-xs font-bold font-cinzel text-amber-200 uppercase">Review 3 Candidate Story Bibles</h4>
+            <p class="text-xs text-slate-400 font-literary italic">Generated by Claude Haiku in parallel. Select 1 to approve, or reject to re-plan.</p>
+          </div>
+          <div class="flex gap-2">
+            <button class="text-xs border border-slate-700 bg-[#0d1322] px-3 py-1 rounded text-slate-300 hover:border-amber-400 hover:text-amber-200">
+              🔄 Reject All & Re-plan
+            </button>
+            <button class="text-xs border border-slate-700 bg-[#0d1322] px-3 py-1 rounded text-slate-300 hover:border-amber-400 hover:text-amber-200">
+              ✏️ Return to Story Idea
+            </button>
+          </div>
+        </div>
+
+        <!-- 3 Directional Bible Cards (Nocturne) -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          
+          <!-- Bible A -->
+          <div class="border-2 border-amber-400 bg-[#161f38] rounded-xl p-3 text-xs flex flex-col justify-between shadow-lg">
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <span class="font-cinzel font-bold text-amber-200">Candidate A</span>
+                <span class="bg-blue-950 text-blue-300 text-[10px] font-semibold px-2 py-0.5 rounded border border-blue-700">Plot & Mystery</span>
+              </div>
+              <p class="font-literary text-[12px] text-slate-300 mb-2">
+                Focuses on the clockwork secret in the hull and the mystery of the vanishing crew.
+              </p>
+              <div class="text-[11px] text-slate-400 space-y-0.5 border-t border-slate-700 pt-1.5">
+                <div>• Chapter 1: The Hollow Keel</div>
+                <div>• Chapter 2: The Brass Chronometer</div>
+                <div>• Chapter 3: The Midnight Fog</div>
+              </div>
+            </div>
+            <button class="mt-3 w-full bg-amber-400 hover:bg-amber-300 text-slate-950 py-1.5 rounded font-bold text-xs shadow-md">
+              ✓ Approve Direction A
+            </button>
+          </div>
+
+          <!-- Bible B -->
+          <div class="border border-slate-700 bg-[#0d1322] rounded-xl p-3 text-xs flex flex-col justify-between hover:border-slate-500">
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <span class="font-cinzel font-bold text-slate-200">Candidate B</span>
+                <span class="bg-amber-950 text-amber-300 text-[10px] font-semibold px-2 py-0.5 rounded border border-amber-700">Character & Stakes</span>
+              </div>
+              <p class="font-literary text-[12px] text-slate-400 mb-2">
+                Emphasizes the bond between the siblings and the emotional cost of their discovery.
+              </p>
+              <div class="text-[11px] text-slate-500 space-y-0.5 border-t border-slate-700 pt-1.5">
+                <div>• Chapter 1: Whispers on the Tide</div>
+                <div>• Chapter 2: The Keeper's Oath</div>
+                <div>• Chapter 3: Choices at Dawn</div>
+              </div>
+            </div>
+            <button class="mt-3 w-full border border-slate-700 hover:bg-[#161f36] text-slate-300 py-1.5 rounded font-medium text-xs">
+              Select Direction B
+            </button>
+          </div>
+
+          <!-- Bible C -->
+          <div class="border border-slate-700 bg-[#0d1322] rounded-xl p-3 text-xs flex flex-col justify-between hover:border-slate-500">
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <span class="font-cinzel font-bold text-slate-200">Candidate C</span>
+                <span class="bg-purple-950 text-purple-300 text-[10px] font-semibold px-2 py-0.5 rounded border border-purple-700">World & Atmosphere</span>
+              </div>
+              <p class="font-literary text-[12px] text-slate-400 mb-2">
+                Rich maritime folklore, harbor superstitions, and evocative nautical terminology.
+              </p>
+              <div class="text-[11px] text-slate-500 space-y-0.5 border-t border-slate-700 pt-1.5">
+                <div>• Chapter 1: The Stranger from the Deep</div>
+                <div>• Chapter 2: Lanterns over Salt</div>
+                <div>• Chapter 3: An Uncharted Horizon</div>
+              </div>
+            </div>
+            <button class="mt-3 w-full border border-slate-700 hover:bg-[#161f36] text-slate-300 py-1.5 rounded font-medium text-xs">
+              Select Direction C
+            </button>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ========================================================================= -->
+  <!-- VARIATION 3: MINIMALIST FOLIO (Crisp Editorial + Linen Slate + High Density) -->
+  <!-- ========================================================================= -->
+  <div id="variation-3" class="max-w-6xl mx-auto rounded-xl overflow-hidden border border-slate-300 shadow-lg linen-pattern hidden transition-all">
+    
+    <!-- Top Clean Header with Weaver Logo in FAR TOP RIGHT -->
+    <header class="bg-white text-slate-900 px-5 py-3 border-b border-slate-200 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <span class="text-xl text-slate-700">📖</span>
+        <div>
+          <div class="flex items-center gap-2">
+            <h2 class="font-ui text-base font-bold text-slate-900 tracking-tight">WEAVER</h2>
+            <span class="text-[10px] font-semibold uppercase px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+              High-Density Editorial
+            </span>
+          </div>
+          <p class="text-[11px] text-slate-500">Streamlined creative workspace</p>
+        </div>
+      </div>
+
+      <!-- Far Top Right Logo -->
+      <div class="flex items-center gap-2.5">
+        <span class="text-[11px] text-slate-400 hidden sm:inline">Threadkeeper v4.2</span>
+        <img src="weaver-logo.png" alt="Weaver Logo" class="w-9 h-9 rounded border border-slate-200 shadow-xs object-contain p-0.5" />
+      </div>
+    </header>
+
+    <div class="p-4 space-y-3">
+      
+      <!-- Compact Switcher -->
+      <div class="bg-white border border-slate-200 rounded-lg p-2.5 flex items-center justify-between text-xs">
+        <div class="flex items-center gap-2">
+          <label class="font-semibold text-slate-700">Active Story:</label>
+          <select class="bg-slate-50 border border-slate-300 rounded px-2 py-1 text-slate-800">
+            <option>Story 1: Two kids spot a secret ship at the docks</option>
+            <option>Story 2: The alchemist's lost apprentice</option>
+            <option>➕ Start new story</option>
+          </select>
+        </div>
+        <span class="text-slate-500 font-mono text-[11px]">Revision 4</span>
+      </div>
+
+      <!-- Textarea with Warning -->
+      <div class="bg-white border border-slate-200 rounded-lg p-3">
+        <div class="flex justify-between items-center mb-1 text-xs">
+          <label class="font-bold text-slate-800">Story Premise</label>
+          <span class="text-slate-400 text-[11px]">168 / 12,000</span>
+        </div>
+        <textarea rows="2" class="w-full text-xs p-2 rounded border border-slate-300 bg-slate-50 text-slate-800 focus:outline-none focus:bg-white resize-none">Two kids are playing in the field when they spot a ship at the docks that is unfamiliar, little did they know this ship would hold a secret that would change their lives forever.</textarea>
+        
+        <p class="text-[11px] text-amber-800 bg-amber-50/80 border border-amber-200 rounded p-1.5 mt-1.5">
+          ⚠️ <strong>Warning:</strong> do not copy text word for word (verbatim) when writing the context for your writing assistant story building.
+        </p>
+
+        <div class="mt-2 text-right">
+          <button class="bg-slate-900 text-white text-xs font-semibold px-3 py-1.5 rounded">
+            Save story idea
+          </button>
+        </div>
+      </div>
+
+      <!-- Compact Suggestions -->
+      <div class="bg-white border border-slate-200 rounded-lg p-3 space-y-2 text-xs">
+        <div class="flex justify-between items-center">
+          <span class="font-bold text-slate-900">Missing Story Elements</span>
+          <span class="text-[10px] text-emerald-700 font-medium">✓ Analysis Live</span>
+        </div>
+
+        <div class="flex flex-wrap gap-1.5 items-center">
+          <span class="font-medium text-slate-600">Genre:</span>
+          <button class="px-2 py-0.5 rounded border border-blue-600 bg-blue-50 text-blue-800 font-semibold">✓ Adventure</button>
+          <button class="px-2 py-0.5 rounded border border-slate-200 bg-slate-50 text-slate-600">Mystery</button>
+          <button class="px-2 py-0.5 rounded border border-slate-200 bg-slate-50 text-slate-600">Drama</button>
+        </div>
+
+        <div class="flex flex-wrap gap-1.5 items-center pt-1 border-t border-slate-100">
+          <span class="font-medium text-slate-600">Setting:</span>
+          <button class="px-2 py-0.5 rounded border border-emerald-600 bg-emerald-50 text-emerald-800 font-semibold">✓ 19th-Century Seaport ⭐</button>
+          <button class="px-2 py-0.5 rounded border border-slate-200 bg-slate-50 text-slate-600">Fishing Village</button>
+        </div>
+
+        <div class="flex flex-wrap gap-1.5 items-center pt-1 border-t border-slate-100">
+          <span class="font-medium text-slate-600">Secret:</span>
+          <button class="px-2 py-0.5 rounded border border-emerald-600 bg-emerald-50 text-emerald-800 font-semibold">✓ Brass Chronometer & Map ⭐</button>
+          <button class="px-2 py-0.5 rounded border border-slate-200 bg-slate-50 text-slate-600">Ghost Crew</button>
+        </div>
+
+        <div class="pt-2 text-right">
+          <button class="bg-emerald-700 text-white font-semibold px-3 py-1.5 rounded">
+            Confirm scope →
+          </button>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="flex border-b border-slate-200 gap-1 text-xs font-semibold pt-1">
+        <button class="px-3 py-1.5 border-b-2 border-slate-900 text-slate-900">Plan & approve (3 Bibles)</button>
+        <button class="px-3 py-1.5 text-slate-500">Research</button>
+        <button class="px-3 py-1.5 text-slate-500">Draft & review</button>
+      </div>
+
+      <!-- Plan Panel (Variation 3 High-Density) -->
+      <div class="bg-white border border-slate-200 rounded-b-lg p-3 space-y-2 text-xs">
+        <div class="flex justify-between items-center">
+          <span class="font-bold text-slate-900">3 Directional Story Bibles</span>
+          <div class="flex gap-1.5">
+            <button class="border border-slate-200 bg-slate-50 px-2 py-0.5 rounded text-[11px] text-slate-600">🔄 Re-plan</button>
+            <button class="border border-slate-200 bg-slate-50 px-2 py-0.5 rounded text-[11px] text-slate-600">✏️ Return</button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+          <div class="border border-slate-900 bg-slate-50 rounded p-2 text-xs">
+            <div class="flex justify-between font-bold">
+              <span>Candidate A</span>
+              <span class="text-[10px] text-blue-700 bg-blue-50 px-1 rounded">Plot & Mystery</span>
+            </div>
+            <p class="text-[11px] text-slate-600 my-1">Clockwork secret in the hull & vanishing crew.</p>
+            <button class="w-full bg-slate-900 text-white py-1 rounded text-[11px] font-semibold mt-1">Approve Plan A</button>
+          </div>
+
+          <div class="border border-slate-200 rounded p-2 text-xs">
+            <div class="flex justify-between font-bold text-slate-700">
+              <span>Candidate B</span>
+              <span class="text-[10px] text-amber-700 bg-amber-50 px-1 rounded">Character</span>
+            </div>
+            <p class="text-[11px] text-slate-500 my-1">Sibling bond and discovery stakes.</p>
+            <button class="w-full border border-slate-200 py-1 rounded text-[11px] text-slate-700 mt-1">Select Plan B</button>
+          </div>
+
+          <div class="border border-slate-200 rounded p-2 text-xs">
+            <div class="flex justify-between font-bold text-slate-700">
+              <span>Candidate C</span>
+              <span class="text-[10px] text-purple-700 bg-purple-50 px-1 rounded">Atmosphere</span>
+            </div>
+            <p class="text-[11px] text-slate-500 my-1">Maritime folklore & coastal lore.</p>
+            <button class="w-full border border-slate-200 py-1 rounded text-[11px] text-slate-700 mt-1">Select Plan C</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- Script to Switch Between Variations -->
+  <script>
+    function switchVariation(varId) {
+      const v1 = document.getElementById('variation-1');
+      const v2 = document.getElementById('variation-2');
+      const v3 = document.getElementById('variation-3');
+      const b1 = document.getElementById('btn-var1');
+      const b2 = document.getElementById('btn-var2');
+      const b3 = document.getElementById('btn-var3');
+
+      // Reset
+      v1.classList.add('hidden');
+      v2.classList.add('hidden');
+      v3.classList.add('hidden');
+      
+      [b1, b2, b3].forEach(b => {
+        b.className = "px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 rounded-md transition-all";
+      });
+
+      if (varId === 'var1') {
+        v1.classList.remove('hidden');
+        b1.className = "px-3 py-1.5 text-xs font-semibold rounded-md transition-all bg-emerald-800 text-white shadow-sm";
+      } else if (varId === 'var2') {
+        v2.classList.remove('hidden');
+        b2.className = "px-3 py-1.5 text-xs font-semibold rounded-md transition-all bg-slate-900 text-amber-300 shadow-sm";
+      } else if (varId === 'var3') {
+        v3.classList.remove('hidden');
+        b3.className = "px-3 py-1.5 text-xs font-semibold rounded-md transition-all bg-slate-800 text-white shadow-sm";
+      }
+    }
+  </script>
+
+</body>
+</html>

@@ -299,9 +299,9 @@ export default function Workspace({ workId }: { workId?: string }) {
   }
 
   const panelNames = [
-    { id: "plan", label: "Plan & approve" },
-    { id: "draft", label: "Draft & review" },
-    { id: "research", label: "Research" },
+    { id: "plan", label: "📜 Plan & approve" },
+    { id: "research", label: "🔍 Research" },
+    { id: "draft", label: "✒️ Draft & review" },
   ];
 
   const fullUrl = typeof window !== "undefined" && selected ? `${window.location.origin}/${selected}` : selected ? `/${selected}` : "";
@@ -310,29 +310,48 @@ export default function Workspace({ workId }: { workId?: string }) {
     <div className={styles.shell}>
       <a className={styles.skip} href="#workspace">Skip to workspace</a>
       <aside className={styles.sidebar}>
-        <p className={styles.brand}>Story Builder</p>
-        <p className={styles.eyebrow}>SYNTHETIC FOUNDATION</p>
-        <p className={styles.railCopy}>One shared plan.<br />Three coordinated chapters.</p>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
+          <img src="/weaver-logo.png" alt="Weaver Logo" style={{ width: "32px", height: "32px", borderRadius: "6px", border: "1px solid #d4af37", background: "#0c111e", padding: "2px", objectFit: "contain" }} />
+          <p className={styles.brand}>Weaver</p>
+        </div>
+        <p className={styles.eyebrow}>THREADKEEPER ENGINE</p>
+        <p className={styles.railCopy}>One shared plan.<br />Three coordinated chapters.<br />Live Claude Haiku.</p>
         <div className={styles.owners}>Manny · READ Agents<br />Justin · WRITE Agents</div>
       </aside>
       <div className={styles.main}>
         <header className={styles.header}>
-          <span>Multi-Agent-Story / Workspace</span>
-          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          <div className={styles.headerLeft}>
+            <div className={styles.scrollPenBadge} title="Weaver: Ink Pen Writing on Scroll">
+              <span className={styles.scrollEmoji}>📜</span>
+              <span className={styles.penEmoji}>🖋️</span>
+            </div>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <h1 className={styles.headerBrandTitle}>WEAVER</h1>
+                <span className={styles.headerBrandTag}>MIDNIGHT FOLIO</span>
+              </div>
+              <p className={styles.headerBrandSub}>
+                One shared plan · Three coordinated chapters · Live AI storytelling
+              </p>
+            </div>
+          </div>
+          <div className={styles.headerRight}>
             {selected && (
-              <>
-                <span style={{ fontSize: "12px", color: "#5e6a62", fontFamily: "monospace" }}>{fullUrl}</span>
-                <button type="button" disabled={busy} onClick={copyLink}>{copied ? "Copied!" : "Copy link"}</button>
-                <button type="button" disabled={busy} onClick={() => router.push("/")}>New story</button>
-              </>
+              <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                <button type="button" className={styles.headerBtn} disabled={busy} onClick={copyLink}>{copied ? "✓ Copied" : "🔗 Copy link"}</button>
+                <button type="button" className={styles.headerBtn} disabled={busy} onClick={() => router.push("/")}>➕ New story</button>
+              </div>
             )}
+            <div className={styles.logoContainer} title="Weaver Threadkeeper Logo">
+              <img src="/weaver-logo.png" alt="Weaver Logo" className={styles.topRightLogo} />
+            </div>
           </div>
         </header>
         <main id="workspace" className={styles.content}>
-          <span className={styles.badge}>SECRET STORY LINK · FIXTURE DRAFTING</span>
+          <span className={styles.badge}>LIVE STORY WORKSPACE · THREADKEEPER</span>
           <h1>A story starts with<br />a decision you approve.</h1>
           <p className={styles.lead}>
-            Claude can help review your story idea after you request analysis. Bible planning requires accepted research and configured Claude access. Chapter drafting remains synthetic. Anyone with the secret story link can open and continue this story.
+            Claude reviews your story idea and extracts narrative structure. Candidate bibles are proposed by live Claude Haiku and grounded in accepted research.
           </p>
           <div role="status" aria-live="polite">{busy ? "Saving…" : message}</div>
           {(error || Object.keys(fields).length > 0) && (
@@ -674,18 +693,41 @@ export default function Workspace({ workId }: { workId?: string }) {
                               {activeMeta.summary} {activeEnvelope.kind === "bible_candidate" ? `(Proposal v${activeEnvelope.proposalVersion} · Base state v${activeProposal.baseVersion})` : ""}
                             </p>
                           </div>
-                          <button
-                            disabled={busy}
-                            className={styles.primary}
-                            style={{ padding: "10px 22px", fontSize: "14px", fontWeight: "bold" }}
-                            onClick={() => action({
-                              action: "approve",
-                              proposalId: activeProposal.id,
-                              ...(activeEnvelope.kind === "bible_candidate" ? { proposalVersion: activeEnvelope.proposalVersion, proposalHash: activeEnvelope.payloadHash } : {}),
-                            })}
-                          >
-                            Approve this exact plan
-                          </button>
+                          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center" }}>
+                            <button
+                              disabled={busy}
+                              className={styles.primary}
+                              style={{ padding: "10px 22px", fontSize: "14px", fontWeight: "bold" }}
+                              onClick={() => action({
+                                action: "approve",
+                                proposalId: activeProposal.id,
+                                ...(activeEnvelope.kind === "bible_candidate" ? { proposalVersion: activeEnvelope.proposalVersion, proposalHash: activeEnvelope.payloadHash } : {}),
+                              })}
+                            >
+                              Approve this exact plan
+                            </button>
+                            <button
+                              type="button"
+                              disabled={busy}
+                              className={styles.secondaryAction}
+                              onClick={() => action({ action: "plan", operationId: crypto.randomUUID() })}
+                              title="Reject these candidate directions and generate 3 fresh bibles with live Claude"
+                            >
+                              🔄 Reject & Re-plan
+                            </button>
+                            <button
+                              type="button"
+                              disabled={busy}
+                              className={styles.secondaryAction}
+                              onClick={() => {
+                                const storyIdeaEl = document.getElementById("story-idea");
+                                storyIdeaEl?.scrollIntoView({ behavior: "smooth" });
+                                storyIdeaEl?.focus();
+                              }}
+                            >
+                              ✏️ Return to Story Idea
+                            </button>
+                          </div>
                         </div>
 
                         <div className={styles.candidateDetailsGrid}>

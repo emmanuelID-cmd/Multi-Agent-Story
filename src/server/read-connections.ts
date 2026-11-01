@@ -243,7 +243,7 @@ export function createReadConnections(options:ReadConnectionOptions){
       const data=readRequestSchema.parse({schemaVersion:1,kind:"read_request",ownerId,projectId,assignment:a,
         sourceFingerprint:resolved.fingerprint,draftVersionAuthority:"authenticated_assignment"});
       const existing=s.rows.find(row=>row.id===requestKey(projectId,a.requestId));
-      if(existing){if(digest(existing.data)!==digest(data))throw new ReadConnectionError("REQUEST_INTENT_MISMATCH");return data;}
+      if(existing){if(digest(readRequestSchema.parse(existing.data))!==digest(data))throw new ReadConnectionError("REQUEST_INTENT_MISMATCH");return data;}
       for(const row of s.rows.filter(row=>row.kind==="read_request")){
         const prior=readRequestSchema.safeParse(row.data);
         if(prior.success&&a.source.kind==="proposal"&&prior.data.assignment.source.kind==="proposal"&&
@@ -431,8 +431,8 @@ export function createReadConnections(options:ReadConnectionOptions){
       if(digest(op.readerResults.at(-1)?.output?.handoff)!==digest(handoff))throw new ReadConnectionError("EDITOR_HANDOFF_CHANGED");
       const entry={editorId,handoffHash:digest(handoff),generation:op.generation,status,modelUsed,
         producerOrigin:modelUsed?.startsWith("fixture")?"synthetic" as const:"unverified" as const};
-      if(status==="accepted_for_execution"&&op.editorExecutions.some(e=>e.editorId===editorId&&
-        e.handoffHash===entry.handoffHash&&e.generation===entry.generation))throw new ReadConnectionError("EDITOR_DISPATCH_ALREADY_RESERVED");
+      const priorExecs=op.editorExecutions.filter(e=>e.editorId===editorId&&e.handoffHash===entry.handoffHash&&e.generation===entry.generation);
+      if(status==="accepted_for_execution"&&priorExecs.length>0&&priorExecs.at(-1)?.status!=="failed")throw new ReadConnectionError("EDITOR_DISPATCH_ALREADY_RESERVED");
       if(status!=="accepted_for_execution"&&!op.editorExecutions.some(e=>e.editorId===editorId&&
         e.handoffHash===entry.handoffHash&&e.generation===entry.generation&&e.status==="accepted_for_execution"))
         throw new ReadConnectionError("EDITOR_DISPATCH_RESERVATION_REQUIRED");

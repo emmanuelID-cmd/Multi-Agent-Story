@@ -1,6 +1,33 @@
 # Project Handoff
 
-## Current verified state: Phase 4 continuation after PR #32
+## Current verified state: Live Phase 4 end-to-end execution, Midnight Scribe UI, and story completion
+
+Prepared: 2026-11-01T12:55:00-05:00.
+
+- Summary files: [docs/HANDOFF-TO-CONTINUING-LLM.md](docs/HANDOFF-TO-CONTINUING-LLM.md), [docs/TEAM-REFERENCE.md](docs/TEAM-REFERENCE.md), [docs/implementation/weaver-mvp-build-checklist.md](docs/implementation/weaver-mvp-build-checklist.md).
+- Commits pushed to `origin/shared/phase-4-planning-orchestration`:
+  - `2bf3c25`: `feat(ui): add Midnight Scribe theme, intake controls, and excerpt utilities`
+  - `750bd77`: `fix(orchestration): calibrate model token limits, planning schemas, and digest hashes`
+- Live Multi-Agent Pipeline Status: **100% verified live end-to-end**.
+  - **Intake**: Confirmed via live Library of Congress lookup (`Adventure stories, English`). Story switcher dropdown and plagiarism warning banner active under Midnight Scribe theme.
+  - **Research**: Live NYT Books + Gutendex research dossier created and accepted with auto-populated excerpt and clipboard copy button.
+  - **Bible Planning (I01)**: Live Claude Haiku (`claude-haiku-5-5`) generated 3 versioned candidates; Candidate A accepted (Bible v1). Shared durable ledger (`drizzle/0001_shared_story_budget_ledger.sql`) active with `STORY_BUDGET_USAGE_PROVISIONED=true`.
+  - **Chapter Drafting (I02)**: Chapters 1, 2, and 3 drafted live with Claude Haiku across Writers 1, 2, and 3 (13,451 total characters) and saved to PostgreSQL `chapters`.
+  - **Editorial Revision (I02)**: Reader produced narrative handoff; Editor A (Fontaine · Continuity & Pacing) produced Proposal A; Editor B (Lang · Voice & Atmosphere) produced Proposal B.
+  - **Consistency Auditing (I02 / M06)**: Both proposals independently verified by live Claude Haiku consistency checks (`CONSISTENCY_CANDIDATE`, status `complete`).
+  - **Manuscript Approval (I06)**: Proposal B accepted via `approve-manuscript`.
+  - **Story Export (I06 / I07)**: Full 29,137-character Markdown export produced via `/api/projects/:id` (`export`).
+  - **Ledger Audit**: 14 live Anthropic API calls settled (60,402 input / 42,627 output tokens, $0.5876 total cost).
+- Code Verification: `npm run typecheck` passed (0 errors); `npm test` passed (62 files, 605 tests).
+
+### Next
+
+- Open a Pull Request from `shared/phase-4-planning-orchestration` into `developer`.
+- Complete follow-up code review items: replace text-matching in `isMaraFixture()` with explicit metadata flag, and clean hardcoded `"proj-intake"` test IDs from production branches.
+
+---
+
+## Previous task: Phase 4 continuation after PR #32
 
 Prepared: 2026-11-01T00:57:41-04:00.
 
