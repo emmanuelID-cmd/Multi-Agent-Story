@@ -18,6 +18,39 @@ type ReadRecovery = { operations: { agent: "reader" | "consistency"; operationId
 type ConsistencyPair = { versionA?: { status?: string }; versionB?: { status?: string } };
 type RecentStory = { id: string; premise: string; updatedAt: number };
 
+export type PipelineStage = "intake" | "research" | "plan" | "draft";
+
+export const PIPELINE_STAGES = [
+  {
+    id: "intake" as const,
+    number: 1,
+    title: "Story Idea & Scope",
+    subtitle: "Premise, genre & character scope",
+    icon: "💡",
+  },
+  {
+    id: "research" as const,
+    number: 2,
+    title: "Reference Research",
+    subtitle: "Classic literature & Gutendex evidence",
+    icon: "🔍",
+  },
+  {
+    id: "plan" as const,
+    number: 3,
+    title: "Story Bible & Plan",
+    subtitle: "Candidate Bibles A, B, C & directives",
+    icon: "📜",
+  },
+  {
+    id: "draft" as const,
+    number: 4,
+    title: "Drafting & Review",
+    subtitle: "3 chapters, editorial revisions & export",
+    icon: "✒️",
+  },
+] as const;
+
 function consistencyPair(critique: unknown): ConsistencyPair {
   return (critique as { consistency?: ConsistencyPair } | null)?.consistency ?? {};
 }
@@ -81,7 +114,14 @@ export default function Workspace({ workId }: { workId?: string }) {
   const summary = useRef<HTMLDivElement>(null);
   const [state, setState] = useState<Snapshot | null>(null);
   const [notFound, setNotFound] = useState(false);
-  const [tab, setTab] = useState("plan");
+  const [activeStage, setActiveStage] = useState<PipelineStage>("intake");
+  const stageManuallySelected = useRef(false);
+  const isInitialized = useRef(false);
+  const prevMilestones = useRef({
+    intakeConfirmed: false,
+    researchAccepted: false,
+    bibleApproved: false,
+  });
   const [fixture, setFixture] = useState("normal");
   const [pollFailure, setPollFailure] = useState("");
   const [feedbackText, setFeedbackText] = useState("");
@@ -152,6 +192,13 @@ export default function Workspace({ workId }: { workId?: string }) {
     setReadRecovery(null);
     setRecoveryAcknowledged({});
     setPlanningAcknowledged({});
+    isInitialized.current = false;
+    stageManuallySelected.current = false;
+    prevMilestones.current = {
+      intakeConfirmed: false,
+      researchAccepted: false,
+      bibleApproved: false,
+    };
     if (selected) {
       refresh(selected);
     }
@@ -298,11 +345,105 @@ export default function Workspace({ workId }: { workId?: string }) {
     draftMessage = "All 3 chapters were generated, verified, and editorial critique completed. Review the manuscript below.";
   }
 
-  const panelNames = [
-    { id: "plan", label: "📜 Plan & approve" },
-    { id: "research", label: "🔍 Research" },
-    { id: "draft", label: "✒️ Draft & review" },
-  ];
+  // Live timer for active drafting run or candidate planning
+  useEffect(() => {
+    if (!isRunActive && !isPlanningRunning) {
+      if (!busy) setModelElapsedSeconds(0);
+      return;
+    }
+
+    const runStartTime = isRunActive && state?.run?.createdAt
+      ? new Date(state.run.createdAt).getTime()
+      : Date.now();
+
+    const updateTimer = () => {
+      setModelElapsedSeconds(Math.max(0, Math.floor((Date.now() - runStartTime) / 1000)));
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [isRunActive, isPlanningRunning, state?.run?.createdAt, state?.run?.id, busy]);
+
+  const hasIntake = Boolean(state?.project.brief.intake);
+  const isIntakeConfirmed = hasIntake ? state?.project.brief.intake?.status === "confirmed" : true;
+  const isResearchAccepted = Boolean(
+    state?.acceptedResearch?.status === "accepted" ||
+    state?.bible ||
+    hasCandidates
+  );
+  const isBibleApproved = Boolean(state?.bible);
+  const isDraftCompleted = Boolean(state?.acceptedManuscript || (state?.run?.status === "completed" && state?.chapters.length === 3));
+
+  function getFurthestActiveStage(currentState: Snapshot): PipelineStage {
+    if (currentState.project.brief.intake) {
+      if (currentState.project.brief.intake.status !== "confirmed") return "intake";
+      const resAccepted = Boolean(
+        currentState.acceptedResearch?.status === "accepted" ||
+        currentState.bible ||
+        currentState.pending.some(p => ["bible_a", "bible_b", "bible_c"].includes(p.kind))
+      );
+      if (!resAccepted) return "research";
+      if (!currentState.bible) return "plan";
+      return "draft";
+    }
+    if (!currentState.bible) return "plan";
+    return "draft";
+  }
+
+  function isStageComplete(stageId: PipelineStage): boolean {
+    if (stageId === "intake") return isIntakeConfirmed;
+    if (stageId === "research") return isResearchAccepted;
+    if (stageId === "plan") return isBibleApproved;
+    if (stageId === "draft") return isDraftCompleted;
+    return false;
+  }
+
+  function isStageAccessible(stageId: PipelineStage): boolean {
+    if (stageId === "intake") return true;
+    if (stageId === "research") return isIntakeConfirmed;
+    if (stageId === "plan") return isResearchAccepted || !hasIntake;
+    if (stageId === "draft") return isBibleApproved || Boolean(state?.run);
+    return false;
+  }
+
+  const handleSelectStage = (newStage: PipelineStage) => {
+    if (!isStageAccessible(newStage)) return;
+    stageManuallySelected.current = true;
+    setActiveStage(newStage);
+  };
+
+  useEffect(() => {
+    if (!state) return;
+
+    const currentMilestones = {
+      intakeConfirmed: isIntakeConfirmed,
+      researchAccepted: isResearchAccepted,
+      bibleApproved: isBibleApproved,
+    };
+
+    if (!isInitialized.current) {
+      isInitialized.current = true;
+      prevMilestones.current = currentMilestones;
+      setActiveStage(getFurthestActiveStage(state));
+      return;
+    }
+
+    if (!prevMilestones.current.intakeConfirmed && currentMilestones.intakeConfirmed) {
+      setActiveStage("research");
+      stageManuallySelected.current = false;
+    } else if (!prevMilestones.current.researchAccepted && currentMilestones.researchAccepted) {
+      setActiveStage("plan");
+      stageManuallySelected.current = false;
+    } else if (!prevMilestones.current.bibleApproved && currentMilestones.bibleApproved) {
+      setActiveStage("draft");
+      stageManuallySelected.current = false;
+    } else if (!stageManuallySelected.current) {
+      setActiveStage(getFurthestActiveStage(state));
+    }
+
+    prevMilestones.current = currentMilestones;
+  }, [state, isIntakeConfirmed, isResearchAccepted, isBibleApproved]);
 
   const fullUrl = typeof window !== "undefined" && selected ? `${window.location.origin}/${selected}` : selected ? `/${selected}` : "";
 
@@ -401,24 +542,6 @@ export default function Workspace({ workId }: { workId?: string }) {
             </section>
           ) : state ? (
             <>
-              {state.project.brief.intake ? (
-                <StoryIntake
-                  key={selected}
-                  mode="saved"
-                  projectId={selected}
-                  intake={state.project.brief.intake}
-                  locked={!!state.bible || !!state.run || state.pending.length > 0}
-                  onRefresh={async () => {
-                    const next = await refresh(selected);
-                    return next?.project.brief.intake;
-                  }}
-                />
-              ) : (
-                <section className={styles.card}>
-                  <h2>Legacy brief</h2>
-                  <p>This project predates story intake. Its existing brief and synthetic workflow remain available.</p>
-                </section>
-              )}
               <div className={styles.projectSummary}>
                 <span>State version <strong>{state.project.version}</strong></span>
                 <span>Approved bible <strong>{state.bible ? `v${state.bible.version}` : "Not yet approved"}</strong></span>
@@ -505,45 +628,226 @@ export default function Workspace({ workId }: { workId?: string }) {
                   maxSeconds={isPlanningRunning ? 120 : undefined}
                 />
               )}
-              <div className={styles.tabs} role="tablist" aria-label="Story workspace">
-                {panelNames.map((item, index) => (
-                  <button
-                    key={item.id}
-                    id={`tab-${item.id}`}
-                    role="tab"
-                    aria-selected={tab === item.id}
-                    aria-controls={`panel-${item.id}`}
-                    tabIndex={tab === item.id ? 0 : -1}
-                    onClick={() => setTab(item.id)}
-                    onKeyDown={e => {
-                      let next = index;
-                      if (e.key === "ArrowRight") next = (index + 1) % 3;
-                      else if (e.key === "ArrowLeft") next = (index + 2) % 3;
-                      else if (e.key === "Home") next = 0;
-                      else if (e.key === "End") next = 2;
-                      else return;
-                      e.preventDefault();
-                      setTab(panelNames[next].id);
-                      document.getElementById(`tab-${panelNames[next].id}`)?.focus();
-                    }}
-                  >{item.label}</button>
-                ))}
+
+              {/* Sequential Connection Pipeline Header & Checkpoint Drop-box */}
+              <div className={styles.pipelineBar}>
+                <div className={styles.checkpointDropdownRow}>
+                  <div className={styles.checkpointDropdownGroup}>
+                    <label htmlFor="pipeline-checkpoint" className={styles.checkpointLabel}>
+                      <span className={styles.checkpointIcon}>📍</span> Pipeline Checkpoint:
+                    </label>
+                    <select
+                      id="pipeline-checkpoint"
+                      className={styles.checkpointSelect}
+                      value={activeStage}
+                      onChange={e => handleSelectStage(e.target.value as PipelineStage)}
+                    >
+                      {PIPELINE_STAGES.map(s => {
+                        const complete = isStageComplete(s.id);
+                        const accessible = isStageAccessible(s.id);
+                        const isActive = activeStage === s.id;
+                        let statusSuffix = "";
+                        if (complete) statusSuffix = "✓ Completed";
+                        else if (isActive) statusSuffix = "• Active Setup";
+                        else if (accessible) statusSuffix = "Available";
+                        else statusSuffix = "🔒 Locked";
+
+                        return (
+                          <option key={s.id} value={s.id} disabled={!accessible}>
+                            Stage {s.number}: {s.title} ({statusSuffix})
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+                  <div className={styles.pipelineStagePill}>
+                    {activeStage === "intake" && "Stage 1 of 4 · Story Scope Setup"}
+                    {activeStage === "research" && "Stage 2 of 4 · Reference Research Setup"}
+                    {activeStage === "plan" && "Stage 3 of 4 · Story Direction & Bible"}
+                    {activeStage === "draft" && "Stage 4 of 4 · Chapter Production & Review"}
+                  </div>
+                </div>
+
+                <div className={styles.pipelineStepper} role="tablist" aria-label="Pipeline Stages">
+                  {PIPELINE_STAGES.map(s => {
+                    const complete = isStageComplete(s.id);
+                    const accessible = isStageAccessible(s.id);
+                    const isActive = activeStage === s.id;
+
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        role="tab"
+                        aria-selected={isActive}
+                        disabled={!accessible}
+                        className={`${styles.stepperStep} ${isActive ? styles.stepperStepActive : ""} ${complete ? styles.stepperStepComplete : ""} ${!accessible ? styles.stepperStepLocked : ""}`}
+                        onClick={() => handleSelectStage(s.id)}
+                      >
+                        <div className={styles.stepBadge}>
+                          {complete ? "✓" : !accessible ? "🔒" : s.number}
+                        </div>
+                        <div className={styles.stepInfo}>
+                          <span className={styles.stepNumber}>Stage {s.number}</span>
+                          <strong className={styles.stepTitle}>{s.title}</strong>
+                          <span className={styles.stepSubtitle}>{s.subtitle}</span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-              <section id="panel-plan" role="tabpanel" aria-labelledby="tab-plan" hidden={tab !== "plan"} className={styles.card} tabIndex={0}>
-                <h2>Review before drafting</h2>
-                <p>Approve an exact version. Review the three candidate story bibles and approve your preferred direction.</p>
-                <ModelStateIndicator
-                  state={planningState}
-                  title={planningTitle}
-                  message={planningMessage}
-                  details={isPlanningFailed ? modelActionError : undefined}
-                  elapsedSeconds={planningState === "loading" ? modelElapsedSeconds : undefined}
-                  maxSeconds={planningState === "loading" ? 120 : undefined}
-                />
-                <button
-                  disabled={busy || (!!state.project.brief.intake && state.project.brief.intake.status !== "confirmed")}
-                  onClick={() => action({ action: "plan", operationId: crypto.randomUUID() })}
-                >Propose candidate bibles</button>
+
+              {/* Stage 1: Story Idea & Scope */}
+              {activeStage === "intake" && (
+                <section id="stage-intake" aria-label="Stage 1: Story Idea and Scope">
+                  {state.project.brief.intake ? (
+                    <>
+                      <StoryIntake
+                        key={selected}
+                        mode="saved"
+                        projectId={selected}
+                        intake={state.project.brief.intake}
+                        locked={!!state.bible || !!state.run || state.pending.length > 0}
+                        onRefresh={async () => {
+                          const next = await refresh(selected);
+                          return next?.project.brief.intake;
+                        }}
+                      />
+                      {isIntakeConfirmed && (
+                        <div className={styles.stageAdvanceBanner}>
+                          <div>
+                            <span className={styles.stageAdvanceCheck}>✓</span>
+                            <strong style={{ color: "#ffffff", fontSize: "14px" }}>Stage 1 Complete: Scope Confirmed</strong>
+                            <p style={{ margin: "4px 0 0", color: "#a7f3d0", fontSize: "13px" }}>
+                              Story premise and Library of Congress vocabulary are locked. Proceed to reference research.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            className={styles.primary}
+                            style={{ padding: "10px 20px", fontSize: "14px" }}
+                            onClick={() => handleSelectStage("research")}
+                          >
+                            Proceed to Stage 2: Reference Research →
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <section className={styles.card}>
+                      <h2>Legacy brief</h2>
+                      <p>This project predates story intake. Its existing brief and synthetic workflow remain available.</p>
+                      <button type="button" className={styles.primary} onClick={() => handleSelectStage("plan")}>
+                        Proceed to Story Bible &amp; Plan →
+                      </button>
+                    </section>
+                  )}
+                </section>
+              )}
+
+              {/* Stage 2: Reference Research & Dossier */}
+              {activeStage === "research" && (
+                <section id="stage-research" className={styles.card} aria-label="Stage 2: Reference Research">
+                  <div className={styles.stageToolbar}>
+                    <button
+                      type="button"
+                      className={styles.secondaryAction}
+                      onClick={() => handleSelectStage("intake")}
+                    >
+                      ← Return to Stage 1: Story Idea &amp; Scope
+                    </button>
+                    {isResearchAccepted && (
+                      <button
+                        type="button"
+                        className={styles.primary}
+                        onClick={() => handleSelectStage("plan")}
+                      >
+                        Proceed to Stage 3: Story Bible &amp; Plan →
+                      </button>
+                    )}
+                  </div>
+                  <h2>Reference Research &amp; Evidence Dossier</h2>
+                  <p>Validate narrative craft dimensions against classic literature (Gutendex) and verified historical context before planning.</p>
+                  {state.project.brief.intake ? (
+                    <ResearchReview
+                      key={selected}
+                      projectId={selected}
+                      intake={state.project.brief.intake}
+                      onAccepted={async () => {
+                        await refresh(selected);
+                      }}
+                    />
+                  ) : (
+                    <p>This legacy fixture project has no Research dossier review.</p>
+                  )}
+                  {isResearchAccepted && (
+                    <div className={styles.stageAdvanceBanner}>
+                      <div>
+                        <span className={styles.stageAdvanceCheck}>✓</span>
+                        <strong style={{ color: "#ffffff", fontSize: "14px" }}>Stage 2 Complete: Research Dossier Accepted</strong>
+                        <p style={{ margin: "4px 0 0", color: "#a7f3d0", fontSize: "13px" }}>
+                          0 gaps remaining. Grounded reference evidence is accepted and sealed for story planning.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        className={styles.primary}
+                        style={{ padding: "10px 20px", fontSize: "14px" }}
+                        onClick={() => handleSelectStage("plan")}
+                      >
+                        Proceed to Stage 3: Story Bible &amp; Plan →
+                      </button>
+                    </div>
+                  )}
+                  {state.evidence.length > 0 && (
+                    <>
+                      <h3>Synthetic run evidence</h3>
+                      <p>These fixture records do not establish research acceptance.</p>
+                      {state.evidence.map(e => <article className={styles.proposal} key={e.id}><pre>{JSON.stringify(e.data, null, 2)}</pre></article>)}
+                    </>
+                  )}
+                </section>
+              )}
+
+              {/* Stage 3: Story Bible & Plan */}
+              {activeStage === "plan" && (
+                <section id="stage-plan" className={styles.card} aria-label="Stage 3: Story Bible and Plan">
+                  <div className={styles.stageToolbar}>
+                    <button
+                      type="button"
+                      className={styles.secondaryAction}
+                      onClick={() => handleSelectStage("research")}
+                    >
+                      ← Return to Stage 2: Reference Research
+                    </button>
+                    {isBibleApproved && (
+                      <button
+                        type="button"
+                        className={styles.primary}
+                        onClick={() => handleSelectStage("draft")}
+                      >
+                        Proceed to Stage 4: Chapter Drafting &amp; Review →
+                      </button>
+                    )}
+                  </div>
+                  <h2>Review Before Drafting</h2>
+                  <p>Choose one of three directional candidate bibles proposed by Claude Haiku, customize writer directives, and approve your preferred story foundation.</p>
+                  <ModelStateIndicator
+                    state={planningState}
+                    title={planningTitle}
+                    message={planningMessage}
+                    details={isPlanningFailed ? modelActionError : undefined}
+                    elapsedSeconds={planningState === "loading" ? modelElapsedSeconds : undefined}
+                    maxSeconds={planningState === "loading" ? 120 : undefined}
+                  />
+                  {!hasCandidates && !state.bible && (
+                    <button
+                      disabled={busy || !isResearchAccepted}
+                      className={styles.primary}
+                      onClick={() => action({ action: "plan", operationId: crypto.randomUUID() })}
+                    >Propose candidate bibles</button>
+                  )}
                 {state.project.brief.intake && (
                   <p>
                     {state.project.brief.intake.status === "confirmed"
@@ -719,11 +1023,7 @@ export default function Workspace({ workId }: { workId?: string }) {
                               type="button"
                               disabled={busy}
                               className={styles.secondaryAction}
-                              onClick={() => {
-                                const storyIdeaEl = document.getElementById("story-idea");
-                                storyIdeaEl?.scrollIntoView({ behavior: "smooth" });
-                                storyIdeaEl?.focus();
-                              }}
+                              onClick={() => handleSelectStage("intake")}
                             >
                               ✏️ Return to Story Idea
                             </button>
@@ -837,10 +1137,47 @@ export default function Workspace({ workId }: { workId?: string }) {
                     <p>Immutable approved snapshot. Drafting uses this version.</p>
                   </article>
                 )}
+                {isBibleApproved && (
+                  <div className={styles.stageAdvanceBanner}>
+                    <div>
+                      <span className={styles.stageAdvanceCheck}>✓</span>
+                      <strong style={{ color: "#ffffff", fontSize: "14px" }}>Stage 3 Complete: Story Bible Approved</strong>
+                      <p style={{ margin: "4px 0 0", color: "#a7f3d0", fontSize: "13px" }}>
+                        Bible v{state.bible!.version} is approved and canonical facts are established. Ready for chapter drafting.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      className={styles.primary}
+                      style={{ padding: "10px 20px", fontSize: "14px" }}
+                      onClick={() => handleSelectStage("draft")}
+                    >
+                      Proceed to Stage 4: Chapter Drafting &amp; Review →
+                    </button>
+                  </div>
+                )}
               </section>
-              <section id="panel-draft" role="tabpanel" aria-labelledby="tab-draft" hidden={tab !== "draft"} className={styles.card} tabIndex={0}>
-                <h2>Dispatch, recover, inspect</h2>
-                <p>Three concurrent synthetic chapter tasks. Synthetic usage is not metered until the shared ledger migration is applied. Proposed live limits: 60,000 tokens, USD 3, one retry, 120 seconds/task.</p>
+              )}
+
+              {/* Stage 4: Chapter Drafting & Review */}
+              {activeStage === "draft" && (
+              <section id="stage-draft" className={styles.card} aria-label="Stage 4: Chapter Drafting and Review">
+                <div className={styles.stageToolbar}>
+                  <button
+                    type="button"
+                    className={styles.secondaryAction}
+                    onClick={() => handleSelectStage("plan")}
+                  >
+                    ← Return to Stage 3: Story Bible &amp; Plan
+                  </button>
+                  {isDraftCompleted && (
+                    <span className={styles.stageAdvanceCheck} style={{ width: "auto", borderRadius: "16px", padding: "4px 12px", background: "#065f46", color: "#d1fae5" }}>
+                      ✓ Manuscript Finalized
+                    </span>
+                  )}
+                </div>
+                <h2>Dispatch, Recover &amp; Review Chapters</h2>
+                <p>Three concurrent synthetic chapter tasks written by Writers 1–3 and checked by Editors A &amp; B.</p>
                 <ModelStateIndicator
                   state={draftState}
                   title={draftTitle}
@@ -1015,19 +1352,7 @@ export default function Workspace({ workId }: { workId?: string }) {
                   </article>
                 )}
               </section>
-              <section id="panel-research" role="tabpanel" aria-labelledby="tab-research" hidden={tab !== "research"} className={styles.card} tabIndex={0}>
-                <h2>Research and evidence</h2>
-                {state.project.brief.intake ? (
-                  <ResearchReview key={selected} projectId={selected} intake={state.project.brief.intake} onAccepted={async () => { await refresh(selected); }} />
-                ) : (
-                  <p>This legacy fixture project has no Research dossier review.</p>
-                )}
-                {state.evidence.length > 0 && <>
-                  <h3>Synthetic run evidence</h3>
-                  <p>These fixture records do not establish research acceptance.</p>
-                  {state.evidence.map(e => <article className={styles.proposal} key={e.id}><pre>{JSON.stringify(e.data, null, 2)}</pre></article>)}
-                </>}
-              </section>
+              )}
             </>
           ) : (
             <p role="status">Loading project…</p>

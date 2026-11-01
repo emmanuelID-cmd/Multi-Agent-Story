@@ -1,6 +1,26 @@
 # Project Handoff
 
-## Current verified state: Live Phase 4 end-to-end execution, Midnight Scribe UI, and story completion
+## Current verified state: Phase 4 Sequential Connection Pipeline, Editorial Unblocking, and Checkpoint Drop-Box
+
+Prepared: 2026-11-01T16:45:00-05:00.
+
+- Summary files: [docs/HANDOFF-TO-CONTINUING-LLM.md](docs/HANDOFF-TO-CONTINUING-LLM.md), [docs/TEAM-REFERENCE.md](docs/TEAM-REFERENCE.md), [docs/implementation/weaver-mvp-build-checklist.md](docs/implementation/weaver-mvp-build-checklist.md).
+- Scope completed:
+  - **Sequential Connection Pipeline**: Replaced disjointed tabs in `src/app/workspace.tsx` with a 4-stage sequential connection pipeline (Intake -> Research -> Plan -> Draft & Review) with auto-advancement and a checkpoint drop-box.
+  - **Editorial Unblocking in Web Intake**: Restored intake fall-through in `finishRun` (`src/agents/graph.ts`) so web story runs generate both Version A (Fontaine · Continuity & Pacing) and Version B (Lang · Voice & Atmosphere) proposals and critique without stalling at unauthenticated read-request gate. Handled confirmed intake briefs where ending is captured in premise/dimensions.
+  - **Exposed `acceptedResearch`**: Added accepted research dossier tracking to `assembleProjectState` in `src/server/projects.ts` to power pipeline stepper unlock indicators.
+  - **Live Story Verification**: Successfully generated all 3 chapters (11,707 total characters) and verified both competing editorial manuscript proposals (`manuscript_a` and `manuscript_b`) in PostgreSQL for project `a5342fa6-10e5-4864-bbfb-45c4a18784d1`.
+  - **Timer Lifecycle**: Resolved frozen 0s timer with continuous `useEffect` lifecycle tracking worker run time.
+- Code Verification: `npm run typecheck` passed (0 errors); `npm test` passed (62 files, 605 tests).
+
+### Next
+
+- Open Pull Request into `developer`, merge, and fast-forward all clean lane branches.
+- Begin Shared Phase 5 (Shared Phase 5.4: Voice Accessibility & Capture).
+
+---
+
+## Previous task: Live Phase 4 end-to-end execution, Midnight Scribe UI, and story completion
 
 Prepared: 2026-11-01T12:55:00-05:00.
 

@@ -88,6 +88,27 @@ export function inferGenreSuggestions(text: string): string[] {
   return sorted.length >= 2 ? sorted.slice(0, 4) : ["Adventure", "Mystery", "Fantasy", "Historical Fiction"];
 }
 
+export function inferSubjectSuggestions(text: string, genre?: string): string[] {
+  const lower = text.toLowerCase();
+  const suggestions: string[] = [];
+  if (/lighthouse|tower|beacon/.test(lower)) suggestions.push("Lighthouses");
+  if (/clock|compass|watch|apprentice|brass|gear|mechanism/.test(lower)) suggestions.push("Clocks", "Inventions");
+  if (/sea|sailor|ocean|ship|island|captain|voyage/.test(lower)) suggestions.push("Sea stories", "Islands");
+  if (/magic|wizard|witch|spell|curse|realm|dragon/.test(lower)) suggestions.push("Magic", "Quests");
+  if (/detective|clue|investigat|crime|murder|theft|secret/.test(lower)) suggestions.push("Mystery", "Detective stories");
+  if (/space|planet|star|alien|robot|future/.test(lower)) suggestions.push("Science fiction", "Space flight");
+
+  if (genre) {
+    if (genre.includes("Adventure")) suggestions.push("Adventure stories", "Voyages and travels");
+    else if (genre.includes("Mystery")) suggestions.push("Mystery fiction", "Detective stories");
+    else if (genre.includes("Fantasy")) suggestions.push("Fantasy fiction", "Fairy tales");
+    else if (genre.includes("Historical")) suggestions.push("Historical fiction");
+    else if (genre.includes("Horror")) suggestions.push("Ghost stories", "Horror tales");
+  }
+
+  const unique = [...new Set(suggestions)];
+  return unique.length >= 2 ? unique.slice(0, 4) : ["Adventure stories", "Mystery fiction", "Magic", "Sea stories"];
+}
 
 async function post(path: string, body: unknown) {
   const response = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -125,7 +146,7 @@ export default function StoryIntake(props: Props) {
 
   useEffect(() => {
     setRecentStories(getRecentStories());
-  }, []);
+  }, [props.mode === "saved" ? props.projectId : undefined]);
 
   useEffect(() => {
     if (!intake || intake.revision === lastRevision.current) return;
@@ -264,9 +285,10 @@ export default function StoryIntake(props: Props) {
     await post(`/api/projects/${props.projectId}/intake`, body);
     await props.onRefresh();
   }
-  async function search(kind: LcKind) {
+  async function search(kind: LcKind, overrideWord?: string) {
     if (props.mode !== "saved" || !intake) return;
-    const parsed = lcQuerySchema.safeParse(searchWords[kind]);
+    const wordToUse = overrideWord ?? searchWords[kind];
+    const parsed = lcQuerySchema.safeParse(wordToUse);
     if (!parsed.success) { setSearchErrors(previous => ({ ...previous, [kind]: "Enter 1–80 plain search characters." }));
       setError("Review the highlighted search words."); return; }
     setSearchErrors(previous => ({ ...previous, [kind]: undefined }));
@@ -302,6 +324,8 @@ export default function StoryIntake(props: Props) {
           value={props.mode === "saved" ? props.projectId : ""}
           onChange={e => {
             const val = e.target.value;
+            const currentId = props.mode === "saved" ? props.projectId : "";
+            if (val === currentId) return;
             if (!val) {
               router.push("/");
             } else {
@@ -311,6 +335,11 @@ export default function StoryIntake(props: Props) {
           className={styles.storyDropdown}
         >
           <option value="">➕ Start a new story...</option>
+          {props.mode === "saved" && props.projectId && !recentStories.some(s => s.id === props.projectId) && (
+            <option value={props.projectId}>
+              ✓ {rawText ? (rawText.length > 55 ? rawText.slice(0, 55) + "…" : rawText) : `Story ${props.projectId.slice(0, 8)}`}
+            </option>
+          )}
           {recentStories.map(s => (
             <option key={s.id} value={s.id}>
               {s.id === (props.mode === "saved" ? props.projectId : "") ? "✓ " : ""}{s.premise ? (s.premise.length > 55 ? s.premise.slice(0, 55) + "…" : s.premise) : `Story ${s.id.slice(0, 8)}`}
@@ -383,9 +412,34 @@ export default function StoryIntake(props: Props) {
     {analysis && intake?.status !== "confirmed" && <>
       <div className={styles.review}><h3>Look up verified book terms</h3><p>Enter only short search words, then choose Search. The Library of Congress returns up to three verified terms. Your answer stays in your words even when no term is selected.</p>
         {(["genreForm", "subject"] as const).map(kind => { const snapshot = intake?.lookups?.[kind]; const selected = intake?.selection?.[kind];
-          const label = kind === "genreForm" ? "Genre/form (LCGFT)" : "Subject (LCSH, optional)";
+          const label = kind === "genreForm" ? "Genre/form (LCGFT)" : "Subject (LCSH · Needed for Gutendex research)";
+          const quickSubjects = kind === "subject" ? inferSubjectSuggestions(rawText, values.genre) : [];
           return <div key={kind} className={styles.vocabulary}><label htmlFor={`vocabulary-${kind}`}>{label} search words</label>
-            <p className={styles.hint}>{kind === "subject" ? "A selected subject can become the candidate Gutendex topic; returned book subjects and bookshelves still determine relevance." : "A genre/form term describes the work, but does not become a Gutendex topic automatically."}</p>
+            <p className={styles.hint}>{kind === "subject" ? "A selected subject becomes your candidate Gutendex topic; required to query Project Gutenberg public domain records." : "A genre/form term describes the work, but does not become a Gutendex topic automatically."}</p>
+            {quickSubjects.length > 0 && !selected && (
+              <div style={{ marginBottom: "10px" }}>
+                <span style={{ fontSize: "12px", color: "#fef08a", fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                  ✨ Quick Subject Suggestions (click to search Library of Congress):
+                </span>
+                <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                  {quickSubjects.map(term => (
+                    <button
+                      key={term}
+                      type="button"
+                      disabled={busy || edited || locked}
+                      onClick={() => {
+                        setSearchWords(previous => ({ ...previous, [kind]: term }));
+                        void search(kind, term);
+                      }}
+                      className={styles.chip}
+                      style={{ fontSize: "12px", padding: "4px 8px" }}
+                    >
+                      🔍 {term}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className={styles.actions}><input id={`vocabulary-${kind}`} type="text" maxLength={80} value={searchWords[kind]}
               aria-invalid={!!searchErrors[kind]} aria-describedby={searchErrors[kind] ? `vocabulary-error-${kind}` : undefined}
               onChange={event => { setSearchWords(previous => ({ ...previous, [kind]: event.target.value }));
@@ -523,6 +577,13 @@ export default function StoryIntake(props: Props) {
         {dependentSuggestions.length > 0 && <div><h4>Follow-up questions waiting on another detail</h4><ul>{dependentSuggestions.map(item => <li key={item.field}>{labelFor(item.field)} waits for {labelFor(item.dependsOn!)}. You can leave it unresolved.</li>)}</ul></div>}
         {deferredFields.length > 0 && <div><h4>Details you left open</h4><ul>{deferredFields.map(item => <li key={item.field}>{labelFor(item.field)} — {item.action === "reject" ? "suggestions rejected" : "decide later"}</li>)}</ul></div>}
         {unansweredFields.length > 0 && <div><h4>Other optional details still open</h4><ul>{unansweredFields.map(item => <li key={item.id}>{item.label}</li>)}</ul></div>}
+        {!intake?.selection?.subject && (
+          <div style={{ background: "#1c1917", border: "1px solid #78350f", borderRadius: "6px", padding: "10px 14px", margin: "10px 0" }}>
+            <span style={{ fontSize: "13px", color: "#fef08a" }}>
+              💡 <strong>Tip for Gutendex Research:</strong> Library of Congress Subject is currently unmapped. Selecting a verified Subject heading in &ldquo;Look up verified book terms&rdquo; above enables Project Gutenberg public domain research matching your topic.
+            </span>
+          </div>
+        )}
         <p>Research dimensions are the details listed above. Required sources: NYT Books and Gutendex. Optional unresolved details can remain open.</p>
         <label className={styles.checkbox}><input type="checkbox" checked={scopeChecked} aria-invalid={scopeError} aria-describedby={scopeError ? "scope-error" : undefined} onChange={event => { setScopeChecked(event.target.checked); if (event.target.checked) setScopeError(false); }} /> I confirm this brief and research scope.</label>
         {scopeError && <p id="scope-error" className={styles.blocker}>Confirm the brief and research scope before continuing.</p>}

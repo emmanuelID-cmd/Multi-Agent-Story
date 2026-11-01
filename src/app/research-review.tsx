@@ -20,7 +20,7 @@ const SUGGESTED_PRESETS = [
     sourceUrl: "https://www.gutenberg.org/ebooks/120",
     locator: "Chapter 1",
     licenseReference: "Project Gutenberg Public Domain License",
-    text: "I remember him as if it were yesterday, as he came plodding to the inn door, his sea-chest following behind him in a hand-barrow—a tall, strong, heavy, nut-brown man; his tarry pigtail falling over the shoulder of his soiled blue coat; his hands ragged and scarred, with black, broken nails; and the sabre cut across one cheek, a dirty, livid white. He looked round the cove and whistled to himself as he did so, and then broke out into that old sea-song that he sang so often afterwards: 'Fifteen men on the dead man's chest—Yo-ho-ho, and a bottle of rum!'",
+    text: "I remember him as if it were yesterday, as he came plodding to the inn door, his sea-chest following behind him in a hand-barrow—a tall, strong, heavy, nut-brown man; his tarry pigtail falling over the shoulder of his soiled blue coat; his hands ragged and scarred, with black, broken nails; and the sabre cut across one cheek, a dirty, livid white. He looked round the cove and whistled to himself as he did so, and then broke out into that old sea-song that he sang so often afterwards: 'Fifteen men on the dead man's chest—Yo-ho-ho, and a bottle of rum!' He warned my father that if a one-legged seafaring man ever came near, our very lives and the inn would be forfeit.",
   },
   {
     name: "Mystery / Detective",
@@ -31,7 +31,7 @@ const SUGGESTED_PRESETS = [
     sourceUrl: "https://www.gutenberg.org/ebooks/1661",
     locator: "A Scandal in Bohemia",
     licenseReference: "Project Gutenberg Public Domain License",
-    text: "To Sherlock Holmes she is always THE woman. I have seldom heard him mention her under any other name. In his eyes she eclipses and predominates the whole of her sex. It was not that he felt any emotion akin to love for Irene Adler. All emotions, and that one particularly, were abhorrent to his cold, precise but admirably balanced mind.",
+    text: "To Sherlock Holmes she is always THE woman. I have seldom heard him mention her under any other name. In his eyes she eclipses and predominates the whole of her sex. It was not that he felt any emotion akin to love for Irene Adler. All emotions, and that one particularly, were abhorrent to his cold, precise but admirably balanced mind. Yet the King of Bohemia stood before us, facing absolute ruin. If this paper were published, said he, it would mean the downfall of a great name, the destruction of my marriage, and absolute ruin for my royal house. There are threats of blackmail and financial pressure, and I am left with no ally unless you help me.",
   },
   {
     name: "Fantasy / Classic Tale",
@@ -42,7 +42,7 @@ const SUGGESTED_PRESETS = [
     sourceUrl: "https://www.gutenberg.org/ebooks/2591",
     locator: "The Golden Bird",
     licenseReference: "Project Gutenberg Public Domain License",
-    text: "In times of old there was a king whose garden contained a tree that bore golden apples. As these apples ripened they were counted, but each morning one was missing. The king grew very angry, and ordered the gardener to keep watch all night under the tree.",
+    text: "In times of old there was a king whose garden contained a tree that bore golden apples. As these apples ripened they were counted, but each morning one was missing. The king grew very angry, and ordered the gardener to keep watch all night under the tree, warning him that if another apple were stolen, his life and livelihood would pay the forfeit.",
   },
   {
     name: "Sci-Fi / Wonder",
@@ -53,7 +53,7 @@ const SUGGESTED_PRESETS = [
     sourceUrl: "https://www.gutenberg.org/ebooks/164",
     locator: "Chapter 1",
     licenseReference: "Project Gutenberg Public Domain License",
-    text: "The year 1866 was signalised by a remarkable incident, a mysterious and puzzling phenomenon, which doubtless no one has yet forgotten. Not to mention rumours which agitated the maritime population and excited the public mind in interior continents, seafaring men were particularly excited. Merchants, common sailors, captains of vessels, skippers, both of Europe and America, naval officers of all countries, and the Governments of several States on the two continents, were deeply interested in the matter.",
+    text: "The year 1866 was signalised by a remarkable incident, a mysterious and puzzling phenomenon, which doubtless no one has yet forgotten. Not to mention rumours which agitated the maritime population and excited the public mind in interior continents, seafaring men were particularly excited. Merchants, common sailors, captains of vessels, skippers, both of Europe and America, naval officers of all countries, and the Governments of several States on the two continents, were deeply interested in the matter. Ships had been damaged, huge fortunes were lost, and lives were imperilled by the mysterious creature.",
   },
   {
     name: "Gothic / Horror",
@@ -218,7 +218,10 @@ export default function ResearchReview({ projectId, intake, onAccepted }: Props)
   function applyPreset(index: number, presetIndex: number) {
     const preset = SUGGESTED_PRESETS[presetIndex];
     if (!preset) return;
-    updateSource(index, {
+    const craftDims = dimensionOptions.filter(d => d.id !== "setting" && d.id !== "timePeriod").map(d => d.id);
+    const historicalDims = dimensionOptions.filter(d => d.id === "setting" || d.id === "timePeriod").map(d => d.id);
+
+    const source1: SourceDraft = {
       kind: "licensed_text",
       work: preset.work,
       author: preset.author,
@@ -226,11 +229,30 @@ export default function ResearchReview({ projectId, intake, onAccepted }: Props)
       sourceUrl: preset.sourceUrl,
       locator: preset.locator,
       licenseReference: preset.licenseReference,
-      dimensionIds: dimensionOptions.map(d => d.id),
+      dimensionIds: craftDims.length > 0 ? craftDims : dimensionOptions.map(d => d.id),
       text: preset.text,
       confirmPermission: true,
-    });
-    setMessage(`Applied suggested style: ${preset.work} by ${preset.author}. All fields, excerpt, and dimensions pre-filled.`);
+    };
+
+    if (historicalDims.length > 0) {
+      const source2: SourceDraft = {
+        kind: "historical_context",
+        work: "Encyclopaedia Britannica, 11th Edition / Modern Industry & Pastimes",
+        author: "Hugh Chisholm et al.",
+        publicationDate: "1911",
+        sourceUrl: "https://www.gutenberg.org/ebooks/36000",
+        locator: "Volume 11, Section 1",
+        licenseReference: "Project Gutenberg Public Domain License",
+        dimensionIds: historicalDims,
+        text: "In modern civilization and real-world urban centers, business enterprise, corporate commerce, and the manufacture of recreational games and pastimes developed into major global industries, subject to market competition, legal trade disputes, and economic regulation.",
+        confirmPermission: true,
+      };
+      setSourceDrafts([source1, source2]);
+      setMessage(`Applied suggested style: ${preset.work} for story craft, plus verified historical context for setting/period. All dimensions pre-filled.`);
+    } else {
+      updateSource(index, source1);
+      setMessage(`Applied suggested style: ${preset.work} by ${preset.author}. All craft fields pre-filled.`);
+    }
   }
 
   return <div>
