@@ -230,4 +230,4 @@ Limits: dependency and recovery tests were synthetic; no live provider call or r
 - The existing READ model adapter and shared story-budget wrapper are used. Source excerpts are excluded from stored dossier prose and must be resubmitted for acceptance. No live model/provider call or migration was run during this integration.
 - `git diff --check` passed. Tests and typecheck were not run in this turn.
 - The original root worktree remains untouched as a recovery copy, including its pre-existing ResearchReview edits and all 20 `docs/temp/` files. No Phase 4 checklist item is checked; I01/I02 remain open.
-- Next: publish the handoff/docs update, open a PR to `developer`, and merge only if the required review and checks allow. Keep `main` untouched.
+- Initial push verified on `manny/read-agents` at `33759a9`; PR #31 is open to `developer`: https://github.com/emmanuelID-cmd/Multi-Agent-Story/pull/31. The handoff/doc update is being prepared for publication. Merge only if required review and checks allow; keep `main` untouched.
