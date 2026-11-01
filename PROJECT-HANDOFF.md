@@ -1,6 +1,23 @@
 # Project Handoff
 
-## Current task: PR #30 Code Review & Review Finding: Capability URL Authentication Pivot
+## Current task: PR #31 merge status and safe tree reconciliation
+
+Prepared: 2026-11-01T00:07:54-04:00.
+
+- Repository: `emmanuelID-cmd/Multi-Agent-Story`.
+- Verified integration commit: `15977286a88097decc7121015dbf6db44e0ef9f0`; GitHub PR #31 is merged into `developer` at this commit on October 31, 2026, 23:42:03-04:00.
+- The root worktree's `shared/phase-4-planning-orchestration` branch was fast-forwarded from `8c7b696` to the verified `developer` commit without conflicts. At reconciliation time, the remote phase branch was at `08d0293`, an ancestor of `developer`; no remote ref changed in that step.
+- Tracked local edits were preserved in a Git stash before alignment. Three untracked ResearchReview copies were removed only after their blob IDs matched the files in `developer`. All 20 `docs/temp/` trace/checkpoint files remain untracked and local.
+- `manny/read-agents`, `sql-foundation`, and `justins-side` are aligned with `developer`. `main` remains untouched at `4b34048`.
+- I01 and I02 remain open. The shared ledger migration is not applied; no live model/provider call was made. README status already matches these facts.
+
+### Next
+
+- Correct this publication record through the existing PR-first workflow. If that documentation PR merges, fast-forward the eligible phase branch; do not change `main`.
+
+---
+
+## Previous task: PR #30 Code Review & Review Finding: Capability URL Authentication Pivot
 
 Prepared: 2026-10-31T22:30:00-04:00.
 
