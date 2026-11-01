@@ -1,11 +1,23 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { assertIntakeDecisionsReviewed, intakeFields, intakeText, resolveIntake, scopeFromIntake, type IntakeDecision, type IntakeField, type IntakeRecord } from "../contracts/intake";
 import styles from "./story-intake.module.css";
 import { inspectText } from "../contracts/input-policy";
 import { lcQuerySchema, type LcKind } from "../contracts/vocabulary";
 import ModelStateIndicator, { type ModelRunningState } from "./model-state-indicator";
+
+const RECENT_KEY = "weaver_recent_stories";
+function getRecentStories(): Array<{ id: string; premise: string; updatedAt: number }> {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(RECENT_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
 
 type Props =
   | { mode: "create"; onCreated: (id: string) => Promise<void> }
@@ -13,6 +25,69 @@ type Props =
 type ApiError = Error & { fields?: Record<string, string[]>; status?: number; traceId?: string; traceAvailability?: string };
 type Metadata = { evidence: { provider: string; status: string; reasonCode: string; records: unknown[] }[] };
 const groups = ["Foundation", "People and world", "Story direction"] as const;
+
+export const STANDARD_GENRES = [
+  "Adventure",
+  "Mystery",
+  "Fantasy",
+  "Science Fiction",
+  "Historical Fiction",
+  "Horror / Gothic",
+  "Thriller / Suspense",
+  "Folk & Fairy Tale",
+  "Coming of Age / Drama",
+  "Action / Exploration",
+  "Romance",
+] as const;
+
+export function inferGenreSuggestions(text: string): string[] {
+  const lower = text.toLowerCase();
+  const scores: Record<string, number> = {
+    "Adventure": 0,
+    "Mystery": 0,
+    "Fantasy": 0,
+    "Science Fiction": 0,
+    "Historical Fiction": 0,
+    "Horror / Gothic": 0,
+    "Thriller / Suspense": 0,
+    "Folk & Fairy Tale": 0,
+    "Coming of Age / Drama": 0,
+  };
+
+  if (/ship|docks?|island|sea|ocean|sailor|voyage|journey|explore|treasure|map|quest|wilderness|jungle|mountain|sail/i.test(lower)) {
+    scores["Adventure"] += 3;
+    scores["Historical Fiction"] += 1;
+  }
+  if (/secret|unfamiliar|mystery|clue|detective|strange|curious|disappear|vanish|solve|investigate|hidden/i.test(lower)) {
+    scores["Mystery"] += 3;
+    scores["Thriller / Suspense"] += 2;
+  }
+  if (/magic|spell|dragon|wizard|curse|enchanted|fairy|portal|kingdom|beast|monster|elf|prophecy/i.test(lower)) {
+    scores["Fantasy"] += 4;
+    scores["Folk & Fairy Tale"] += 2;
+  }
+  if (/future|space|robot|alien|cyber|technology|star|planet|laboratory|scientist|time\s*machine/i.test(lower)) {
+    scores["Science Fiction"] += 4;
+  }
+  if (/ghost|haunt|dark|nightmare|shadow|creepy|death|graveyard|fear|horror|dread|coffin/i.test(lower)) {
+    scores["Horror / Gothic"] += 4;
+  }
+  if (/kids|boy|girl|children|growing|youth|friendship|school|teen|coming\s*of\s*age|playing/i.test(lower)) {
+    scores["Coming of Age / Drama"] += 2;
+    scores["Adventure"] += 1;
+  }
+  if (/century|castle|sword|ancient|war|king|queen|emperor|medieval|victorian|history/i.test(lower)) {
+    scores["Historical Fiction"] += 3;
+  }
+
+  const sorted = Object.entries(scores)
+    .filter(([_, score]) => score > 0)
+    .sort((a, b) => b[1] - a[1])
+    .map(([genre]) => genre);
+
+  return sorted.length >= 2 ? sorted.slice(0, 4) : ["Adventure", "Mystery", "Fantasy", "Historical Fiction"];
+}
+
 
 async function post(path: string, body: unknown) {
   const response = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -22,8 +97,10 @@ async function post(path: string, body: unknown) {
 }
 
 export default function StoryIntake(props: Props) {
+  const router = useRouter();
   const intake = props.mode === "saved" ? props.intake : undefined;
   const locked = props.mode === "saved" && props.locked;
+  const [recentStories, setRecentStories] = useState<Array<{ id: string; premise: string; updatedAt: number }>>([]);
   const [rawText, setRawText] = useState(intake?.rawText || "");
   const [decisions, setDecisions] = useState<IntakeDecision[]>(intake?.decisions || []);
   const [custom, setCustom] = useState<Partial<Record<IntakeField, string>>>({});
@@ -45,6 +122,10 @@ export default function StoryIntake(props: Props) {
   const lastRevision = useRef(intake?.revision);
   const preserveOnRevision = useRef(false);
   const summaryMessages = [...new Set([error, ...Object.values(fieldErrors), ...Object.values(decisionErrors), scopeError ? "Confirm the brief and research scope before continuing." : ""].filter(Boolean))];
+
+  useEffect(() => {
+    setRecentStories(getRecentStories());
+  }, []);
 
   useEffect(() => {
     if (!intake || intake.revision === lastRevision.current) return;
@@ -210,10 +291,49 @@ export default function StoryIntake(props: Props) {
     <div className={styles.guide} aria-label="Story detail guide">
       {groups.map(group => <div key={group}><h3>{group}</h3><ul>{intakeFields.filter(field => field.group === group).map(field => <li key={field.id}>{field.label}</li>)}</ul></div>)}
     </div>
+    <div className={styles.storySwitcherBar}>
+      <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+        <span style={{ fontSize: "16px" }}>📖</span>
+        <label htmlFor="story-switcher" style={{ fontWeight: 700, fontSize: "12px", textTransform: "uppercase", letterSpacing: "0.5px", color: "#fef08a" }}>
+          Active Story:
+        </label>
+        <select
+          id="story-switcher"
+          value={props.mode === "saved" ? props.projectId : ""}
+          onChange={e => {
+            const val = e.target.value;
+            if (!val) {
+              router.push("/");
+            } else {
+              router.push(`/${val}`);
+            }
+          }}
+          className={styles.storyDropdown}
+        >
+          <option value="">➕ Start a new story...</option>
+          {recentStories.map(s => (
+            <option key={s.id} value={s.id}>
+              {s.id === (props.mode === "saved" ? props.projectId : "") ? "✓ " : ""}{s.premise ? (s.premise.length > 55 ? s.premise.slice(0, 55) + "…" : s.premise) : `Story ${s.id.slice(0, 8)}`}
+            </option>
+          ))}
+        </select>
+      </div>
+      {props.mode === "saved" && intake && (
+        <span className={styles.revisionBadge}>
+          Revision {intake.revision} · {intake.status}
+        </span>
+      )}
+    </div>
     <div className={styles.inputSection}>
       <label htmlFor="story-idea">Your story idea</label>
       <p id="story-idea-help" className={styles.hint}>1–12,000 characters. Include only details you want considered. You can revise the saved original until planning begins.</p>
-      <textarea id="story-idea" value={rawText} maxLength={12_000} rows={7} disabled={busy || (props.mode === "saved" && props.locked)} aria-invalid={textError} aria-describedby={`story-idea-help${textError ? " intake-error" : ""}`} onChange={event => edit(event.target.value)} placeholder="A sailor finds a signal from an island that vanished years ago…" />
+      <textarea id="story-idea" value={rawText} maxLength={12_000} rows={5} disabled={busy || (props.mode === "saved" && props.locked)} aria-invalid={textError} aria-describedby={`story-idea-help${textError ? " intake-error" : ""}`} onChange={event => edit(event.target.value)} placeholder="A sailor finds a signal from an island that vanished years ago…" />
+      <div className={styles.plagiarismWarning} role="note">
+        <span style={{ fontSize: "14px", flexShrink: 0 }}>⚠️</span>
+        <span>
+          <strong>Warning:</strong> do not copy text word for word (verbatim) when writing the context for your writing assistant story building.
+        </span>
+      </div>
       <span className={styles.count}>{rawText.length.toLocaleString()} / 12,000</span>
     </div>
     {summaryMessages.length > 0 && <div id="intake-error" role="alert" tabIndex={-1} ref={errorRef} className={styles.error}><ul>{summaryMessages.map(message => <li key={message}>{message}</li>)}</ul></div>}
@@ -295,10 +415,97 @@ export default function StoryIntake(props: Props) {
               {decisionErrors[field.id] && <p id={`decision-error-${field.id}`} className={styles.blocker}>{decisionErrors[field.id]}</p>}
               {blocked && <p className={styles.hint}>Answer {labelFor(suggestion!.dependsOn!)} first to use this follow-up.</p>}
               {suggestion && <><p>{suggestion.question}</p><p className={styles.hint}>{suggestion.reason}</p>{field.id !== "genre" && <div className={styles.options}>{suggestion.options.map((option, index) => <label key={index}><input type="radio" name={`intake-${field.id}`} checked={decision?.action === "accept" && decision.optionIndex === index} onChange={() => choose({ field: field.id, action: "accept", optionIndex: index })} /><span>{option}</span></label>)}</div>}</>}
-              <label htmlFor={`custom-${field.id}`}>Your answer</label><textarea id={`custom-${field.id}`} rows={2} maxLength={2_000} value={custom[field.id] ?? (decision?.action === "custom" ? decision.value : "")} aria-invalid={!!fieldErrors[field.id]} aria-describedby={fieldErrors[field.id] ? `custom-error-${field.id}` : undefined} onChange={event => { setCustom(current => ({ ...current, [field.id]: event.target.value })); if (event.target.value.trim()) setFieldErrors(previous => { const next = { ...previous }; delete next[field.id]; return next; }); if (decision?.action === "custom") choose({ field: field.id, action: "defer" }); }} />
-              {fieldErrors[field.id] && <p id={`custom-error-${field.id}`} className={styles.blocker}>{fieldErrors[field.id]}</p>}
-              <div className={styles.actions}><button type="button" onClick={() => { const value = (custom[field.id] ?? (decision?.action === "custom" ? decision.value : "")).trim(); const invalid = !value ? `Write an answer for ${field.label} first.` : inspectText(value, field.id === "genre" ? "label" : "creative", field.id, "intake-decision").verdict !== "ACCEPT" ? `Review the formatting in ${field.label}; remove role markers or hidden control characters.` : field.id === "genre" && value.length > 80 ? "Keep Genre within 80 characters." : ""; if (invalid) { setFieldErrors(previous => ({ ...previous, [field.id]: invalid })); setError("Review the highlighted answer."); return; } choose({ field: field.id, action: "custom", value }); }}>Use my answer</button><button type="button" aria-pressed={decision?.action === "reject"} onClick={() => choose({ field: field.id, action: "reject" })}>Reject suggestions</button><button type="button" aria-pressed={decision?.action === "defer"} onClick={() => choose({ field: field.id, action: "defer" })}>Decide later</button></div>
-              {decision && <p className={styles.hint}>Current choice: {decision.action === "accept" ? "suggestion accepted" : decision.action === "custom" ? "your answer" : decision.action === "reject" ? "suggestions rejected" : "deferred"}.</p>}
+              {field.id === "genre" ? (
+                <div style={{ background: "#0d1322", border: "1px solid #222f4c", borderRadius: "8px", padding: "12px", marginBottom: "10px" }}>
+                  <p style={{ margin: "0 0 8px 0", fontSize: "13px", color: "#94a3b8" }}>
+                    Select a genre that best categorizes your story idea. This drives AI literature research and pacing.
+                  </p>
+                  <strong style={{ display: "block", marginBottom: "6px", color: "#fef08a", fontSize: "12px" }}>
+                    ✨ AI Suggestions (detected from your story idea):
+                  </strong>
+                  <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginBottom: "12px" }}>
+                    {inferGenreSuggestions(rawText).map(g => {
+                      const isSelected = decision?.action === "custom" && decision.value === g;
+                      return (
+                        <button
+                          key={g}
+                          type="button"
+                          onClick={() => {
+                            setCustom(current => ({ ...current, genre: g }));
+                            choose({ field: "genre", action: "custom", value: g });
+                          }}
+                          className={`${styles.chip} ${isSelected ? styles.chipSelected : ""}`}
+                        >
+                          {isSelected ? "✓ " : ""}{g}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <label htmlFor="genre-select" style={{ fontWeight: 600, fontSize: "12px", display: "block", marginBottom: "4px", color: "#e2e8f0" }}>
+                    Or select from standard genres:
+                  </label>
+                  <select
+                    id="genre-select"
+                    value={decision?.action === "custom" ? decision.value : ""}
+                    onChange={e => {
+                      if (e.target.value) {
+                        setCustom(current => ({ ...current, genre: e.target.value }));
+                        choose({ field: "genre", action: "custom", value: e.target.value });
+                      }
+                    }}
+                    className={styles.storyDropdown}
+                    style={{ marginBottom: "6px" }}
+                  >
+                    <option value="">-- Choose a genre --</option>
+                    {STANDARD_GENRES.map(g => (
+                      <option key={g} value={g}>{g}</option>
+                    ))}
+                  </select>
+
+                  {decision?.action === "custom" && decision.value && (
+                    <div style={{ marginTop: "8px", padding: "6px 10px", background: "#1f1938", border: "1px solid #d4af37", borderRadius: "6px", color: "#fef08a", fontSize: "12px", fontWeight: 600 }}>
+                      ✓ Selected Genre: <strong>{decision.value}</strong>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <>
+                  {suggestion && (
+                    <div style={{ marginBottom: "6px" }}>
+                      <p style={{ margin: "0 0 3px", fontSize: "13px", color: "#f8fafc" }}>{suggestion.question}</p>
+                      <p className={styles.hint} style={{ margin: "0 0 6px" }}>{suggestion.reason}</p>
+                      <div className={styles.chipContainer}>
+                        {suggestion.options.map((option, index) => {
+                          const isSelected = decision?.action === "accept" && decision.optionIndex === index;
+                          const isRecommended = index === 0;
+                          return (
+                            <button
+                              key={index}
+                              type="button"
+                              className={`${styles.chip} ${isSelected ? styles.chipSelected : ""} ${isRecommended ? styles.chipRecommended : ""}`}
+                              onClick={() => {
+                                if (isSelected) {
+                                  choose({ field: field.id, action: "defer" });
+                                } else {
+                                  choose({ field: field.id, action: "accept", optionIndex: index });
+                                }
+                              }}
+                            >
+                              {isSelected ? "✓ " : ""}{option} {isRecommended && !isSelected ? "⭐" : ""}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  {decision && decision.action !== "defer" && (
+                    <p className={styles.hint} style={{ margin: "4px 0" }}>
+                      Current choice: {decision.action === "accept" ? `suggestion accepted (${suggestion?.options[decision.optionIndex] ?? ""})` : decision.action === "custom" ? decision.value : "deferred"}.
+                    </p>
+                  )}
+                </>
+              )}
             </fieldset>;
             return suggestion || field.id === "genre" ? <div key={field.id}>{entry}</div> : <details key={field.id} className={styles.optional}><summary>Add optional detail: {field.label}{decision?.action === "custom" ? " (answered)" : ""}</summary>{entry}</details>;
           })}</div>;
@@ -312,7 +519,7 @@ export default function StoryIntake(props: Props) {
         {previewError && <p role="alert" className={styles.error}>{previewError}</p>}
         <ul>{intakeFields.filter(field => values[field.id]).map(field => <li key={field.id}><strong>{field.label}:</strong> {values[field.id]}</li>)}</ul>
         {!values.genre && <p className={styles.blocker}>Genre is still needed. Add it under Foundation before confirming.</p>}
-        {pendingSuggestions.length > 0 && <div><h4>Suggestions awaiting your decision</h4><ul>{pendingSuggestions.map(item => <li key={item.field}>{labelFor(item.field)} — choose an option, write an answer, reject, or decide later.</li>)}</ul></div>}
+        {pendingSuggestions.length > 0 && <div><h4>Suggestions awaiting your decision</h4><ul>{pendingSuggestions.map(item => <li key={item.field}>{labelFor(item.field)} (will remain open if unselected)</li>)}</ul></div>}
         {dependentSuggestions.length > 0 && <div><h4>Follow-up questions waiting on another detail</h4><ul>{dependentSuggestions.map(item => <li key={item.field}>{labelFor(item.field)} waits for {labelFor(item.dependsOn!)}. You can leave it unresolved.</li>)}</ul></div>}
         {deferredFields.length > 0 && <div><h4>Details you left open</h4><ul>{deferredFields.map(item => <li key={item.field}>{labelFor(item.field)} — {item.action === "reject" ? "suggestions rejected" : "decide later"}</li>)}</ul></div>}
         {unansweredFields.length > 0 && <div><h4>Other optional details still open</h4><ul>{unansweredFields.map(item => <li key={item.id}>{item.label}</li>)}</ul></div>}
@@ -320,14 +527,25 @@ export default function StoryIntake(props: Props) {
         <label className={styles.checkbox}><input type="checkbox" checked={scopeChecked} aria-invalid={scopeError} aria-describedby={scopeError ? "scope-error" : undefined} onChange={event => { setScopeChecked(event.target.checked); if (event.target.checked) setScopeError(false); }} /> I confirm this brief and research scope.</label>
         {scopeError && <p id="scope-error" className={styles.blocker}>Confirm the brief and research scope before continuing.</p>}
         <button className={styles.primary} disabled={busy} onClick={() => run(async () => {
-          const missingDecisions = Object.fromEntries(pendingSuggestions.map(item => [item.field, `Review ${labelFor(item.field)}: choose an option, write an answer, reject, or decide later.`]));
-          setDecisionErrors(missingDecisions);
           setScopeError(!scopeChecked);
-          if (!values.genre) setFieldErrors(previous => ({ ...previous, genre: "Add a genre before confirming the research scope." }));
-          if (previewError || !values.genre || !scopeChecked || pendingSuggestions.length) { setError(previewError || "Review the highlighted details before confirmation."); return; }
-          assertIntakeDecisionsReviewed(analysis, decisions, intake?.selection);
-          scopeFromIntake(analysis, decisions, intake?.selection, intake?.version === 2);
-          await act({ action: "confirm", expectedRevision: intake!.revision, analysisId: analysis.id, decisions, confirmScope: true });
+          if (!values.genre) {
+            setFieldErrors(previous => ({ ...previous, genre: "Select a genre before confirming the research scope." }));
+            setError("Select a genre before confirming.");
+            return;
+          }
+          if (!scopeChecked) {
+            setError("Check the confirmation box before continuing.");
+            return;
+          }
+          const autoDecisions = [...decisions];
+          for (const s of analysis.suggestions) {
+            if (!autoDecisions.some(d => d.field === s.field)) {
+              autoDecisions.push({ field: s.field, action: "defer" });
+            }
+          }
+          assertIntakeDecisionsReviewed(analysis, autoDecisions, intake?.selection);
+          scopeFromIntake(analysis, autoDecisions, intake?.selection, intake?.version === 2);
+          await act({ action: "confirm", expectedRevision: intake!.revision, analysisId: analysis.id, decisions: autoDecisions, confirmScope: true });
           setMessage("Brief and research scope confirmed.");
         })}>Confirm brief and research scope</button>
       </div>
