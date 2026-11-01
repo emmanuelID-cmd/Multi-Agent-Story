@@ -27,5 +27,8 @@ export function failure(error: unknown) {
   if (error instanceof ZodError) return Response.json({ error: "Check the highlighted fields.", fields: error.flatten().fieldErrors }, { status: 400 });
   if (error instanceof AppError) return Response.json({ error: error.message, ...(error.fields ? { fields: error.fields } : {}) }, { status: error.status });
   console.error("Project request failed; private inputs omitted.");
+  if (process.env.NODE_ENV !== "test") {
+    console.error("[Diagnostic Server Error]:", error instanceof Error ? (error.stack ?? error.message) : error);
+  }
   return Response.json({ error: "Temporarily unavailable. Your saved work is preserved." }, { status: 503 });
 }

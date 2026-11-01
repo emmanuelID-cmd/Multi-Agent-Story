@@ -15,6 +15,9 @@ export async function requireReadUser() {
 
 export function readFailure(error: unknown) {
   if (error instanceof ReadError) return Response.json({ error: error.message }, { status: error.status });
+  if (process.env.NODE_ENV !== "test") {
+    console.error("[Diagnostic Read Error]:", error instanceof Error ? (error.stack ?? error.message) : error);
+  }
   return Response.json({ error: "Temporarily unavailable." }, { status: 503 });
 }
 
