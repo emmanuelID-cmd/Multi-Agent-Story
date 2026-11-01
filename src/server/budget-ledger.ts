@@ -1,7 +1,10 @@
 import { pool } from "./db";
 import type { PoolClient } from "pg";
 
-export const STORY_BUDGET_LIMITS = Object.freeze({ tokens: 60_000, costMicroUsd: 3_000_000 });
+export const STORY_BUDGET_LIMITS = Object.freeze({
+  tokens: process.env.STORY_BUDGET_MAX_TOKENS ? Number(process.env.STORY_BUDGET_MAX_TOKENS) : 60_000,
+  costMicroUsd: process.env.STORY_BUDGET_MAX_COST_MICRO_USD ? Number(process.env.STORY_BUDGET_MAX_COST_MICRO_USD) : 3_000_000,
+});
 
 export const AGENT_ROLES = [
   "coordinator", "research", "reader", "consistency", "bible_a", "bible_b", "bible_c",

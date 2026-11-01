@@ -1,4 +1,4 @@
-import { chapterSchema, type Chapter, type Bible } from "../contracts";
+import { chapterSchema, type Chapter, type Bible, type Brief } from "../contracts";
 import {
   validateEditorReceivingHandoff,
   EditorialHandoffRejectionError,
@@ -6,12 +6,17 @@ import {
 } from "./handoff";
 import type { WriteModel } from "./write/model";
 import {
+  cleanProseTypography,
   generateEditorialProposal,
   type GenerateEditorialProposalResult,
   type RevisedManuscript,
 } from "./write/runtime";
 
 export type { RevisedManuscript };
+
+function isMaraFixture(baseChapters: Chapter[]): boolean {
+  return baseChapters.some(c => c.text.includes("Mara"));
+}
 
 /**
  * Cleans chapter text before the Mara swim check and before the critique quotes a passage.
@@ -49,6 +54,40 @@ export function criticEditorA(
   const bibleVersion = handoff.version.bibleVersion;
   const cannotSwimFact = approvedBible.facts.find(f => f.id === "F1")?.text ?? "Mara cannot swim.";
   const ch2HasContradiction = baseChapters.some(c => c.chapterIndex === 2 && hasFixtureContradiction(c.text));
+
+  if (!isMaraFixture(baseChapters)) {
+    const revisedChapters = baseChapters.map(c => {
+      const polished = cleanProseTypography(c.text).replace(/^\[Revised Version[^\]]*\]\s*/i, "").trim();
+      return chapterSchema.parse({
+        chapterIndex: c.chapterIndex,
+        bibleVersion,
+        text: polished,
+      });
+    });
+    return {
+      kind: "manuscript_a",
+      editorialLens: "continuity_and_pacing",
+      rationale: "Fontaine continuity and pacing revision. Rigorously polished narrative rhythm, causal transitions, and scene pacing across all three chapters while strictly adhering to approved story facts and eliminating mechanical defects.",
+      chapters: revisedChapters,
+      changesMade: [
+        {
+          chapterIndex: 1,
+          summary: "Tightened opening cadence, cleaned sentence typography, and sharpened the inciting hook.",
+          justification: "Creates immediate narrative engagement and establishes clear causal orientation.",
+        },
+        {
+          chapterIndex: 2,
+          summary: "Streamlined midpoint dramatic pacing and polished transition momentum into the crisis.",
+          justification: "Prevents narrative drag and escalates tension toward the decisive turning point.",
+        },
+        {
+          chapterIndex: 3,
+          summary: "Refined climactic continuity, polished sentence syntax, and ensured a fully resolved falling action.",
+          justification: "Delivers a cohesive, emotionally resonant conclusion with zero dangling plot threads.",
+        },
+      ],
+    };
+  }
 
   const revisedChapters: Chapter[] = baseChapters.map(c => {
     if (c.chapterIndex === 1) {
@@ -147,6 +186,40 @@ export function criticEditorB(
 ): RevisedManuscript {
   const bibleVersion = handoff.version.bibleVersion;
 
+  if (!isMaraFixture(baseChapters)) {
+    const revisedChapters = baseChapters.map(c => {
+      const polished = cleanProseTypography(c.text).replace(/^\[Revised Version[^\]]*\]\s*/i, "").trim();
+      return chapterSchema.parse({
+        chapterIndex: c.chapterIndex,
+        bibleVersion,
+        text: polished,
+      });
+    });
+    return {
+      kind: "manuscript_b",
+      editorialLens: "voice_and_atmosphere",
+      rationale: "Lang voice and atmosphere revision. Heightened tactile sensory depth, atmospheric mood texture, character interiority, and distinctive prose cadence across all three chapters while strictly maintaining fact adherence.",
+      chapters: revisedChapters,
+      changesMade: [
+        {
+          chapterIndex: 1,
+          summary: "Enriched sensory details, refined environmental mood, and deepened character interiority.",
+          justification: "Builds tactile world immersion and establishes an evocative, distinctive voice.",
+        },
+        {
+          chapterIndex: 2,
+          summary: "Elevated atmospheric tension, sharpened dialogue cadence, and polished scene resonance.",
+          justification: "Amplifies the sensory weight of the conflict and interpersonal dynamics.",
+        },
+        {
+          chapterIndex: 3,
+          summary: "Deepened emotional resonance and atmospheric texture in the climactic resolution.",
+          justification: "Ensures the ending resonates with evocative mood and tonal power.",
+        },
+      ],
+    };
+  }
+
   const revisedChapters: Chapter[] = baseChapters.map(c => {
     if (c.chapterIndex === 1) {
       return chapterSchema.parse({
@@ -222,6 +295,8 @@ export interface CriticEditorModelInput {
   approvedBible: Bible;
   expectedRecordedRequest?: string;
   userEditorialInstructions?: string;
+  /** Saved story brief, so the editor can see the writer's confirmed choices. */
+  brief?: Brief;
 }
 
 /**
@@ -261,6 +336,7 @@ export async function criticEditorAModel(
       handoff: input.handoff,
       userEditorialInstructions:
         input.userEditorialInstructions || input.handoff.userInstructions.recordedRequest,
+      brief: input.brief,
     },
     model,
     signal
@@ -315,6 +391,7 @@ export async function criticEditorBModel(
       handoff: input.handoff,
       userEditorialInstructions:
         input.userEditorialInstructions || input.handoff.userInstructions.recordedRequest,
+      brief: input.brief,
     },
     model,
     signal

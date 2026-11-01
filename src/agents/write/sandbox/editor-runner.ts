@@ -162,6 +162,7 @@ export async function executeEditorsInSandbox(
       revisionRound: 1,
       editorialInstructions: recordedRequest,
       hasAdditionalInstructions: recordedRequest.trim().length > 0,
+      brief: bibleCase.brief,
       modelA: model,
       modelB: model,
     });

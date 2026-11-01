@@ -1,14 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({
-  calls: [] as string[],
-  requireReadUser: vi.fn<() => Promise<string>>(),
-  parseReadVersion: vi.fn<() => number | undefined>(),
-  parseBenchmarkBody: vi.fn<() => Promise<unknown>>(),
-  verifyBenchmarkOrigin: vi.fn<() => void>(),
-  getProjectBenchmarks: vi.fn<() => Promise<unknown>>(),
-  readStoryState: vi.fn<() => Promise<unknown>>(),
-}));
+const mocks = vi.hoisted(() => {
+  class AppError extends Error { constructor(public status: number, message: string) { super(message); } }
+  return {
+    calls: [] as string[],
+    requireReadUser: vi.fn<() => Promise<string>>(),
+    parseReadVersion: vi.fn<() => number | undefined>(),
+    parseBenchmarkBody: vi.fn<() => Promise<unknown>>(),
+    verifyBenchmarkOrigin: vi.fn<() => void>(),
+    getProjectBenchmarks: vi.fn<() => Promise<unknown>>(),
+    readStoryState: vi.fn<() => Promise<unknown>>(),
+    getProjectById: vi.fn<(id: string) => Promise<{ id: string; ownerId: string }>>(),
+    AppError,
+  };
+});
 
 vi.mock("../src/server/read-http", () => ({
   requireReadUser: mocks.requireReadUser,
@@ -21,6 +26,7 @@ vi.mock("../src/server/research/benchmark-http", () => ({
   getProjectBenchmarks: mocks.getProjectBenchmarks,
 }));
 vi.mock("../src/server/read-state", () => ({ readStoryState: mocks.readStoryState }));
+vi.mock("../src/server/projects", () => ({ getProjectById: mocks.getProjectById, AppError: mocks.AppError }));
 
 import { POST } from "../src/app/api/research/benchmarks/route";
 import { GET } from "../src/app/api/projects/[id]/state/route";
@@ -34,25 +40,33 @@ beforeEach(() => {
   mocks.verifyBenchmarkOrigin.mockImplementation(() => { mocks.calls.push("origin"); });
   mocks.parseBenchmarkBody.mockImplementation(async () => { mocks.calls.push("body"); return { projectId: "project", genre: "Mystery" }; });
   mocks.getProjectBenchmarks.mockImplementation(async () => { mocks.calls.push("ownership/provider"); return { evidence: [] }; });
+  mocks.getProjectById.mockImplementation(async (id: string) => { mocks.calls.push("project"); return { id, ownerId: "stored-owner" }; });
   mocks.parseReadVersion.mockImplementation(() => { mocks.calls.push("version"); return undefined; });
   mocks.readStoryState.mockImplementation(async () => { mocks.calls.push("state"); return { status: "unavailable" }; });
 });
 
 describe("READ routes authenticate before downstream access", () => {
-  it("stops unauthenticated benchmark POST before origin, body, ownership, or provider", async () => {
-    mocks.requireReadUser.mockRejectedValueOnce(new Error("auth"));
+  it("stops a disallowed book-metadata origin before the body or the story", async () => {
+    mocks.verifyBenchmarkOrigin.mockImplementationOnce(() => { throw new Error("origin"); });
     const response = await POST(request);
-    expect(response.status).toBe(401);
+    expect(response.status).toBe(503);
     expect(mocks.parseBenchmarkBody).not.toHaveBeenCalled();
-    expect(mocks.verifyBenchmarkOrigin).not.toHaveBeenCalled();
+    expect(mocks.getProjectById).not.toHaveBeenCalled();
     expect(mocks.getProjectBenchmarks).not.toHaveBeenCalled();
+    expect(mocks.requireReadUser).not.toHaveBeenCalled();
   });
 
-  it("authenticates and validates before benchmark service access", async () => {
+  it("returns Project unavailable for a missing story and reuses the stored owner", async () => {
+    mocks.getProjectById.mockRejectedValueOnce(new mocks.AppError(404, "Project unavailable."));
+    const missing = await POST(request);
+    expect(missing.status).toBe(404);
+    expect(await missing.json()).toEqual({ error: "Project unavailable." });
+    expect(mocks.getProjectBenchmarks).not.toHaveBeenCalled();
     const response = await POST(request);
     expect(response.status).toBe(200);
-    expect(mocks.calls).toEqual(["auth", "origin", "body", "ownership/provider"]);
-    expect(mocks.getProjectBenchmarks).toHaveBeenCalledWith("owner", { projectId: "project", genre: "Mystery" });
+    expect(mocks.calls).toEqual(["origin", "body", "origin", "body", "project", "ownership/provider"]);
+    expect(mocks.getProjectBenchmarks).toHaveBeenCalledWith("stored-owner", { projectId: "project", genre: "Mystery" });
+    expect(mocks.requireReadUser).not.toHaveBeenCalled();
   });
 
   it("stops unauthenticated story GET before parsing version or reading state", async () => {

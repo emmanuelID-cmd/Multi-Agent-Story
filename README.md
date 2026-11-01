@@ -16,9 +16,12 @@ gold details. The [five style explorations](docs/branding/weaver/threadkeeper/in
 remain available for reference.
 
 **Status:** the local synthetic foundation is implemented. It includes
-authentication, project ownership, a minimal story workspace, fixture-backed
+capability story links, project ownership, a minimal story workspace, fixture-backed
 workflow execution, and Markdown export. Opt-in web intake and a separate READ CLI harness use the
-existing Claude adapter. Synthetic code is present for budgeted planning, graph barriers, UI gate
+existing Claude adapter. Stories are identified and accessed directly via secret capability URLs
+(`/[id]`), acting as a prototype stand-in for accounts: possession of the unguessable UUID link allows
+reading, editing, and dispatching, while unallocated IDs return 404 and recent stories on that device
+are retained in client `localStorage`. Synthetic code is present for budgeted planning, graph barriers, UI gate
 notes, accepted export, and a split full-circle check. Confirmed research blocks
 text that is not accepted, and a budget operation id includes a hash of the prompt.
 I01, I02, and I07 stay open: chapter writes
@@ -364,8 +367,19 @@ vulnerabilities.
 
 Start the local database with `docker compose up -d --wait`, then run
 `npm run db:migrate`. In separate terminals, run `npm run dev` and
-`npm run worker`. The web server binds to `127.0.0.1:3000`; PostgreSQL uses
-`127.0.0.1:54329`.
+`npm run worker`. `npm run dev` still binds `127.0.0.1:3000`. `npm start`
+binds all interfaces so a deployed host can reach the app. PostgreSQL uses
+`127.0.0.1:54329`. Recent story ids in `localStorage` are editor keys for
+this browser: they reopen a link and are not an account session. Intake
+chapter dispatch stays blocked until the `READ_CONNECTIONS_ENABLED` and
+`WRITE_CONNECTIONS_ENABLED` connection flags are set.
+
+### Render deployment
+
+The repository includes a [render.yaml](render.yaml) Blueprint configuring three coordinated components:
+1. **Web Service (`multi-agent-story-web`)**: Node 24 web app serving Next.js pages and API routes on `0.0.0.0`, running database migrations in `preDeployCommand`.
+2. **Background Worker (`multi-agent-story-worker`)**: Standalone Node 24 worker executing `npm run worker` to consume chapter drafting and critique jobs from pg-boss.
+3. **Database (`multi-agent-story-db`)**: Managed PostgreSQL instance shared by both the web server and background worker.
 
 Available checks are `npm run typecheck`, `npm run test`,
 `npm run test:integration`, `npm run build`, and `npm run test:e2e`.
@@ -385,7 +399,7 @@ run passed.
 | Validation | Zod | Shared validation for briefs, task envelopes, agent outputs, and research metadata |
 | Persistence | PostgreSQL and Drizzle | Project data, ownership relationships, and migrations |
 | Background execution | Separate Node worker and pg-boss | Durable task dispatch backed by PostgreSQL |
-| Authentication | Better Auth with PostgreSQL | Account authentication and sessions, with application-enforced project ownership |
+| Access & Identity | Secret Capability Story Links (`/[id]`) | Direct link access with anonymous owner rows, replacing account sessions for prototype testing |
 | Verification | Vitest and Playwright | Contract/integration checks and browser workflow tests |
 
 Manny and Justin use shared TypeScript contracts. Long-running work runs in the

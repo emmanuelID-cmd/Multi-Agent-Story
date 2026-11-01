@@ -1,6 +1,6 @@
 import { intakeRequestSchema } from "@/contracts/intake";
-import { requireUser, failure, sameOrigin } from "@/server/http";
-import { AppError } from "@/server/projects";
+import { failure, sameOrigin } from "@/server/http";
+import { AppError, getProjectById } from "@/server/projects";
 import { updateProjectIntake } from "@/server/intake";
 import { intakeJsonBody } from "@/server/intake-http";
 import { randomUUID } from "node:crypto";
@@ -10,15 +10,16 @@ type Context = { params: Promise<{ id: string }> };
 export async function POST(request: Request, context: Context) {
   let trace: IntakeTrace | undefined;
   try {
-    const ownerId = await requireUser();
     sameOrigin(request);
+    const { id } = await context.params;
+    const project = await getProjectById(id);
+    const ownerId = project.ownerId;
     trace = localIntakeTrace(randomUUID());
     console.info("Intake trace:", trace.id);
     trace.record("request", "STARTED");
     const parsed = intakeRequestSchema.safeParse(await intakeJsonBody(request));
     if (!parsed.success) { trace.record("request", "REQUEST_INVALID"); throw new AppError(400, "Invalid intake request."); }
     trace.record("request", "PASSED", { revision: parsed.data.expectedRevision });
-    const { id } = await context.params;
     const result = await updateProjectIntake(ownerId, id, parsed.data, { signal: request.signal, trace });
     trace.finish("SUCCEEDED");
     return Response.json({ ...result, traceId: trace.id, traceAvailability: trace.availability }, { headers: { "X-Trace-Id": trace.id } });

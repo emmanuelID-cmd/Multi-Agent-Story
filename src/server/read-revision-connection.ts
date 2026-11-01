@@ -1,3 +1,4 @@
+import type { Brief } from "../contracts";
 import { criticEditorAModel, criticEditorBModel } from "../agents/editors";
 import { EditorialHandoffRejectionError } from "../agents/handoff";
 import { sha256 } from "../agents/read/runtime";
@@ -16,7 +17,7 @@ export function revisionProposalIds(runId:string):[string,string]{
 
 /** The actual revision consumer: Reader evidence enters the existing model-backed Editor receiving boundary. */
 export function createReadRevisionConnection(input:{ownerId:string;projectId:string;targetRunId:string;
-  assignments:ReadRevisionAssignments;options:ReadConnectionOptions}):NonNullable<RevisionCycleInput["readConnection"]>{
+  assignments:ReadRevisionAssignments;options:ReadConnectionOptions;brief?:Brief}):NonNullable<RevisionCycleInput["readConnection"]>{
   const service=createReadConnections(input.options);
   return {async edit(editorId,chapters,model){
     const a=input.assignments[editorId],operationId=revisionReaderOperation(a);
@@ -46,6 +47,7 @@ export function createReadRevisionConnection(input:{ownerId:string;projectId:str
           bibleVersion:a.bibleVersion,approvedBible:source.bible,baseChapters:chapters,handoff,
           expectedRecordedRequest:a.recordedRequest,userEditorialInstructions:a.recordedRequest,
           sourceAssignment:{draftVersion:a.draftVersion,chapters:source.snapshot.chapters},
+          brief:input.brief,
           async onReceivingValidated(){
             await target();await service.recordEditorExecution(input.ownerId,input.projectId,a.runId,operationId,editorId,handoff,"accepted_for_execution");accepted=true;
           },

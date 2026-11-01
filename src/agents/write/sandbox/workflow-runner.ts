@@ -299,6 +299,7 @@ export async function executeWorkflowInSandbox(
       bibleVersion: bibleCase.bibleVersion,
       baseChapters,
       handoff: initialHandoff,
+      brief: bibleCase.brief,
     },
     model
   );
@@ -322,6 +323,7 @@ export async function executeWorkflowInSandbox(
       bibleVersion: bibleCase.bibleVersion,
       baseChapters,
       handoff: initialHandoff,
+      brief: bibleCase.brief,
     },
     model
   );
@@ -499,6 +501,7 @@ export async function executeWorkflowInSandbox(
     revisionRound: 1,
     editorialInstructions: simulatedFeedback,
     hasAdditionalInstructions: simulatedFeedback.trim().length > 0,
+    brief: bibleCase.brief,
     modelA: model,
     modelB: model,
   });
@@ -540,6 +543,7 @@ export async function executeWorkflowInSandbox(
     revisionRound: 2,
     editorialInstructions: "Final polish of Chapter 3 rescue dialogue.",
     hasAdditionalInstructions: true,
+    brief: bibleCase.brief,
     modelA: model,
     modelB: model,
   });
@@ -570,6 +574,7 @@ export async function executeWorkflowInSandbox(
       baseChapters,
       revisionRound: 3,
       editorialInstructions: "Illegal 3rd revision round attempt.",
+      brief: bibleCase.brief,
       modelA: model,
       modelB: model,
     });

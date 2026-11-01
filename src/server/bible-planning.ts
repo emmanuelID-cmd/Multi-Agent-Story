@@ -256,6 +256,8 @@ export async function proposeBiblePlans(ownerId: string, projectId: string, oper
     let surfaced=error;
     if(error instanceof Error&&error.message==="PLANNING_CONFLICT")
       surfaced=new AppError(409,"A planning candidate conflicts with the confirmed story or accepted research. No plan was saved; review those inputs before using the one confirmed retry.");
+    if(error instanceof Error&&error.message==="PLANNING_COVERAGE")
+      surfaced=new AppError(409,"A planning candidate left out a confirmed choice or pointed it at a missing fact or beat. No plan was saved; review those inputs before using the one confirmed retry.");
     if(error instanceof Error&&error.message==="BUDGET_EXHAUSTED")
       surfaced=new AppError(409,"A planning response exceeded its reserved budget and was not saved. Review remaining capacity before using the one confirmed retry.");
     if (reservationId && !controller.signal.aborted) await repository.locked(ownerId, projectId, async (snapshot, writer) => {

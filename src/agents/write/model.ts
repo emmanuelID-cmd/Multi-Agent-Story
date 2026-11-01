@@ -168,7 +168,19 @@ export class AnthropicWriteModel implements WriteModel {
     const temperature = call.temperature ?? this.resolveDefaultTemperature(call.role);
     const maxTokens = call.maxOutputTokens ?? this.resolveDefaultMaxTokens(call.role);
 
-    const response = await this.fetcher("https://api.anthropic.com/v1/messages", {
+    const bodyObj: Record<string, unknown> = {
+      model,
+      max_tokens: maxTokens,
+      temperature,
+      system: call.system,
+      messages: [{ role: "user", content: JSON.stringify({ storyContext: call.data }) }],
+      output_config: {
+        effort: "medium",
+        format: { type: "json_schema", schema: modelWireSchema(call.schema) },
+      },
+    };
+
+    let response = await this.fetcher("https://api.anthropic.com/v1/messages", {
       method: "POST",
       redirect: "error",
       signal: call.signal,
@@ -177,18 +189,28 @@ export class AnthropicWriteModel implements WriteModel {
         "anthropic-version": "2023-06-01",
         "x-api-key": this.apiKey,
       },
-      body: JSON.stringify({
-        model,
-        max_tokens: maxTokens,
-        temperature,
-        system: call.system,
-        messages: [{ role: "user", content: JSON.stringify({ storyContext: call.data }) }],
-        output_config: {
-          effort: "medium",
-          format: { type: "json_schema", schema: modelWireSchema(call.schema) },
-        },
-      }),
+      body: JSON.stringify(bodyObj),
     });
+
+    if (!response.ok && response.status === 400) {
+      try {
+        const errText = await response.clone().text();
+        if (errText.includes("temperature")) {
+          delete bodyObj.temperature;
+          response = await this.fetcher("https://api.anthropic.com/v1/messages", {
+            method: "POST",
+            redirect: "error",
+            signal: call.signal,
+            headers: {
+              "content-type": "application/json",
+              "anthropic-version": "2023-06-01",
+              "x-api-key": this.apiKey,
+            },
+            body: JSON.stringify(bodyObj),
+          });
+        }
+      } catch {}
+    }
 
     if (!response.ok) {
       await response.body?.cancel().catch(() => undefined);

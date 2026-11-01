@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
-import { orderedChapters, type Bible, type Chapter } from "../contracts";
+import { orderedChapters, type Bible, type Brief, type Chapter } from "../contracts";
 import { executeRevisionCycle } from "../agents/write/revision";
 import { revisedManuscriptSchema, type RevisedManuscript } from "../agents/write/runtime";
 import type { WriteModel } from "../agents/write/model";
@@ -16,7 +16,7 @@ import { storyWriteModel } from "./story-budget";
 type Candidate={id:string;manuscript:RevisedManuscript};
 export type ConnectedRevisionInput={ownerId:string;projectId:string;runId:string;stateVersion:number;bibleVersion:number;
   approvedBible:Bible;draftChapters:Chapter[];readingA:Chapter[];readingB:Chapter[];revisionRound:number;
-  editorialInstructions:string;hasAdditionalInstructions:boolean;assignments:ReadRevisionAssignments;
+  editorialInstructions:string;hasAdditionalInstructions:boolean;brief?:Brief;assignments:ReadRevisionAssignments;
   modelA:WriteModel;modelB:WriteModel;options:ReadConnectionOptions};
 export type ConnectedRevisionStore={existing:()=>Promise<Candidate[]|undefined>;
   stage:(candidates:Candidate[])=>Promise<void>;finalize:(candidates:Candidate[])=>Promise<void>};
@@ -28,10 +28,10 @@ export async function executeConnectedRevisionWorkflow(input:ConnectedRevisionIn
     const cycle=await executeRevisionCycle({runId:input.runId,projectId:input.projectId,bibleVersion:input.bibleVersion,
       approvedBible:input.approvedBible,baseChapters:input.draftChapters,baseChaptersA:input.readingA,baseChaptersB:input.readingB,
       revisionRound:input.revisionRound,editorialInstructions:input.editorialInstructions,hasAdditionalInstructions:input.hasAdditionalInstructions,
-      modelA:input.modelA,modelB:input.modelB,signal:input.options.runtime.signal,
+      modelA:input.modelA,modelB:input.modelB,signal:input.options.runtime.signal,brief:input.brief,
       proposalIds:revisionProposalIds(input.runId),
       readConnection:createReadRevisionConnection({ownerId:input.ownerId,projectId:input.projectId,targetRunId:input.runId,
-        assignments:input.assignments,options:input.options})});
+        assignments:input.assignments,options:input.options,brief:input.brief})});
     candidates=cycle.proposals.map(p=>({id:p.id,manuscript:p.manuscript}));
     await store.stage(candidates);
   }
@@ -128,7 +128,7 @@ export async function executeReadConnectedRun(runId:string,modelA:WriteModel,mod
   }
   const input:ConnectedRevisionInput={ownerId:project.ownerId,projectId:project.id,runId,stateVersion:project.version,bibleVersion:bible.version,
     approvedBible:bible.data,draftChapters,readingA,readingB,revisionRound,editorialInstructions:assignments.critic_editor_a.recordedRequest,
-    hasAdditionalInstructions:assignments.critic_editor_a.hasAdditionalInstructions,assignments,
+    hasAdditionalInstructions:assignments.critic_editor_a.hasAdditionalInstructions,brief:project.brief,assignments,
     modelA:project.brief.intake?storyWriteModel(project.ownerId,project.id,`${runId}:editor:a`):modelA,
     modelB:project.brief.intake?storyWriteModel(project.ownerId,project.id,`${runId}:editor:b`):modelB,options};
   const assertReaders=(source:ConnectionSnapshot)=>{

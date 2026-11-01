@@ -1,14 +1,23 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  requireUser: vi.fn(async () => "owner"), sameOrigin: vi.fn(), update: vi.fn(),
+  sameOrigin: vi.fn(), update: vi.fn(),
   traces: [] as { id: string; record: ReturnType<typeof vi.fn>; finish: ReturnType<typeof vi.fn>; firstFailure?: string; availability: string }[],
 }));
 vi.mock("@/contracts/intake", async () => await import("../src/contracts/intake"));
-vi.mock("@/server/projects", async () => await import("../src/server/projects"));
+vi.mock("@/server/projects", async () => {
+  const actual = await import("../src/server/projects");
+  return {
+    ...actual,
+    getProjectById: vi.fn(async (id: string) => {
+      if (id !== "abc") throw new actual.AppError(404, "Project unavailable.");
+      return { id, ownerId: "stored-owner" };
+    }),
+  };
+});
 vi.mock("@/server/intake-http", async () => await import("../src/server/intake-http"));
 vi.mock("@/server/http", () => ({
-  requireUser: mocks.requireUser, sameOrigin: mocks.sameOrigin,
+  sameOrigin: mocks.sameOrigin,
   failure: (error: { status?: number; message?: string }) => Response.json({ error: error.message ?? "Unavailable" }, { status: error.status ?? 503 }),
 }));
 vi.mock("@/server/intake", () => ({ updateProjectIntake: mocks.update }));
@@ -25,7 +34,7 @@ const request = (body: unknown) => new Request("http://localhost:3000/api/projec
 const context = { params: Promise.resolve({ id: "abc" }) };
 
 describe("intake route trace correlation", () => {
-  beforeEach(() => { vi.clearAllMocks(); mocks.traces.length = 0; mocks.update.mockReset(); mocks.requireUser.mockResolvedValue("owner"); });
+  beforeEach(() => { vi.clearAllMocks(); mocks.traces.length = 0; mocks.update.mockReset(); });
   it("returns the same safe ID in the header and successful body", async () => {
     mocks.update.mockResolvedValue({ intake: { status: "analyzed" } });
     const response = await POST(request({ action: "analyze", expectedRevision: 0 }), context);
@@ -33,7 +42,7 @@ describe("intake route trace correlation", () => {
     expect(response.status).toBe(200);
     expect(body.traceId).toMatch(/^[a-f0-9-]{36}$/);
     expect(response.headers.get("x-trace-id")).toBe(body.traceId);
-    expect(mocks.update).toHaveBeenCalledWith("owner", "abc", { action: "analyze", expectedRevision: 0 }, expect.objectContaining({ trace: mocks.traces[0] }));
+    expect(mocks.update).toHaveBeenCalledWith("stored-owner", "abc", { action: "analyze", expectedRevision: 0 }, expect.objectContaining({ trace: mocks.traces[0] }));
   });
   it("returns request failure code and ID without invoking analysis", async () => {
     const response = await POST(request({ action: "unknown", privateText: "secret-canary" }), context);
@@ -53,11 +62,13 @@ describe("intake route trace correlation", () => {
     expect(mocks.update).not.toHaveBeenCalled();
     expect(mocks.traces[0].finish).toHaveBeenCalledExactlyOnceWith("REQUEST_INVALID");
   });
-  it("creates no trace before authorization succeeds", async () => {
-    mocks.requireUser.mockRejectedValue({ status: 401, message: "Sign in to continue." });
-    const response = await POST(request({ action: "analyze", expectedRevision: 0 }), context);
-    expect(response.status).toBe(401);
+  it("returns Project unavailable for a missing id and does not start a trace", async () => {
+    const response = await POST(request({ action: "analyze", expectedRevision: 0 }), { params: Promise.resolve({ id: "missing" }) });
+    const body = await response.json();
+    expect(response.status).toBe(404);
+    expect(body.error).toBe("Project unavailable.");
     expect(mocks.traces).toHaveLength(0);
     expect(response.headers.get("x-trace-id")).toBeNull();
+    expect(mocks.update).not.toHaveBeenCalled();
   });
 });

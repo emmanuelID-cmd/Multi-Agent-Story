@@ -98,7 +98,9 @@ function failureCode(error: unknown): string {
 function assertBudget(deps: ReadDependencies, reserveInput: number, reserveOutput: number, usage: { inputTokens: number; outputTokens: number }): void {
   const b = deps.budget;
   if (![b.maxTokens, b.maxCostUsd, b.inputUsdPerMillion, b.outputUsdPerMillion].every(v => Number.isFinite(v) && v >= 0)) throw new Error("INVALID_BUDGET");
-  if (b.maxTokens > limits.tokens || b.maxCostUsd > limits.costUsd || b.inputUsdPerMillion === 0 || b.outputUsdPerMillion === 0) throw new Error("INVALID_BUDGET");
+  const maxTokensLimit = process.env.STORY_BUDGET_MAX_TOKENS ? Number(process.env.STORY_BUDGET_MAX_TOKENS) : limits.tokens;
+  const maxCostUsdLimit = process.env.STORY_BUDGET_MAX_COST_USD ? Number(process.env.STORY_BUDGET_MAX_COST_USD) : limits.costUsd;
+  if (b.maxTokens > maxTokensLimit || b.maxCostUsd > maxCostUsdLimit || b.inputUsdPerMillion === 0 || b.outputUsdPerMillion === 0) throw new Error("INVALID_BUDGET");
   const projectedTokens = usage.inputTokens + usage.outputTokens + reserveInput + reserveOutput;
   const projectedUsd = ((usage.inputTokens + reserveInput) * b.inputUsdPerMillion + (usage.outputTokens + reserveOutput) * b.outputUsdPerMillion) / 1_000_000;
   if (projectedTokens > b.maxTokens || projectedUsd > b.maxCostUsd) throw new Error("BUDGET_EXHAUSTED");

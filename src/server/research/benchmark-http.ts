@@ -5,15 +5,17 @@ import { intakeRecordSchema, scopeFromIntake, assertIntakeDecisionsReviewed, typ
 import { intakeHash } from "../../agents/intake";
 import { briefSchema } from "../../contracts";
 import { isLcFresh } from "../../contracts/vocabulary";
+import { isAllowedRequestOrigin } from "../request-origin";
 
 const MAX_REQUEST_BYTES = 4_096;
 const BODY_DEADLINE_MS = 5_000;
 const requestSchema = z.strictObject({ projectId: z.uuid(), ...benchmarkRequest.omit({ intakeVersion: true, topicPhrase: true, subjectUri: true }).shape });
 
+// Refuses book-metadata calls that did not come from this app's own address.
+// It uses the same allow list as story saves, including APP_URL or Render's address, and ignores X-Forwarded-Host.
+// A refused call stays a 400 so existing metadata clients keep seeing "Request unavailable."
 export function verifyBenchmarkOrigin(request: Request) {
-  const origin = request.headers.get("origin");
-  if (origin !== "http://localhost:3000" && origin !== "http://127.0.0.1:3000")
-    throw new ReadError(400, "Request unavailable.");
+  if (!isAllowedRequestOrigin(request.headers.get("origin"))) throw new ReadError(400, "Request unavailable.");
 }
 
 export async function parseBenchmarkBody(request: Request) {

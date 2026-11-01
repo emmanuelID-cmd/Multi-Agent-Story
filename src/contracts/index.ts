@@ -47,5 +47,7 @@ export function orderedChapters(outputs: unknown[], version: number) {
   return chapters.sort((a,b) => a.chapterIndex - b.chapterIndex);
 }
 export function canDispatch(usedTokens: number, usedCost: number, estimate = { tokens: 1000, cost: 0 }) {
-  return usedTokens + estimate.tokens <= limits.tokens && usedCost + estimate.cost <= limits.costUsd;
+  const maxTokens = process.env.STORY_BUDGET_MAX_TOKENS ? Number(process.env.STORY_BUDGET_MAX_TOKENS) : limits.tokens;
+  const maxCost = process.env.STORY_BUDGET_MAX_COST_USD ? Number(process.env.STORY_BUDGET_MAX_COST_USD) : limits.costUsd;
+  return usedTokens + estimate.tokens <= maxTokens && usedCost + estimate.cost <= maxCost;
 }

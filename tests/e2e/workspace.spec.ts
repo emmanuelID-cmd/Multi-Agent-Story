@@ -1,39 +1,31 @@
-import {test,expect} from "@playwright/test";
-test("local account, approved plan, queued chapters, and owner isolation",async({page,browser})=>{
-  const address=`writer-${crypto.randomUUID()}@example.test`;
-  const password=`Synthetic-${crypto.randomUUID()}`;
+import { test, expect } from "@playwright/test";
+
+test("story link creation, copy link, invalid link rejection, and reopening the saved idea", async ({ page, browser }) => {
   await page.goto("/");
-  await page.getByRole("button",{name:"Need a test account?"}).click();
-  await page.getByRole("button",{name:"Create account",exact:true}).click();
-  await expect(page.getByRole("alert").filter({hasText:"Check these fields"})).toContainText("email");
-  await page.getByLabel("Email",{exact:true}).fill(address);
-  await page.getByLabel("Password",{exact:true}).fill(password);
-  await page.getByRole("button",{name:"Create account",exact:true}).click();
-  await expect(page.getByRole("heading",{name:"Your projects"})).toBeVisible();
-  await page.getByRole("button",{name:"Create fixture project"}).click();
-  await expect(page.getByRole("button",{name:"Propose synthetic plan"})).toBeVisible();
-  const projectId=await page.getByLabel("Open a project").inputValue();
-  await page.getByRole("tab",{name:"Draft & review"}).click();
-  await expect(page.getByRole("button",{name:"Start synthetic run"})).toBeDisabled();
-  await page.getByRole("tab",{name:"Plan & approve"}).click();
-  await page.getByRole("button",{name:"Propose synthetic plan"}).click();
-  await page.getByRole("button",{name:"Approve this exact plan"}).click();
-  await expect(page.getByRole("heading",{name:"Approved bible v1"})).toBeVisible();
-  await page.getByRole("tab",{name:"Draft & review"}).click();
-  await page.getByRole("button",{name:"Start synthetic run"}).click();
-  await expect(page.getByRole("heading",{name:"Located critique · synthetic fixture"})).toBeVisible({timeout:30_000});
-  const state=await page.request.get(`/api/projects/${projectId}`);
-  const result=await state.json();
-  expect(result.chapters.map((c:{chapterIndex:number})=>c.chapterIndex)).toEqual([1,2,3]);
-  const outsider=await browser.newContext();
-  const outsiderPage=await outsider.newPage();await outsiderPage.goto("/");
-  await outsiderPage.getByRole("button",{name:"Need a test account?"}).click();
-  await outsiderPage.getByLabel("Email",{exact:true}).fill(`outsider-${crypto.randomUUID()}@example.test`);
-  await outsiderPage.getByLabel("Password",{exact:true}).fill(password);
-  await outsiderPage.getByRole("button",{name:"Create account",exact:true}).click();
-  await expect(outsiderPage.getByRole("heading",{name:"Your projects"})).toBeVisible();
-  expect((await outsiderPage.request.get(`/api/projects/${projectId}`)).status()).toBe(404);
-  const forbidden=await outsiderPage.request.post(`/api/projects/${projectId}`,{headers:{origin:"http://localhost:3000"},data:{action:"export"}});
-  expect(forbidden.status()).toBe(404);
+  await expect(page.getByRole("button", { name: "Need a test account?" })).not.toBeVisible();
+  await expect(page.getByLabel("Email")).not.toBeVisible();
+
+  await page.getByPlaceholder("A sailor finds a signal from an island that vanished years ago").fill("Mara lighthouse rescue story.");
+  await page.getByRole("button", { name: "Save story idea" }).click();
+
+  await expect(page.getByRole("button", { name: "Copy link" })).toBeVisible({ timeout: 10_000 });
+  await expect(page).toHaveURL(/\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+  const workId = new URL(page.url()).pathname.slice(1);
+  await expect(page.getByText(workId)).toBeVisible();
+  await expect(page.getByLabel("Your story idea", { exact: true })).toHaveValue("Mara lighthouse rescue story.");
+
+  const randomId = crypto.randomUUID();
+  const randomRes = await page.request.get(`/api/projects/${randomId}`);
+  expect(randomRes.status()).toBe(404);
+  expect(await randomRes.json()).toEqual({ error: "Project unavailable." });
+
+  const outsider = await browser.newContext();
+  const outsiderPage = await outsider.newPage();
+  await outsiderPage.goto(`/${randomId}`);
+  await expect(outsiderPage.getByRole("heading", { name: "Story unavailable" })).toBeVisible();
+
+  await outsiderPage.goto(`/${workId}`);
+  await expect(outsiderPage.getByLabel("Your story idea", { exact: true })).toHaveValue("Mara lighthouse rescue story.");
+  await expect(outsiderPage.getByRole("button", { name: "Copy link" })).toBeVisible();
   await outsider.close();
 });

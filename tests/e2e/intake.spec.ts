@@ -22,10 +22,6 @@ test("sparse story idea, sourced analysis, choices, confirmation, and edit inval
     ],
     missing: ["genre", "tone", "characters", "characterArcs"], usage: { inputTokens: 100, outputTokens: 80 },
   };
-  await page.route("**/api/auth/get-session**", route => route.fulfill({ json: {
-    session: { id: "session", userId: "user", token: "test", expiresAt: "2099-01-01T00:00:00.000Z" },
-    user: { id: "user", name: "Writer", email: "writer@example.test", emailVerified: true, createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" },
-  } }));
   await page.route("**/api/projects", async route => {
     if (route.request().method() === "GET") return route.fulfill({ json: project ? [project] : [] });
     const body = route.request().postDataJSON();
@@ -91,8 +87,7 @@ test("sparse story idea, sourced analysis, choices, confirmation, and edit inval
   await page.getByRole("group", { name: /Tone \/ atmosphere/ }).getByRole("button", { name: "Reject suggestions" }).click();
   await page.getByRole("button", { name: "Save review progress" }).click();
   await expect(page.getByText("Review choices are saved.", { exact: true })).toBeVisible();
-  await page.reload();
-  await page.getByLabel("Open a project").selectOption(projectId);
+  await page.goto(`/${projectId}`);
   await expect(page.getByLabel("Mystery", { exact: true })).toBeChecked();
   await expect(page.getByRole("group", { name: /Tone \/ atmosphere/ }).getByRole("button", { name: "Reject suggestions" })).toHaveAttribute("aria-pressed", "true");
   await page.getByText("Add optional detail: Character names and roles").click();
