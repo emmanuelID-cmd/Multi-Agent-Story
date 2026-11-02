@@ -340,9 +340,28 @@ export default function ResearchReview({ projectId, intake, onAccepted }: Props)
         <label>Source link (reference only; Weaver will not fetch it)<input type="url" value={source.sourceUrl} maxLength={2_000} onChange={event=>updateSource(index,{sourceUrl:event.target.value})}/></label>
         <label>Page, chapter, or passage location<input value={source.locator} maxLength={200} onChange={event=>updateSource(index,{locator:event.target.value})}/></label>
         <label>License name, link, or permission reference<input value={source.licenseReference} maxLength={300} onChange={event=>updateSource(index,{licenseReference:event.target.value})}/></label>
-        <fieldset><legend>Which confirmed details can this source support?</legend>{dimensionOptions.map(option=><label key={option.id}>
-          <input type="checkbox" checked={source.dimensionIds.includes(option.id)} onChange={event=>toggleDimension(index,option.id,event.target.checked)}/>
-          {option.id}: {option.value}</label>)}</fieldset>
+        <fieldset><legend>Which confirmed details can this source support?</legend>
+          <div style={{ display: "flex", gap: "8px", margin: "6px 0" }}>
+            <button
+              type="button"
+              className={styles.chip}
+              style={{ fontSize: "11px", padding: "3px 8px" }}
+              onClick={() => updateSource(index, { dimensionIds: dimensionOptions.map(d => d.id) })}
+            >
+              ✓ Select All Dimensions
+            </button>
+            <button
+              type="button"
+              className={styles.chip}
+              style={{ fontSize: "11px", padding: "3px 8px" }}
+              onClick={() => updateSource(index, { dimensionIds: [] })}
+            >
+              ✕ Clear
+            </button>
+          </div>
+          {dimensionOptions.map(option=><label key={option.id}>
+            <input type="checkbox" checked={source.dimensionIds.includes(option.id)} onChange={event=>toggleDimension(index,option.id,event.target.checked)}/>
+            {option.id}: {option.value}</label>)}</fieldset>
         <label>Excerpt for analysis<textarea value={source.text} maxLength={5_000} onChange={event=>updateSource(index,{text:event.target.value})}/></label>
         <p className={styles.small}>{source.text.length} / 5,000 characters. Do not paste text you are not permitted to provide.</p>
         <label><input type="checkbox" checked={source.confirmPermission} onChange={event=>updateSource(index,{confirmPermission:event.target.checked})}/>

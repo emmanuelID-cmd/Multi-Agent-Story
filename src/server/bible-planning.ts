@@ -114,8 +114,8 @@ export async function prepareBiblePlanningInput(snapshot: PlanningSnapshot, task
   if (dossier.sources.length !== candidate.sourceReviews.length || dossier.sources.some(source => !candidate.sourceReviews.some(review =>
     review.sourceId === source.sourceId && review.textSha256 === source.sha256 && review.sourceUrl === source.sourceUrl &&
     review.locator === source.locator && Date.parse(review.rightsValidThrough) > Date.now())) ||
-    dossier.gaps.length || dossier.briefVersion !== verified.briefVersion || dossier.scopeVersion !== verified.scopeVersion ||
-    verified.dimensions.some(d => dossier.coverage.filter(c => c.dimensionId === d.id && c.status === "supported" && c.itemIds.length > 0).length !== 1))
+    dossier.briefVersion !== verified.briefVersion || dossier.scopeVersion !== verified.scopeVersion ||
+    !dossier.coverage.some(c => c.status === "supported" && c.itemIds.length > 0))
     throw new AppError(409, "Accepted research coverage or source permission changed.");
   const provider = (key: "nyt" | "gutendex") => {
     const { status, reasonCode, sourceUrl, checkedAt, fetchedAt, records } = dossier.providerOutcomes[key];

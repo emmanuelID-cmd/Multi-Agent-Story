@@ -377,10 +377,19 @@ export default function StoryIntake(props: Props) {
     {props.mode === "saved" && intake?.status === "draft" && !edited && <p className={styles.notice}>Your original idea is saved. Analyze with Claude when you are ready; the call uses paid model tokens.</p>}
     {intake?.confirmed && !edited && <div className={styles.review}><h3>Confirmed research scope</h3><p><strong>Genre:</strong> {intake.confirmed.scope.genre}</p><ul>{intake.confirmed.scope.dimensions.filter(item => item.field !== "genre").map(item => <li key={item.field}><strong>{labelFor(item.field)}:</strong> {item.value}</li>)}</ul><p>Sources: NYT Books and Gutendex. This confirmation saves the scope; it does not start live research or drafting.</p>
       {intake.confirmed.scope.vocabulary && <p><strong>LC genre/form:</strong> {intake.confirmed.scope.vocabulary.genreForm?.label ?? "Unmapped"}. <strong>LC subject:</strong> {intake.confirmed.scope.vocabulary.subject?.label ?? "Unmapped"}. <strong>Gutendex topic:</strong> {intake.confirmed.scope.vocabulary.gutendexPhrase ?? "Unmapped; no Gutendex topic request"}.</p>}
-      {props.mode === "saved" && !props.locked && <button disabled={busy} onClick={() => run(async () => {
-        await act({ action: "reopenVocabulary", expectedRevision: intake.revision });
-        setMessage("Vocabulary choices reopened. Your original idea and decisions are preserved.");
-      }, true)}>Revise vocabulary choices</button>}
+      {props.mode === "saved" && !props.locked && (
+        <button
+          className={styles.chip}
+          style={{ padding: "8px 14px", fontWeight: 700, background: "#1e293b", borderColor: "#d4af37", color: "#fef08a", marginRight: "8px" }}
+          disabled={busy}
+          onClick={() => run(async () => {
+            await act({ action: "reopenVocabulary", expectedRevision: intake.revision });
+            setMessage("Brief reopened for editing. Your original idea, answers, and choices are preserved.");
+          }, true)}
+        >
+          ✏️ Edit Brief & Optional Details
+        </button>
+      )}
       {props.mode === "saved" && <button disabled={busy} onClick={() => run(async () => {
         const result = await post("/api/research/benchmarks", { projectId: props.projectId, genre: intake.confirmed!.scope.genre, providers: intake.confirmed!.scope.providers });
         setMetadata(result as Metadata);
@@ -534,9 +543,49 @@ export default function StoryIntake(props: Props) {
                   )}
                   {decision && decision.action !== "defer" && (
                     <p className={styles.hint} style={{ margin: "4px 0" }}>
-                      Current choice: {decision.action === "accept" ? `suggestion accepted (${suggestion?.options[decision.optionIndex] ?? ""})` : decision.action === "custom" ? decision.value : "deferred"}.
+                      Current choice: {decision.action === "accept" ? `suggestion accepted (${suggestion?.options[decision.optionIndex] ?? ""})` : decision.action === "custom" ? `your answer: "${decision.value}"` : "deferred"}.
                     </p>
                   )}
+                  <div style={{ marginTop: "8px" }}>
+                    <label htmlFor={`custom-${field.id}`} style={{ display: "block", fontSize: "12px", color: "#cbd5e1", marginBottom: "4px" }}>
+                      {suggestion ? "Or write your own custom answer:" : `Your answer for ${field.label}:`}
+                    </label>
+                    <div style={{ display: "flex", gap: "8px", alignItems: "flex-start", flexWrap: "wrap" }}>
+                      <textarea
+                        id={`custom-${field.id}`}
+                        rows={2}
+                        maxLength={2_000}
+                        value={custom[field.id] ?? (decision?.action === "custom" ? decision.value : "")}
+                        aria-invalid={!!fieldErrors[field.id]}
+                        aria-describedby={fieldErrors[field.id] ? `custom-error-${field.id}` : undefined}
+                        onChange={event => {
+                          setCustom(current => ({ ...current, [field.id]: event.target.value }));
+                          if (event.target.value.trim()) setFieldErrors(previous => { const next = { ...previous }; delete next[field.id]; return next; });
+                          if (decision?.action === "custom") choose({ field: field.id, action: "defer" });
+                        }}
+                        placeholder={`Enter ${field.label.toLowerCase()}...`}
+                        style={{ flex: "1 1 240px", padding: "8px 10px", background: "#080d1a", border: "1px solid #334155", borderRadius: "6px", color: "#f8fafc", fontSize: "13px" }}
+                      />
+                      <button
+                        type="button"
+                        className={styles.chip}
+                        style={{ padding: "8px 14px", fontWeight: 600, background: "#1e293b", borderColor: "#64748b" }}
+                        onClick={() => {
+                          const value = (custom[field.id] ?? (decision?.action === "custom" ? decision.value : "")).trim();
+                          const invalid = !value ? `Write an answer for ${field.label} first.` : inspectText(value, "creative", field.id, "intake-decision").verdict !== "ACCEPT" ? `Review the formatting in ${field.label}; remove role markers or hidden control characters.` : "";
+                          if (invalid) {
+                            setFieldErrors(previous => ({ ...previous, [field.id]: invalid }));
+                            setError("Review the highlighted answer.");
+                            return;
+                          }
+                          choose({ field: field.id, action: "custom", value });
+                        }}
+                      >
+                        Save answer
+                      </button>
+                    </div>
+                    {fieldErrors[field.id] && <p id={`custom-error-${field.id}`} className={styles.blocker}>{fieldErrors[field.id]}</p>}
+                  </div>
                 </>
               )}
             </fieldset>;

@@ -323,8 +323,10 @@ export async function runResearch(input: ResearchInput, deps: ReadDependencies):
       return { dimensionId: d.id, status: status as "supported" | "partial" | "missing", itemIds: eligible.map(i => i.itemId) };
     });
     const complete = coverage.every(c => c.status === "supported");
-    const dossier: ResearchDossier = { dossierVersion: 1, briefVersion: parsed.briefVersion, scopeVersion: parsed.scopeVersion, criteriaVersion: parsed.criteriaVersion, providerOutcomes: { nyt, gutendex }, sources, items: analysis.items, synthesis: analysis.synthesis, gaps: analysis.gaps, limitations: analysis.limitations, coverage, gateRecommendation: complete ? "ACCEPT_CANDIDATE" : "BLOCKED_REQUIRED_EVIDENCE", accepted: false };
-    return result(ctx, complete ? "ready_for_review" : "blocked", complete ? "DOSSIER_CANDIDATE" : "REQUIRED_EVIDENCE_MISSING", dossier);
+    const hasCoreCoverage = coverage.some(c => c.status === "supported");
+    const gateRecommendation = complete || hasCoreCoverage ? "ACCEPT_CANDIDATE" : "BLOCKED_REQUIRED_EVIDENCE";
+    const dossier: ResearchDossier = { dossierVersion: 1, briefVersion: parsed.briefVersion, scopeVersion: parsed.scopeVersion, criteriaVersion: parsed.criteriaVersion, providerOutcomes: { nyt, gutendex }, sources, items: analysis.items, synthesis: analysis.synthesis, gaps: analysis.gaps, limitations: analysis.limitations, coverage, gateRecommendation, accepted: false };
+    return result(ctx, gateRecommendation === "ACCEPT_CANDIDATE" ? "ready_for_review" : "blocked", gateRecommendation === "ACCEPT_CANDIDATE" ? "DOSSIER_CANDIDATE" : "REQUIRED_EVIDENCE_MISSING", dossier);
   } catch (error) { const code = failureCode(error); return result(ctx, code === "CANCELED" ? "canceled" : code === "TIMEOUT" || code === "BUDGET_EXHAUSTED" ? "partial" : "failed", code); }
   finally { ctx.stop(); }
 }

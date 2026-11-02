@@ -4,7 +4,7 @@ import { z, ZodError } from "zod";
 import { Annotation, StateGraph, START, END, MemorySaver, interrupt, Command } from "@langchain/langgraph";
 import { PostgresSaver } from "@langchain/langgraph-checkpoint-postgres";
 import { and, desc, eq, inArray, isNull, like, sql } from "drizzle-orm";
-import { db } from "../server/db";
+import { db, pool } from "../server/db";
 import { runs, tasks, chapters, bibles, critiques, evidence, projects, proposals, storyBudgetUsage } from "../server/db/schema";
 import { chapterSchema, orderedChapters, canDispatch, limits, type Bible, type Brief, type Chapter, type Fixture } from "../contracts";
 import { getGenreBenchmarks } from "../server/research";
@@ -762,7 +762,7 @@ export async function executeRun(runId: string, checkpoint = true) {
     await executeRequestedRevision(run, runTasks, revisionRound);
     return;
   }
-  const saver=checkpoint?PostgresSaver.fromConnString(process.env.DATABASE_URL!):undefined;
+  const saver = checkpoint && process.env.DATABASE_URL ? new PostgresSaver(pool) : undefined;
   try {
     if(saver)await saver.setup();
     const graph=new StateGraph(State)

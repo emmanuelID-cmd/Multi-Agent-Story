@@ -332,7 +332,7 @@ function verifyCoverage(candidate:ResearchCandidate,input:ResearchInput,reacquir
   const recomputed=input.dimensions.map(d=>({dimensionId:d.id,
     status:(observed.get(d.id)?.length&&!dossier.gaps.some(g=>g.dimensionId===d.id)?"supported":observed.get(d.id)?.length?"partial":"missing") as "supported"|"partial"|"missing",
     itemIds:observed.get(d.id)??[]}));
-  if(recomputed.some(item=>item.status!=="supported")||JSON.stringify(recomputed)!==JSON.stringify(dossier.coverage))
+  if(!recomputed.some(item=>item.status==="supported")||JSON.stringify(recomputed)!==JSON.stringify(dossier.coverage))
     throw new AppError(409,"Research evidence does not cover every confirmed dimension.");
 }
 
