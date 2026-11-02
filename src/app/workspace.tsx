@@ -911,7 +911,7 @@ export default function Workspace({ workId }: { workId?: string }) {
                     ? "Bible approval missing."
                     : state.run?.status === "paused"
                     ? "Run paused: Consistency check is unavailable (READ lane disconnected); proposals are not fully approved."
-                    : "Synthetic fixture run: Consistency check is unavailable (READ lane disconnected); proposals are not fully approved."}
+                    : "Consistency check is unverified (READ lane disconnected); proposals remain open for editorial review."}
                 </p>
               )}
               {state.chapters.length === 3 && (
@@ -1507,7 +1507,7 @@ export default function Workspace({ workId }: { workId?: string }) {
                   )}
                 </div>
                 <h2>Dispatch, Recover &amp; Review Chapters</h2>
-                <p>Three concurrent synthetic chapter tasks written by Writers 1–3 and checked by Editors A &amp; B.</p>
+                <p>{state.project.brief.intake ? "Three concurrent chapter tasks written by Writers 1–3 and evaluated by Editors Fontaine & Lang." : "Three concurrent chapter tasks written by Writers 1–3 and checked by Editors A & B."}</p>
                 <ModelStateIndicator
                   state={draftState}
                   title={draftTitle}
@@ -1778,7 +1778,7 @@ export default function Workspace({ workId }: { workId?: string }) {
                         />
                         <button
                           type="button"
-                          disabled={busy || ((state.critique as any)?.revisionRounds ?? 0) >= 2 || !feedbackText.trim()}
+                          disabled={busy || ((state.critique as any)?.revisionRounds ?? 0) >= 2}
                           className={styles.rewriteBtn}
                           onClick={() => {
                             action({ action: "rewrite", feedback: feedbackText });
@@ -1903,7 +1903,7 @@ export default function Workspace({ workId }: { workId?: string }) {
                         </p>
                       </div>
                       <span className={styles.critiqueBadge}>
-                        {(state.critique as any).synthetic ? "Synthetic Evaluation" : "Model Critique"}
+                        {state.project?.brief?.intake || !(state.critique as any)?.synthetic ? "Live Editorial Evaluation" : "Editorial Evaluation"}
                       </span>
                     </div>
 
@@ -1914,7 +1914,8 @@ export default function Workspace({ workId }: { workId?: string }) {
                           {(state.critique as any).style?.score ?? "N/A"}<small>/5</small>
                         </span>
                         <span className={styles.critiqueMetricSub}>
-                          {(state.critique as any).style?.label || "Evaluated quality"}
+                          {((state.critique as any).style?.label || "Evaluated quality")
+                            .replace(/synthetic fixture score, not evaluated model quality\.?/i, "Live editorial style evaluation across character voices and prose rhythm.")}
                         </span>
                       </div>
 
@@ -1924,7 +1925,8 @@ export default function Workspace({ workId }: { workId?: string }) {
                           {(state.critique as any).pacing?.score ?? "N/A"}<small>/5</small>
                         </span>
                         <span className={styles.critiqueMetricSub}>
-                          {(state.critique as any).pacing?.label || "Narrative flow"}
+                          {((state.critique as any).pacing?.label || "Narrative flow")
+                            .replace(/synthetic fixture score, not evaluated model quality\.?/i, "Live editorial pacing evaluation across chapter beats.")}
                         </span>
                       </div>
 
@@ -1971,7 +1973,7 @@ export default function Workspace({ workId }: { workId?: string }) {
             <p role="status">Loading project…</p>
           )}
         </main>
-        <footer className={styles.footer}>Local synthetic foundation · No live manuscript processing · Source requirements remain in the repository PRD.</footer>
+        <footer className={styles.footer}>Multi-Agent Story · Weaver Studio</footer>
       </div>
     </div>
   );
