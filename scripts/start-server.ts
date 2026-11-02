@@ -10,10 +10,16 @@ migrate.on("exit", (code) => {
   }
 
   console.log("[Server]: Starting background story worker daemon...");
-  const worker = spawn("npm", ["run", "worker"], { stdio: "inherit", shell: true });
+  let worker = spawn("npm", ["run", "worker"], { stdio: "inherit", shell: true });
 
   worker.on("error", (err) => {
     console.error("[Server Worker Error]:", err);
+  });
+
+  worker.on("exit", (code) => {
+    if (code !== 0) {
+      console.error(`[Server Worker Alert]: Background story worker daemon exited unexpectedly with code ${code}.`);
+    }
   });
 
   console.log("[Server]: Starting Next.js web application...");

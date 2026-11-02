@@ -192,21 +192,21 @@ export default function StoryIntake(props: Props) {
   if (intake?.status === "analyzing" && !edited) {
     if (stalled || analyzingSeconds >= 45) {
       intakeModelState = "timeout";
-      intakeModelTitle = "Analysis Timed Out";
+      intakeModelTitle = "Analysis Timed Out (45s limit reached)";
       intakeModelMessage = "The analysis did not finish within 45 seconds. The model request may be stalled or rate-limited. Click 'Retry analysis' to try again.";
     } else {
       intakeModelState = "loading";
-      intakeModelTitle = "Claude is analyzing your story idea";
-      intakeModelMessage = "Extracting narrative premise, setting, characters, arcs, and suggesting genre/structural options. Results will appear automatically.";
+      intakeModelTitle = "Coordinator (Claude 3.5 Sonnet) is analyzing your story idea";
+      intakeModelMessage = "Coordinator is extracting premise, setting, characters, arcs, and narrative structure with automatic Haiku backup. Results will appear automatically.";
     }
   } else if (analysisError || (error && error.toLowerCase().includes("analysis"))) {
     intakeModelState = "fail";
-    intakeModelTitle = "Analysis Failed";
-    intakeModelMessage = analysisError || error;
+    intakeModelTitle = "Intake Analysis Failed";
+    intakeModelMessage = `Analysis encountered an error: ${analysisError || error || "Unknown failure"}. Your raw text is preserved. You can modify your brief or click 'Retry analysis'.`;
   } else if (analysis && intake?.status === "analyzed" && !edited) {
     intakeModelState = "success";
-    intakeModelTitle = "Analysis Complete";
-    intakeModelMessage = "Claude successfully analyzed your story idea. Review suggestions and confirmed elements below.";
+    intakeModelTitle = "Analysis Complete: Coordinator";
+    intakeModelMessage = "Coordinator (Claude 3.5 Sonnet) successfully analyzed your story idea. Review suggestions and confirmed elements below.";
   }
   const labelFor = (field: IntakeField) => intakeFields.find(item => item.id === field)?.label || field;
   const decisionsFor = (field: IntakeField) => decisions.find(item => item.field === field);

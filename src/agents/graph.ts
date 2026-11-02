@@ -279,6 +279,7 @@ export async function finishRun(runId: string) {
     if (canUseLiveModel && project) {
       const modelA = storyWriteModel(project.ownerId, project.id, `${runId}:editor:a`);
       const modelB = storyWriteModel(project.ownerId, project.id, `${runId}:editor:b`);
+      const editorialSignal = AbortSignal.timeout(limits.timeoutMs);
       const [resA, resB] = await Promise.all([
         generateEditorialProposal({
           role: "critic_editor_a",
@@ -288,7 +289,7 @@ export async function finishRun(runId: string) {
           handoff: validHandoff,
           userEditorialInstructions: recordedRequest,
           brief: saved?.brief ?? project.brief,
-        }, modelA),
+        }, modelA, editorialSignal),
         generateEditorialProposal({
           role: "critic_editor_b",
           bibleVersion: bible.version,
@@ -297,7 +298,7 @@ export async function finishRun(runId: string) {
           handoff: validHandoff,
           userEditorialInstructions: recordedRequest,
           brief: saved?.brief ?? project.brief,
-        }, modelB),
+        }, modelB, editorialSignal),
       ]);
       manuscriptA = resA.proposal;
       manuscriptB = resB.proposal;

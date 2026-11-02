@@ -103,7 +103,8 @@ export function assertPlanningChoiceCoverage(
 
 /** Three separate stateless calls; no candidate sees another candidate's output. No automatic paid retries. */
 export async function generateBibleAlternatives(input: BiblePlanningInput, model: ReadModel, budget: PlanningBudget, signal: AbortSignal) {
-  if (model.modelId !== "claude-haiku-5-5") throw Error("MODEL_VERSION_MISMATCH");
+  const allowedModels = ["claude-3-5-sonnet-20241022", "claude-haiku-5-5", "fixture-read-v1"];
+  if (!allowedModels.includes(model.modelId)) throw Error("MODEL_VERSION_MISMATCH");
   const reservation = planningReservation(input, budget);
   const results: Array<z.infer<typeof planningOutputSchema>> = [];
   let inputTokens = 0, outputTokens = 0;

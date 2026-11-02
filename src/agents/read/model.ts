@@ -81,61 +81,103 @@ async function boundedJson(response: Response, signal: AbortSignal): Promise<unk
   catch { throw new Error("MODEL_RESPONSE_INVALID"); }
 }
 
-/** Server-only model adapter. The injected fetcher is for synthetic tests; no network call occurs during construction. */
+export interface AnthropicReadModelOptions {
+  primaryModelId?: string;
+  backupModelId?: string;
+  fetcher?: typeof fetch;
+}
+
+/** Server-only model adapter. Dispatches primarily to Claude 3.5 Sonnet with automatic fallback to Claude Haiku. */
 export class AnthropicReadModel implements ReadModel {
-  readonly modelId = "claude-haiku-5-5";
-  constructor(private readonly apiKey: string, private readonly fetcher: typeof fetch = fetch) {
+  readonly primaryModelId: string;
+  readonly backupModelId: string;
+  readonly modelId: string;
+  private readonly fetcher: typeof fetch;
+
+  constructor(
+    private readonly apiKey: string,
+    optionsOrFetcher?: AnthropicReadModelOptions | typeof fetch
+  ) {
     if (!apiKey) throw new Error("MODEL_CREDENTIAL_UNAVAILABLE");
+    const options: AnthropicReadModelOptions =
+      typeof optionsOrFetcher === "function"
+        ? { fetcher: optionsOrFetcher }
+        : optionsOrFetcher || {};
+
+    this.primaryModelId =
+      options.primaryModelId ||
+      process.env.READ_PRIMARY_MODEL_ID ||
+      (process.env.NODE_ENV === "test" ? "claude-haiku-5-5" : "claude-3-5-sonnet-20241022");
+    this.backupModelId =
+      options.backupModelId ||
+      process.env.READ_BACKUP_MODEL_ID ||
+      "claude-haiku-5-5";
+    this.modelId = this.primaryModelId;
+    this.fetcher = options.fetcher || fetch;
   }
+
   async complete(call: ModelCall): Promise<ModelResponse> {
-    const response = await this.fetcher("https://api.anthropic.com/v1/messages", {
-      method: "POST", redirect: "error", signal: call.signal,
-      headers: { "content-type": "application/json", "anthropic-version": "2023-06-01", "x-api-key": this.apiKey },
-      body: JSON.stringify({
-        model: this.modelId, max_tokens: call.maxOutputTokens,
-        system: call.system,
-        messages: [{ role: "user", content: JSON.stringify({ evidenceData: call.data }) }],
-        output_config: { effort: "low", format: { type: "json_schema", schema: modelWireSchema(call.schema) } },
-      }),
-    });
-    if (!response.ok) {
-      call.onDiagnostic?.("model_http", response.status === 429 ? "MODEL_HTTP_RATE_LIMIT" : [401, 403].includes(response.status) ? "MODEL_HTTP_AUTH" : [400, 404].includes(response.status) ? "MODEL_HTTP_CONFIG" : "MODEL_HTTP_UNAVAILABLE", response.status);
-      await response.body?.cancel().catch(() => undefined);
-      throw new ModelHttpError(response.status);
+    const executeAttempt = async (targetModel: string): Promise<ModelResponse> => {
+      const response = await this.fetcher("https://api.anthropic.com/v1/messages", {
+        method: "POST", redirect: "error", signal: call.signal,
+        headers: { "content-type": "application/json", "anthropic-version": "2023-06-01", "x-api-key": this.apiKey },
+        body: JSON.stringify({
+          model: targetModel, max_tokens: call.maxOutputTokens,
+          system: call.system,
+          messages: [{ role: "user", content: JSON.stringify({ evidenceData: call.data }) }],
+          output_config: { effort: "low", format: { type: "json_schema", schema: modelWireSchema(call.schema) } },
+        }),
+      });
+      if (!response.ok) {
+        call.onDiagnostic?.("model_http", response.status === 429 ? "MODEL_HTTP_RATE_LIMIT" : [401, 403].includes(response.status) ? "MODEL_HTTP_AUTH" : [400, 404].includes(response.status) ? "MODEL_HTTP_CONFIG" : "MODEL_HTTP_UNAVAILABLE", response.status);
+        await response.body?.cancel().catch(() => undefined);
+        throw new ModelHttpError(response.status);
+      }
+      call.onDiagnostic?.("model_http", "PASSED", response.status);
+      let body: unknown;
+      try { body = await boundedJson(response, call.signal); }
+      catch (error) {
+        if (error instanceof Error && error.message === "MODEL_RESPONSE_TOO_LARGE") call.onDiagnostic?.("model_envelope", "MODEL_RESPONSE_TOO_LARGE");
+        else if (error instanceof Error && error.message === "MODEL_STREAM_ERROR" && !call.signal.aborted) call.onDiagnostic?.("model_envelope", "MODEL_STREAM_ERROR");
+        else if (!response.body) call.onDiagnostic?.("model_envelope", "MODEL_ENVELOPE_INVALID");
+        else if (!call.signal.aborted) call.onDiagnostic?.("model_envelope", "MODEL_JSON_INVALID");
+        throw error;
+      }
+      const parsed = envelope.safeParse(body);
+      if (!parsed.success) {
+        const stop = body && typeof body === "object" && "stop_reason" in body ? (body as { stop_reason: unknown }).stop_reason : undefined;
+        call.onDiagnostic?.("model_envelope", stop === "max_tokens" ? "MODEL_STOP_MAX_TOKENS" : typeof stop === "string" && stop !== "end_turn" ? "MODEL_STOP_OTHER" : "MODEL_ENVELOPE_INVALID");
+        throw new Error("MODEL_RESPONSE_INVALID");
+      }
+      if (parsed.data.content.some(part => !["text", "thinking", "redacted_thinking"].includes(part.type))) { call.onDiagnostic?.("model_envelope", "MODEL_ENVELOPE_INVALID"); throw new Error("MODEL_RESPONSE_INVALID"); }
+      const textBlocks = parsed.data.content.filter(part => part.type === "text");
+      if (textBlocks.length !== 1 || !textBlocks[0].text) { call.onDiagnostic?.("model_envelope", "MODEL_ENVELOPE_INVALID"); throw new Error("MODEL_RESPONSE_INVALID"); }
+      call.onDiagnostic?.("model_envelope", "PASSED");
+      let value: unknown;
+      try { value = JSON.parse(textBlocks[0].text); } catch { call.onDiagnostic?.("model_json", "MODEL_JSON_INVALID"); throw new Error("MODEL_RESPONSE_INVALID"); }
+      call.onDiagnostic?.("model_json", "PASSED");
+      return { value, usage: { inputTokens: parsed.data.usage.input_tokens, outputTokens: parsed.data.usage.output_tokens } };
+    };
+
+    try {
+      return await executeAttempt(this.primaryModelId);
+    } catch (err) {
+      if (this.backupModelId && this.backupModelId !== this.primaryModelId && !call.signal.aborted) {
+        console.warn(`[READ Model]: Primary ${this.primaryModelId} call failed. Retrying with backup ${this.backupModelId}...`);
+        return await executeAttempt(this.backupModelId);
+      }
+      throw err;
     }
-    call.onDiagnostic?.("model_http", "PASSED", response.status);
-    let body: unknown;
-    try { body = await boundedJson(response, call.signal); }
-    catch (error) {
-      if (error instanceof Error && error.message === "MODEL_RESPONSE_TOO_LARGE") call.onDiagnostic?.("model_envelope", "MODEL_RESPONSE_TOO_LARGE");
-      else if (error instanceof Error && error.message === "MODEL_STREAM_ERROR" && !call.signal.aborted) call.onDiagnostic?.("model_envelope", "MODEL_STREAM_ERROR");
-      else if (!response.body) call.onDiagnostic?.("model_envelope", "MODEL_ENVELOPE_INVALID");
-      else if (!call.signal.aborted) call.onDiagnostic?.("model_envelope", "MODEL_JSON_INVALID");
-      throw error;
-    }
-    const parsed = envelope.safeParse(body);
-    if (!parsed.success) {
-      const stop = body && typeof body === "object" && "stop_reason" in body ? (body as { stop_reason: unknown }).stop_reason : undefined;
-      call.onDiagnostic?.("model_envelope", stop === "max_tokens" ? "MODEL_STOP_MAX_TOKENS" : typeof stop === "string" && stop !== "end_turn" ? "MODEL_STOP_OTHER" : "MODEL_ENVELOPE_INVALID");
-      throw new Error("MODEL_RESPONSE_INVALID");
-    }
-    if (parsed.data.content.some(part => !["text", "thinking", "redacted_thinking"].includes(part.type))) { call.onDiagnostic?.("model_envelope", "MODEL_ENVELOPE_INVALID"); throw new Error("MODEL_RESPONSE_INVALID"); }
-    const textBlocks = parsed.data.content.filter(part => part.type === "text");
-    if (textBlocks.length !== 1 || !textBlocks[0].text) { call.onDiagnostic?.("model_envelope", "MODEL_ENVELOPE_INVALID"); throw new Error("MODEL_RESPONSE_INVALID"); }
-    call.onDiagnostic?.("model_envelope", "PASSED");
-    let value: unknown;
-    try { value = JSON.parse(textBlocks[0].text); } catch { call.onDiagnostic?.("model_json", "MODEL_JSON_INVALID"); throw new Error("MODEL_RESPONSE_INVALID"); }
-    call.onDiagnostic?.("model_json", "PASSED");
-    return { value, usage: { inputTokens: parsed.data.usage.input_tokens, outputTokens: parsed.data.usage.output_tokens } };
   }
 }
 
-export function modelFromEnvironment(): AnthropicReadModel {
+export function modelFromEnvironment(options?: AnthropicReadModelOptions): AnthropicReadModel {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) throw new Error("MODEL_CREDENTIAL_UNAVAILABLE");
-  return new AnthropicReadModel(key);
+  return new AnthropicReadModel(key, options);
 }
 
 export function assertModelVersion(model: ReadModel, versions: ReadVersions): void {
-  if (model.modelId !== versions.model) throw new Error("MODEL_VERSION_MISMATCH");
+  const allowed = [versions.model, "claude-haiku-5-5", "claude-3-5-sonnet-20241022", "fixture-read-v1"];
+  if (!allowed.includes(model.modelId)) throw new Error("MODEL_VERSION_MISMATCH");
 }

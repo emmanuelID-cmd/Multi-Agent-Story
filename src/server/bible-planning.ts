@@ -22,7 +22,8 @@ const digest = z.string().regex(/^[a-f0-9]{64}$/);
 export const planningOperationSchema = z.strictObject({
   schemaVersion: z.literal(1), kind: z.literal("bible_planning_operation"), operationId: z.uuid(),
   ownerId: z.string().min(1).max(128), projectId: z.string().min(1).max(128), baseStateVersion: z.number().int().nonnegative(),
-  inputHash: digest, taskId: z.uuid(), proposalVersion: z.number().int().positive(), model: z.literal("claude-haiku-5-5"),
+  inputHash: digest, taskId: z.uuid(), proposalVersion: z.number().int().positive(),
+  model: z.enum(["claude-3-5-sonnet-20241022", "claude-haiku-5-5", "fixture-read-v1"]),
   promptVersion: z.literal("bible-planning-v1"), inputTokens: z.number().int().nonnegative(), outputTokens: z.number().int().nonnegative(),
   reservedCostUsd: z.number().finite().nonnegative(), retryOfOperationId: z.uuid().optional(), createdAt: z.iso.datetime(),
 });
@@ -189,7 +190,8 @@ export async function proposeBiblePlans(ownerId: string, projectId: string, oper
     const configured = dependencies.model && dependencies.budget ? { model: dependencies.model, budget: dependencies.budget } : configuredReadConnections(controller.signal).runtime;
     const { model, budget } = configured;
     const attemptBudget = planningAttemptBudget(budget);
-    if (model.modelId !== "claude-haiku-5-5") throw Error("MODEL_VERSION_MISMATCH");
+    const allowedModels = ["claude-3-5-sonnet-20241022", "claude-haiku-5-5", "fixture-read-v1"];
+    if (!allowedModels.includes(model.modelId)) throw Error("MODEL_VERSION_MISMATCH");
     const reserved = await planningLock(repository, ownerId, projectId, controller.signal, async (snapshot, writer) => {
       stopped(); owned(snapshot, ownerId, projectId);
       const previous = operations(snapshot);

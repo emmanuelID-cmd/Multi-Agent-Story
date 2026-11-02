@@ -545,29 +545,36 @@ export default function Workspace({ workId }: { workId?: string }) {
   let planningTitle = "";
   let planningMessage = "";
 
+  const WRITER_ALIASES: Record<number, { name: string; focus: string }> = {
+    1: { name: "Grimm", focus: "World, protagonist, & Beat 1" },
+    2: { name: "Andersen", focus: "Emotional stakes, midpoint, & Beat 2" },
+    3: { name: "Perrault", focus: "Climax acceleration & resolution" },
+  };
+
   if (isPlanningRunning) {
     planningState = "loading";
-    planningTitle = "Claude Haiku is generating candidate story bibles";
-    planningMessage = "Planning 3 distinct directional candidates in parallel: Candidate A (Plot & Mystery), Candidate B (Character & Stakes), and Candidate C (World & Atmosphere)...";
+    planningTitle = "Claude 3.5 Sonnet is generating candidate story bibles";
+    planningMessage = "Planners A (Plot & Mystery), B (Character & Stakes), and C (World & Atmosphere) are generating 3 distinct directions in parallel, backed by Claude Haiku.";
   } else if (isPlanningTimeout) {
     planningState = "timeout";
-    planningTitle = "Bible Planning Timed Out";
-    planningMessage = "The model call exceeded the 120-second timeout limit. Your confirmed brief and accepted research are preserved. Use planning recovery below.";
+    planningTitle = "Bible Planning Timed Out (120s limit reached)";
+    planningMessage = "The candidate planning request exceeded the 120-second timeout limit. Your confirmed brief and accepted research are preserved. Use planning recovery below.";
   } else if (isPlanningFailed) {
     planningState = "fail";
     planningTitle = "Bible Planning Failed";
-    planningMessage = modelActionError || "Candidate generation encountered an error. Review the planning recovery options below.";
+    planningMessage = modelActionError ? `Planning error: ${modelActionError}. Review the planning recovery options below.` : "Candidate generation encountered an error. Review the planning recovery options below.";
   } else if (isPlanningCompleted) {
     planningState = "success";
     planningTitle = "Candidate Bibles Generated Successfully";
-    planningMessage = "3 directional story bibles have been proposed. Review each direction and approve your preferred plan below.";
+    planningMessage = "3 directional story bibles have been proposed by Claude 3.5 Sonnet. Review each direction and approve your preferred plan below.";
   }
 
   const isRunActive = !!state?.run && ["pending", "running"].includes(state.run.status);
   const isRunCompleted = state?.run?.status === "completed";
   const isRunFailed = state?.run?.status === "failed";
   const hasTaskTimeout = state?.tasks?.some(t => t.error?.toLowerCase().includes("timeout"));
-  const isRunTimeout = isRunFailed && (hasTaskTimeout || fixture === "timeout");
+  const isRunElapsedTimeout = isRunActive && modelElapsedSeconds >= 120;
+  const isRunTimeout = (isRunFailed && (hasTaskTimeout || fixture === "timeout")) || isRunElapsedTimeout;
   const completedTaskCount = state?.tasks?.filter(t => t.status === "completed").length || 0;
   const totalTaskCount = state?.tasks?.length || 3;
 
@@ -575,22 +582,43 @@ export default function Workspace({ workId }: { workId?: string }) {
   let draftTitle = "";
   let draftMessage = "";
 
-  if (isRunActive) {
+  if (isRunActive && !isRunElapsedTimeout) {
     draftState = "loading";
-    draftTitle = "Story drafting and review in progress";
-    draftMessage = `Writing and checking chapters with Writers 1–3 and Editors A & B. Completed: ${completedTaskCount} of ${totalTaskCount} tasks...`;
+    if (state.run?.status === "pending") {
+      draftTitle = "Drafting Run Queued: Waiting for Story Worker";
+      draftMessage = "Run is pending in the background worker queue. (If running locally, ensure 'npm run worker' is active. On Render, waiting for worker to claim the task).";
+    } else {
+      const runningTasks = state?.tasks?.filter(t => t.status === "running") || [];
+      const completedTasks = state?.tasks?.filter(t => t.status === "completed") || [];
+      if (completedTasks.length === 3) {
+        draftTitle = "Editorial Critique in Progress: Fontaine & Lang";
+        draftMessage = "All 3 chapters drafted! Critic/Editor A (Fontaine: Continuity & Pacing) and Critic/Editor B (Lang: Voice & Atmosphere) are reviewing the complete manuscript with Claude 3.5 Sonnet.";
+      } else if (runningTasks.length > 0) {
+        const names = runningTasks.map(t => WRITER_ALIASES[t.chapterIndex]?.name || `Writer ${t.chapterIndex}`).join(", ");
+        draftTitle = `Drafting Chapters: ${names}`;
+        draftMessage = `Active writers: ${runningTasks.map(t => `Chapter ${t.chapterIndex} (${WRITER_ALIASES[t.chapterIndex]?.name || "Writer"} — ${WRITER_ALIASES[t.chapterIndex]?.focus || ""})`).join("; ")}. Completed: ${completedTasks.length} of 3 tasks...`;
+      } else {
+        draftTitle = "Story drafting and review in progress";
+        draftMessage = `Writing and checking chapters with Writers 1–3 and Editors A & B. Completed: ${completedTaskCount} of ${totalTaskCount} tasks...`;
+      }
+    }
   } else if (isRunTimeout) {
     draftState = "timeout";
-    draftTitle = "Drafting Run Timed Out";
-    draftMessage = "One or more chapter tasks exceeded the task timeout limit (120s). You can retry failed tasks once below.";
+    draftTitle = "Drafting Run Timed Out (120s limit reached)";
+    draftMessage = "The drafting run exceeded the 120-second timeout limit. If running locally, check that 'npm run worker' is active. You can cancel or retry the run below.";
   } else if (isRunFailed) {
     draftState = "fail";
     draftTitle = "Drafting Run Failed";
-    draftMessage = "One or more chapter tasks failed. Review the task status cards below and use 'Retry failed tasks once'.";
+    const failedTasks = state?.tasks?.filter(t => t.status === "failed") || [];
+    if (failedTasks.length > 0) {
+      draftMessage = `Failure in: ${failedTasks.map(t => `Chapter ${t.chapterIndex} (${WRITER_ALIASES[t.chapterIndex]?.name || "Writer"}): ${t.error || "Task failed"}`).join("; ")}. Review task status cards below and use 'Retry failed tasks once'.`;
+    } else {
+      draftMessage = modelActionError || "One or more chapter tasks failed. Review the task status cards below and use 'Retry failed tasks once'.";
+    }
   } else if (isRunCompleted) {
     draftState = "success";
     draftTitle = "Drafting Run Completed Successfully";
-    draftMessage = "All 3 chapters were generated, verified, and editorial critique completed. Review the manuscript below.";
+    draftMessage = "All 3 chapters drafted (Grimm, Andersen, Perrault) and reviewed by Editors Fontaine & Lang. Review the competing manuscript versions below.";
   }
 
   // Live timer for active drafting run or candidate planning
@@ -1594,14 +1622,21 @@ export default function Workspace({ workId }: { workId?: string }) {
                 {!state.bible && <p>Approve a plan in “Plan &amp; approve” first.</p>}
                 {pollFailure && <p role="alert" className={styles.error}>{pollFailure}</p>}
                 <div className={styles.taskGrid}>
-                  {state.tasks.map(t => (
-                    <article className={styles.task} key={t.id}>
-                      <h3>Chapter {t.chapterIndex}</h3>
-                      <strong>{t.status}</strong>
-                      <p>Attempt {t.attempts} of 2 · {t.elapsedMs ?? 0} ms</p>
-                      {t.error && <p className={styles.fieldError}>{t.error}</p>}
-                    </article>
-                  ))}
+                  {state.tasks.map(t => {
+                    const aliasInfo = WRITER_ALIASES[t.chapterIndex];
+                    return (
+                      <article className={styles.task} key={t.id}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: "6px" }}>
+                          <h3 style={{ margin: 0 }}>Chapter {t.chapterIndex}</h3>
+                          {aliasInfo && <span style={{ fontSize: "12px", fontWeight: "bold", color: "#b45309", background: "#fef3c7", padding: "1px 6px", borderRadius: "4px" }}>{aliasInfo.name}</span>}
+                        </div>
+                        {aliasInfo && <p style={{ fontSize: "11px", color: "#64748b", margin: "4px 0 6px 0" }}>{aliasInfo.focus}</p>}
+                        <strong>{t.status}</strong>
+                        <p>Attempt {t.attempts} of 2 · {t.elapsedMs ?? 0} ms</p>
+                        {t.error && <p className={styles.fieldError}>{t.error}</p>}
+                      </article>
+                    );
+                  })}
                 </div>
                 {state.run && state.run.status !== "completed" && <p role="status">Partial run · completed outputs remain available. Final critique waits for all three chapters.</p>}
 
