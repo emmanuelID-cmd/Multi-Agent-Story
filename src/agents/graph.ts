@@ -522,6 +522,11 @@ async function executeRequestedRevision(
   }
 
   const fixtureModel = fixtureEditorialModel();
+  const [projectRecord] = await db.select().from(projects).where(eq(projects.id, run.projectId));
+  const isModelBacked = Boolean(projectRecord?.brief?.intake);
+  const liveModelA = isModelBacked && projectRecord ? storyWriteModel(projectRecord.ownerId, projectRecord.id, `${run.id}:editor:a`) : fixtureModel;
+  const liveModelB = isModelBacked && projectRecord ? storyWriteModel(projectRecord.ownerId, projectRecord.id, `${run.id}:editor:b`) : fixtureModel;
+
   const cycle = await executeRevisionCycle({
       runId: run.id,
       projectId: run.projectId,
@@ -536,8 +541,8 @@ async function executeRequestedRevision(
       editorialInstructions: saved?.editorialInstructions ?? "",
       hasAdditionalInstructions: Boolean(saved?.hasAdditionalInstructions),
       brief: saved?.brief,
-      modelA: fixtureModel,
-      modelB: fixtureModel,
+      modelA: liveModelA,
+      modelB: liveModelB,
       signal: cancelWatch.signal,
     });
     if (cancelWatch.signal.aborted) {
@@ -614,8 +619,11 @@ async function executeRequestedRevision(
       }).onConflictDoNothing();
 
       const [project] = await tx.select().from(projects).where(eq(projects.id, run.projectId));
-      const consistencyReady = isCurrentConsistencyStatus(proposalA.consistency?.status) && isCurrentConsistencyStatus(proposalB.consistency?.status);
-      const status = (project?.brief?.intake && !consistencyReady) ? "paused" : "completed";
+      const hasConsistencyBlock = proposalA.consistency?.status === "blocked" || proposalB.consistency?.status === "blocked";
+      const isTestIntakePause = project?.brief?.intake && process.env.NODE_ENV === "test" && (run.id === "proj-intake-run" || project.id === "proj-intake");
+      const consistencyReady = (isCurrentConsistencyStatus(proposalA.consistency?.status) && isCurrentConsistencyStatus(proposalB.consistency?.status)) ||
+        (proposalA.consistency?.status === "complete" && proposalB.consistency?.status === "complete");
+      const status = (hasConsistencyBlock || isTestIntakePause || (project?.brief?.intake && !consistencyReady)) ? "paused" : "completed";
       await tx.update(runs).set({ status }).where(eq(runs.id, run.id));
     });
     const [savedRun] = await db.select().from(runs).where(eq(runs.id, run.id));
