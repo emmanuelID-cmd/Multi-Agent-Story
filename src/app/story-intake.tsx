@@ -308,53 +308,32 @@ export default function StoryIntake(props: Props) {
   }
 
   return <section className={styles.card} aria-labelledby="intake-title">
-    <h2 id="intake-title">{props.mode === "create" ? "Start with your story idea" : "Story idea and research scope"}</h2>
-    <p>Share what you know in your own words. You can start with a single sentence. The details below help Claude ask focused follow-up questions; only genre and your confirmed scope are needed before research.</p>
-    <div className={styles.guide} aria-label="Story detail guide">
-      {groups.map(group => <div key={group}><h3>{group}</h3><ul>{intakeFields.filter(field => field.group === group).map(field => <li key={field.id}>{field.label}</li>)}</ul></div>)}
-    </div>
-    <div className={styles.storySwitcherBar}>
-      <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-        <span style={{ fontSize: "16px" }}>📖</span>
-        <label htmlFor="story-switcher" style={{ fontWeight: 700, fontSize: "12px", textTransform: "uppercase", letterSpacing: "0.5px", color: "#fef08a" }}>
-          Active Story:
-        </label>
-        <select
-          id="story-switcher"
-          value={props.mode === "saved" ? props.projectId : ""}
-          onChange={e => {
-            const val = e.target.value;
-            const currentId = props.mode === "saved" ? props.projectId : "";
-            if (val === currentId) return;
-            if (!val) {
-              router.push("/");
-            } else {
-              router.push(`/${val}`);
-            }
-          }}
-          className={styles.storyDropdown}
-        >
-          <option value="">➕ Start a new story...</option>
-          {props.mode === "saved" && props.projectId && !recentStories.some(s => s.id === props.projectId) && (
-            <option value={props.projectId}>
-              ✓ {rawText ? (rawText.length > 55 ? rawText.slice(0, 55) + "…" : rawText) : `Story ${props.projectId.slice(0, 8)}`}
-            </option>
-          )}
-          {recentStories.map(s => (
-            <option key={s.id} value={s.id}>
-              {s.id === (props.mode === "saved" ? props.projectId : "") ? "✓ " : ""}{s.premise ? (s.premise.length > 55 ? s.premise.slice(0, 55) + "…" : s.premise) : `Story ${s.id.slice(0, 8)}`}
-            </option>
-          ))}
-        </select>
-      </div>
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px", marginBottom: "4px" }}>
+      <h2 id="intake-title" style={{ margin: 0 }}>{props.mode === "create" ? "Start with your story idea" : "Story idea and research scope"}</h2>
       {props.mode === "saved" && intake && (
         <span className={styles.revisionBadge}>
           Revision {intake.revision} · {intake.status}
         </span>
       )}
     </div>
+    <p>Share what you know in your own words. You can start with a single sentence. The details below help Claude ask focused follow-up questions; only genre and your confirmed scope are needed before research.</p>
+    <div className={styles.guide} aria-label="Story detail guide">
+      {groups.map(group => <div key={group}><h3>{group}</h3><ul>{intakeFields.filter(field => field.group === group).map(field => <li key={field.id}>{field.label}</li>)}</ul></div>)}
+    </div>
     <div className={styles.inputSection}>
-      <label htmlFor="story-idea">Your story idea</label>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
+        <label htmlFor="story-idea" style={{ margin: 0 }}>Your story idea</label>
+        {!(props.mode === "saved" && props.locked) && !rawText && (
+          <button
+            type="button"
+            className={styles.autoFillBtn}
+            onClick={() => edit("A sailor finds a signal from an island that vanished years ago…")}
+            title="Populate example idea as regular editable text"
+          >
+            ⚡ Auto-Fill Example
+          </button>
+        )}
+      </div>
       <p id="story-idea-help" className={styles.hint}>1–12,000 characters. Include only details you want considered. You can revise the saved original until planning begins.</p>
       <textarea id="story-idea" value={rawText} maxLength={12_000} rows={5} disabled={busy || (props.mode === "saved" && props.locked)} aria-invalid={textError} aria-describedby={`story-idea-help${textError ? " intake-error" : ""}`} onChange={event => edit(event.target.value)} placeholder="A sailor finds a signal from an island that vanished years ago…" />
       <div className={styles.plagiarismWarning} role="note">
