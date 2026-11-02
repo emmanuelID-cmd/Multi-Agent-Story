@@ -129,18 +129,20 @@ function getProsePlaybackState({
     return { isSpeaking: false, spokenCharIndex: -1, spokenCharLength: 0 };
   }
 
-  if (currentPlayingSourceId === `${activeSourceId}_ch_${currentChapterIndex}`) {
+  const cleanPlayingId = currentPlayingSourceId.replace(/^banner-voice-/, "");
+
+  if (cleanPlayingId === `${activeSourceId}_ch_${currentChapterIndex}`) {
     return { isSpeaking: true, spokenCharIndex, spokenCharLength };
   }
 
-  if (currentPlayingSourceId === activeSourceId && chapters) {
+  if (cleanPlayingId === activeSourceId && chapters) {
     let offset = 0;
     for (const ch of chapters) {
       const prefix = `Chapter ${ch.chapterIndex}. `;
       const chStart = offset + prefix.length;
       const chEnd = chStart + ch.text.length;
       if (ch.chapterIndex === currentChapterIndex) {
-        if (spokenCharIndex >= chStart && spokenCharIndex <= chEnd) {
+        if (spokenCharIndex >= offset && spokenCharIndex <= chEnd) {
           return {
             isSpeaking: true,
             spokenCharIndex: Math.max(0, spokenCharIndex - chStart),
@@ -438,12 +440,42 @@ export default function Workspace({ workId }: { workId?: string }) {
       label: `Final (${state.acceptedManuscript.kind === "manuscript_a" ? "Ver A" : "Ver B"})`,
       text: acceptedText,
     });
+    const accChapters = (state.acceptedManuscript.data as any).chapters;
+    if (Array.isArray(accChapters)) {
+      accChapters.forEach((ch: any) => {
+        voiceSources.push({
+          id: `accepted_ch_${ch.chapterIndex}`,
+          label: `Final - Ch ${ch.chapterIndex}`,
+          text: ch.text,
+        });
+      });
+    }
   }
   if (proposalA && proposalAText) {
     voiceSources.push({ id: "version_a", label: "Rev A (Fontaine)", text: proposalAText });
+    const aChapters = (proposalA.data as any).chapters;
+    if (Array.isArray(aChapters)) {
+      aChapters.forEach((ch: any) => {
+        voiceSources.push({
+          id: `version_a_ch_${ch.chapterIndex}`,
+          label: `Rev A - Ch ${ch.chapterIndex}`,
+          text: ch.text,
+        });
+      });
+    }
   }
   if (proposalB && proposalBText) {
     voiceSources.push({ id: "version_b", label: "Rev B (Lang)", text: proposalBText });
+    const bChapters = (proposalB.data as any).chapters;
+    if (Array.isArray(bChapters)) {
+      bChapters.forEach((ch: any) => {
+        voiceSources.push({
+          id: `version_b_ch_${ch.chapterIndex}`,
+          label: `Rev B - Ch ${ch.chapterIndex}`,
+          text: ch.text,
+        });
+      });
+    }
   }
   if (draftText) {
     voiceSources.push({ id: "draft", label: "Drafts (All 3 Ch)", text: draftText });
@@ -480,12 +512,13 @@ export default function Workspace({ workId }: { workId?: string }) {
   // Auto-switch active draft chapter tab as voice reads through the chapters
   useEffect(() => {
     if (!voice.isSpeaking || !state?.chapters?.length) return;
-    if (currentVoiceSource?.id?.startsWith("draft_ch_")) {
-      const chNum = parseInt(currentVoiceSource.id.replace("draft_ch_", ""), 10);
+    const activeId = (voice.currentId || currentVoiceSource?.id || "").replace(/^banner-voice-/, "");
+    if (activeId.startsWith("draft_ch_")) {
+      const chNum = parseInt(activeId.replace("draft_ch_", ""), 10);
       if (chNum && activeDraftChapterIndex !== chNum) {
         setActiveDraftChapterIndex(chNum);
       }
-    } else if (currentVoiceSource?.id === "draft") {
+    } else if (activeId === "draft") {
       let offset = 0;
       for (const ch of state.chapters) {
         const prefix = `Chapter ${ch.chapterIndex}. `;
@@ -500,7 +533,7 @@ export default function Workspace({ workId }: { workId?: string }) {
         offset = chEnd + 2;
       }
     }
-  }, [voice.isSpeaking, voice.spokenCharIndex, currentVoiceSource?.id, state?.chapters, activeDraftChapterIndex]);
+  }, [voice.isSpeaking, voice.spokenCharIndex, voice.currentId, currentVoiceSource?.id, state?.chapters, activeDraftChapterIndex]);
 
   const isPlanningRunning = (busy && (activeModelAction === "plan" || activeModelAction === "retry-bible-planning")) || state?.latestPlanning?.status === "running";
   const isPlanningFailed = state?.latestPlanning?.status === "failed" || (!!modelActionError && (activeModelAction === "plan" || activeModelAction === "retry-bible-planning"));
@@ -1583,6 +1616,18 @@ export default function Workspace({ workId }: { workId?: string }) {
                             Draft Chapter {currentDraft.chapterIndex} of {state.chapters.length}
                           </h3>
                           <span className={styles.draftBibleTag}>Bible v{currentDraft.bibleVersion}</span>
+                          <button
+                            type="button"
+                            className={styles.miniVoiceBtn}
+                            onClick={() => {
+                              const srcId = `draft_ch_${currentDraft.chapterIndex}`;
+                              setSelectedVoiceSourceId(srcId);
+                              voice.speak(currentDraft.text, `banner-voice-${srcId}`);
+                            }}
+                            title={`Listen to Draft Chapter ${currentDraft.chapterIndex}`}
+                          >
+                            {voice.isSpeaking && (voice.currentId === `banner-voice-draft_ch_${currentDraft.chapterIndex}`) ? "⏸ Pause" : "▶ Listen"}
+                          </button>
                         </div>
 
                         <div className={styles.draftNavGroup}>
@@ -1629,7 +1674,7 @@ export default function Workspace({ workId }: { workId?: string }) {
                           chapters: state.chapters,
                           currentChapterIndex: currentDraft.chapterIndex,
                           activeSourceId: "draft",
-                          currentPlayingSourceId: currentVoiceSource?.id,
+                          currentPlayingSourceId: voice.currentId || currentVoiceSource?.id,
                           isSpeaking: voice.isSpeaking,
                           spokenCharIndex: voice.spokenCharIndex,
                           spokenCharLength: voice.spokenCharLength,
@@ -1722,14 +1767,28 @@ export default function Workspace({ workId }: { workId?: string }) {
                                   chapters: mData.chapters,
                                   currentChapterIndex: ch.chapterIndex,
                                   activeSourceId: isVersionA ? "version_a" : "version_b",
-                                  currentPlayingSourceId: currentVoiceSource?.id,
+                                  currentPlayingSourceId: voice.currentId || currentVoiceSource?.id,
                                   isSpeaking: voice.isSpeaking,
                                   spokenCharIndex: voice.spokenCharIndex,
                                   spokenCharLength: voice.spokenCharLength,
                                 });
                                 return (
                                   <div key={ch.chapterIndex} className={styles.revisionChapterBox}>
-                                    <span className={styles.revisionChapterTitle}>Chapter {ch.chapterIndex}</span>
+                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                                      <span className={styles.revisionChapterTitle}>Chapter {ch.chapterIndex}</span>
+                                      <button
+                                        type="button"
+                                        className={styles.miniVoiceBtn}
+                                        onClick={() => {
+                                          const srcId = `${isVersionA ? "version_a" : "version_b"}_ch_${ch.chapterIndex}`;
+                                          setSelectedVoiceSourceId(srcId);
+                                          voice.speak(ch.text, `banner-voice-${srcId}`);
+                                        }}
+                                        title={`Listen to Rev ${isVersionA ? "A" : "B"} Chapter ${ch.chapterIndex}`}
+                                      >
+                                        {voice.isSpeaking && (voice.currentId === `banner-voice-${isVersionA ? "version_a" : "version_b"}_ch_${ch.chapterIndex}`) ? "⏸ Pause" : "▶ Listen"}
+                                      </button>
+                                    </div>
                                     <HighlightedStoryProse
                                       text={ch.text}
                                       isSpeaking={revSpeech.isSpeaking}
@@ -1840,16 +1899,30 @@ export default function Workspace({ workId }: { workId?: string }) {
                           chapters: (state.acceptedManuscript.data as any).chapters,
                           currentChapterIndex: ch.chapterIndex,
                           activeSourceId: "accepted",
-                          currentPlayingSourceId: currentVoiceSource?.id,
+                          currentPlayingSourceId: voice.currentId || currentVoiceSource?.id,
                           isSpeaking: voice.isSpeaking,
                           spokenCharIndex: voice.spokenCharIndex,
                           spokenCharLength: voice.spokenCharLength,
                         });
                         return (
                           <div key={ch.chapterIndex} className={styles.draftColumnCard} style={{ borderColor: "#059669", background: "#052e16" }}>
-                            <div className={styles.draftColumnHeader} style={{ borderColor: "#065f46" }}>
-                              <h4 className={styles.draftColumnTitle} style={{ color: "#6ee7b7" }}>Chapter {ch.chapterIndex}</h4>
-                              <span className={styles.draftBibleTag} style={{ background: "#064e3b", color: "#a7f3d0" }}>Final</span>
+                            <div className={styles.draftColumnHeader} style={{ borderColor: "#065f46", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                <h4 className={styles.draftColumnTitle} style={{ color: "#6ee7b7", margin: 0 }}>Chapter {ch.chapterIndex}</h4>
+                                <span className={styles.draftBibleTag} style={{ background: "#064e3b", color: "#a7f3d0" }}>Final</span>
+                              </div>
+                              <button
+                                type="button"
+                                className={styles.miniVoiceBtn}
+                                onClick={() => {
+                                  const srcId = `accepted_ch_${ch.chapterIndex}`;
+                                  setSelectedVoiceSourceId(srcId);
+                                  voice.speak(ch.text, `banner-voice-${srcId}`);
+                                }}
+                                title={`Listen to Final Chapter ${ch.chapterIndex}`}
+                              >
+                                {voice.isSpeaking && (voice.currentId === `banner-voice-accepted_ch_${ch.chapterIndex}`) ? "⏸ Pause" : "▶ Listen"}
+                              </button>
                             </div>
                             <div className={styles.draftColumnBody}>
                               <HighlightedStoryProse
