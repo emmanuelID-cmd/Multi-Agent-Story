@@ -23,15 +23,18 @@ const boss = await queue();
 await ensureDatabaseMigrated();
 // A single-worker restart marks interrupted attempts failed; completed outputs stay immutable.
 await recoverInterruptedRuns();
-await boss.work<{runId:string}>("story-run",{batchSize:1},async jobs=>{
-  for(const job of jobs){
-    try{
-      if(!job.data?.runId || !z.string().uuid().safeParse(job.data.runId).success){
+await boss.work<{ runId: string }>("story-run", { batchSize: 1 }, async jobs => {
+  for (const job of jobs) {
+    const runId = job.data?.runId;
+    console.log(`[Worker]: Dequeued story-run job (jobId=${job.id}, runId=${runId})`);
+    try {
+      if (!runId || !z.string().uuid().safeParse(runId).success) {
         throw Error("INVALID_RUN_ID: Queue job payload must contain a valid UUID runId.");
       }
-      await executeRun(job.data.runId);
-    }catch(err){
-      console.error("A synthetic run failed; saved work is preserved.", err instanceof Error ? err.message : err);
+      await executeRun(runId);
+      console.log(`[Worker]: Successfully executed runId=${runId}`);
+    } catch (err) {
+      console.error(`[Worker]: Run failed for runId=${runId}:`, err instanceof Error ? err.message : err);
     }
   }
 });

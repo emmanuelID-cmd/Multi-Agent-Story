@@ -778,7 +778,9 @@ export async function executeRun(runId: string, checkpoint = true) {
   }catch{
     await db.update(runs).set({status:"failed"}).where(and(eq(runs.id,runId),eq(runs.status,"running")));
     throw Error("Run interrupted. Saved task inputs and completed outputs remain available.");
-  }finally {if(saver)await saver.end();}
+  }
+  // NOTE: Do NOT call `await saver.end()` here when passing `pool` to PostgresSaver,
+  // as `saver.end()` invokes `pool.end()`, closing database connectivity for future runs.
 }
 
 /** Isolated spike: approval interrupts are resumable and never self-approved. */
