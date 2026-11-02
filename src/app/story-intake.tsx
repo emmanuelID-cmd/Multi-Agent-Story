@@ -196,7 +196,7 @@ export default function StoryIntake(props: Props) {
       intakeModelMessage = "The analysis did not finish within 45 seconds. The model request may be stalled or rate-limited. Click 'Retry analysis' to try again.";
     } else {
       intakeModelState = "loading";
-      intakeModelTitle = "Coordinator (Claude 3.5 Sonnet) is analyzing your story idea";
+      intakeModelTitle = "Coordinator (Claude Sonnet 5.5) is analyzing your story idea";
       intakeModelMessage = "Coordinator is extracting premise, setting, characters, arcs, and narrative structure with automatic Haiku backup. Results will appear automatically.";
     }
   } else if (analysisError || (error && error.toLowerCase().includes("analysis"))) {
@@ -206,7 +206,7 @@ export default function StoryIntake(props: Props) {
   } else if (analysis && intake?.status === "analyzed" && !edited) {
     intakeModelState = "success";
     intakeModelTitle = "Analysis Complete: Coordinator";
-    intakeModelMessage = "Coordinator (Claude 3.5 Sonnet) successfully analyzed your story idea. Review suggestions and confirmed elements below.";
+    intakeModelMessage = "Coordinator (Claude Sonnet 5.5) successfully analyzed your story idea. Review suggestions and confirmed elements below.";
   }
   const labelFor = (field: IntakeField) => intakeFields.find(item => item.id === field)?.label || field;
   const decisionsFor = (field: IntakeField) => decisions.find(item => item.field === field);

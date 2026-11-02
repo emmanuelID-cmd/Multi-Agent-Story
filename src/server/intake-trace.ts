@@ -13,7 +13,7 @@ export const intakeStages: IntakeStage[] = ["request", "input_read", "reserved",
 export const intakeCodes: IntakeCode[] = ["STARTED", "PASSED", "SUCCEEDED", "REQUEST_INVALID", "INPUT_REVIEW_REQUIRED", "REVISION_CONFLICT", "OWNER_BUSY", "PROJECT_UNAVAILABLE", "INTAKE_UNAVAILABLE", "STORY_STARTED", "SCOPE_CONFIRMED", "ANALYSIS_IN_PROGRESS", "RESERVATION_REJECTED", "MODEL_CREDENTIAL_UNAVAILABLE", "MODEL_HTTP_AUTH", "MODEL_HTTP_CONFIG", "MODEL_HTTP_RATE_LIMIT", "MODEL_HTTP_UNAVAILABLE", "MODEL_NETWORK_ERROR", "MODEL_ENVELOPE_INVALID", "MODEL_STOP_MAX_TOKENS", "MODEL_STOP_OTHER", "MODEL_JSON_INVALID", "MODEL_STREAM_ERROR", "MODEL_RESPONSE_TOO_LARGE", "OUTPUT_SCHEMA_INVALID", "OUTPUT_QUOTE_INVALID", "OUTPUT_DUPLICATE_FIELD", "OUTPUT_DEPENDENCY_INVALID", "BUDGET_EXCEEDED", "CANCELED", "TIMED_OUT", "STALE_INPUT", "PERSIST_FAILED", "ANALYSIS_FAILED"];
 export type IntakeTraceEvent = {
   at: string; agentId: "coordinator"; event: IntakeStage; code: IntakeCode; traceId: string;
-  attempt?: number; operationId?: string; revision?: number; httpStatus?: number; field?: string; issue?: string; path?: string; limit?: number; modelId?: "claude-3-5-sonnet-20241022" | "claude-haiku-5-5" | "fixture" | "other"; durationMs?: number;
+  attempt?: number; operationId?: string; revision?: number; httpStatus?: number; field?: string; issue?: string; path?: string; limit?: number; modelId?: "claude-sonnet-5-5" | "claude-3-5-sonnet-20241022" | "claude-haiku-5-5" | "fixture" | "other"; durationMs?: number;
 };
 export type IntakeTraceSink = (event: IntakeTraceEvent) => void;
 
@@ -75,7 +75,7 @@ export class IntakeTrace {
       safe.path = extra.path;
       if (safe.issue === "too_big" && extra.limit === intakeSchemaLimit(extra.path)) safe.limit = extra.limit;
     }
-    if (extra.modelId) safe.modelId = extra.modelId === "claude-3-5-sonnet-20241022" || extra.modelId === "claude-haiku-5-5" || extra.modelId === "fixture" ? extra.modelId : "other";
+    if (extra.modelId) safe.modelId = extra.modelId === "claude-sonnet-5-5" || extra.modelId === "claude-3-5-sonnet-20241022" || extra.modelId === "claude-haiku-5-5" || extra.modelId === "fixture" ? extra.modelId : "other";
     if (Number.isSafeInteger(extra.durationMs) && extra.durationMs! >= 0 && extra.durationMs! <= 120_000) safe.durationMs = extra.durationMs;
     try { this.sink(safe); this.count++; } catch { this.availability = "UNAVAILABLE"; }
   }

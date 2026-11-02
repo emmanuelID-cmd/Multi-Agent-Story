@@ -117,7 +117,7 @@ export async function executeWorkflowInSandbox(
   const runId = `wf-${randomUUID().slice(0, 8)}`;
   const useLive = options.useLiveModel ?? false;
   const modelId = useLive
-    ? options.liveModelId ?? "claude-3-5-sonnet-20241022"
+    ? options.liveModelId ?? "claude-sonnet-5-5"
     : "simulation-tiered";
 
   const model: WriteModel =

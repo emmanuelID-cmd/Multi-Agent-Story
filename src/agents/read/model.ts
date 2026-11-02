@@ -107,7 +107,7 @@ export class AnthropicReadModel implements ReadModel {
     this.primaryModelId =
       options.primaryModelId ||
       process.env.READ_PRIMARY_MODEL_ID ||
-      (process.env.NODE_ENV === "test" ? "claude-haiku-5-5" : "claude-3-5-sonnet-20241022");
+      (process.env.NODE_ENV === "test" ? "claude-haiku-5-5" : "claude-sonnet-5-5");
     this.backupModelId =
       options.backupModelId ||
       process.env.READ_BACKUP_MODEL_ID ||
@@ -178,6 +178,6 @@ export function modelFromEnvironment(options?: AnthropicReadModelOptions): Anthr
 }
 
 export function assertModelVersion(model: ReadModel, versions: ReadVersions): void {
-  const allowed = [versions.model, "claude-haiku-5-5", "claude-3-5-sonnet-20241022", "fixture-read-v1"];
+  const allowed = [versions.model, "claude-haiku-5-5", "claude-sonnet-5-5", "claude-3-5-sonnet-20241022", "fixture-read-v1"];
   if (!allowed.includes(model.modelId)) throw new Error("MODEL_VERSION_MISMATCH");
 }

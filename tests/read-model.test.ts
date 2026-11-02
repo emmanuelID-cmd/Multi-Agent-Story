@@ -82,23 +82,23 @@ describe("READ Anthropic boundary", () => {
     await expect(truncated.complete(call())).rejects.toThrow();
   });
 
-  it("falls back to backup model (claude-haiku-5-5) when primary model (claude-3-5-sonnet-20241022) fails", async () => {
+  it("falls back to backup model (claude-haiku-5-5) when primary model (claude-sonnet-5-5) fails", async () => {
     const attemptedModels: string[] = [];
     const fetcher: typeof fetch = async (_url, init) => {
       const body = JSON.parse(String(init?.body));
       attemptedModels.push(body.model);
-      if (body.model === "claude-3-5-sonnet-20241022") {
+      if (body.model === "claude-sonnet-5-5") {
         return new Response("Overloaded", { status: 529 });
       }
       return Response.json(reply({ content: [{ type: "text", text: JSON.stringify({ summary: "Backup model observation." }) }] }));
     };
     const model = new AnthropicReadModel("synthetic-test-key", {
-      primaryModelId: "claude-3-5-sonnet-20241022",
+      primaryModelId: "claude-sonnet-5-5",
       backupModelId: "claude-haiku-5-5",
       fetcher,
     });
     const output = await model.complete(call());
-    expect(attemptedModels).toEqual(["claude-3-5-sonnet-20241022", "claude-haiku-5-5"]);
+    expect(attemptedModels).toEqual(["claude-sonnet-5-5", "claude-haiku-5-5"]);
     expect(output.value).toEqual({ summary: "Backup model observation." });
   });
 });

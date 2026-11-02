@@ -553,7 +553,7 @@ export default function Workspace({ workId }: { workId?: string }) {
 
   if (isPlanningRunning) {
     planningState = "loading";
-    planningTitle = "Claude 3.5 Sonnet is generating candidate story bibles";
+    planningTitle = "Claude Sonnet 5.5 is generating candidate story bibles";
     planningMessage = "Planners A (Plot & Mystery), B (Character & Stakes), and C (World & Atmosphere) are generating 3 distinct directions in parallel, backed by Claude Haiku.";
   } else if (isPlanningTimeout) {
     planningState = "timeout";
@@ -566,7 +566,7 @@ export default function Workspace({ workId }: { workId?: string }) {
   } else if (isPlanningCompleted) {
     planningState = "success";
     planningTitle = "Candidate Bibles Generated Successfully";
-    planningMessage = "3 directional story bibles have been proposed by Claude 3.5 Sonnet. Review each direction and approve your preferred plan below.";
+    planningMessage = "3 directional story bibles have been proposed by Claude Sonnet 5.5. Review each direction and approve your preferred plan below.";
   }
 
   const isRunActive = !!state?.run && ["pending", "running"].includes(state.run.status);
@@ -592,7 +592,7 @@ export default function Workspace({ workId }: { workId?: string }) {
       const completedTasks = state?.tasks?.filter(t => t.status === "completed") || [];
       if (completedTasks.length === 3) {
         draftTitle = "Editorial Critique in Progress: Fontaine & Lang";
-        draftMessage = "All 3 chapters drafted! Critic/Editor A (Fontaine: Continuity & Pacing) and Critic/Editor B (Lang: Voice & Atmosphere) are reviewing the complete manuscript with Claude 3.5 Sonnet.";
+        draftMessage = "All 3 chapters drafted! Critic/Editor A (Fontaine: Continuity & Pacing) and Critic/Editor B (Lang: Voice & Atmosphere) are reviewing the complete manuscript with Claude Sonnet 5.5.";
       } else if (runningTasks.length > 0) {
         const names = runningTasks.map(t => WRITER_ALIASES[t.chapterIndex]?.name || `Writer ${t.chapterIndex}`).join(", ");
         draftTitle = `Drafting Chapters: ${names}`;

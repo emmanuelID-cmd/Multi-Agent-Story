@@ -135,7 +135,7 @@ export class AnthropicWriteModel implements WriteModel {
     this.criticModelId =
       options?.criticModelId ||
       process.env.WRITE_CRITIC_MODEL_ID ||
-      (process.env.NODE_ENV === "test" ? "claude-haiku-5-5" : "claude-3-5-sonnet-20241022");
+      (process.env.NODE_ENV === "test" ? "claude-haiku-5-5" : "claude-sonnet-5-5");
     this.fetcher = options?.fetcher || fetch;
   }
 

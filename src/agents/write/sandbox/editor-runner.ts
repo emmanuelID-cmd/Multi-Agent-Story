@@ -146,7 +146,7 @@ export async function executeEditorsInSandbox(
         process.env.WRITE_ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY;
       if (!key) throw new Error("ANTHROPIC_API_KEY required for live editor sandbox run.");
       model = new AnthropicWriteModel(key, {
-        criticModelId: options.liveModelId ?? "claude-3-5-sonnet-20241022",
+        criticModelId: options.liveModelId ?? "claude-sonnet-5-5",
       });
     } else {
       model = createSandboxEditorialModel(bibleCase, baseChapters);
