@@ -1,0 +1,169 @@
+.iconPlayerBar {
+  display: inline-flex;
+  align-items: center;
+  align-self: center;
+  gap: 8px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  vertical-align: middle;
+  height: 24px;
+  box-sizing: border-box;
+}
+
+.iconBtn {
+  background: transparent;
+  color: #94a3b8;
+  border: none;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.15s ease;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.iconBtn:hover {
+  color: #22c55e;
+  transform: scale(1.1);
+}
+
+.iconBtn:active {
+  transform: scale(0.95);
+}
+
+.iconBtnActive {
+  color: #22c55e !important;
+  filter: drop-shadow(0 0 4px rgba(34, 197, 94, 0.6));
+}
+
+.stopIconBtn {
+  background: transparent;
+  color: #94a3b8;
+  border: none;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 11px;
+  transition: color 0.15s ease;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.stopIconBtn:hover {
+  color: #ef4444;
+  transform: scale(1.1);
+}
+
+/* Microphone with 3 radiating green sound waves - clickable volume control */
+.micVolumeBtn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  height: 22px;
+  transition: all 0.15s ease;
+  outline: none;
+}
+
+.micVolumeBtn:hover {
+  transform: scale(1.08);
+}
+
+.micSvg {
+  display: block;
+  overflow: visible;
+}
+
+.micActive {
+  color: #22c55e;
+  filter: drop-shadow(0 0 2px rgba(34, 197, 94, 0.5));
+}
+
+.micMuted {
+  color: #64748b;
+  opacity: 0.6;
+}
+
+/* Multiplier speed icon (no box, clean inline icon text) */
+.multiplierBtn {
+  background: transparent;
+  color: #38bdf8;
+  border: none;
+  padding: 0 2px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  height: 22px;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  transition: all 0.15s ease;
+  outline: none;
+}
+
+.multiplierBtn:hover {
+  color: #7dd3fc;
+  transform: scale(1.08);
+}
+
+/* Voice dropdown selector (no box, clean inline select) */
+.voiceSelectWrapper {
+  display: inline-flex;
+  align-items: center;
+  background: transparent;
+  border: none;
+  padding: 0;
+  height: 22px;
+  position: relative;
+  max-width: 105px;
+}
+
+.voiceIconPrefix {
+  font-size: 11px;
+  margin-right: 3px;
+  pointer-events: none;
+  user-select: none;
+}
+
+.voiceSelect {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background: transparent;
+  color: #cbd5e1;
+  border: none;
+  padding: 0;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  height: 22px;
+  line-height: 22px;
+  max-width: 85px;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.voiceSelect:hover {
+  color: #f8fafc;
+}
+
+.voiceSelect option {
+  background: #0f172a;
+  color: #f8fafc;
+}
