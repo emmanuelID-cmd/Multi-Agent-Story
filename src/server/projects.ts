@@ -497,13 +497,16 @@ export async function retryRun(ownerId: string, id: string, dispatch=true) {
       throw new AppError(503,"The story workflow is not configured. Your approved work is preserved.");
     const [locked]=await tx.select().from(runs).where(eq(runs.projectId,id)).for("update").orderBy(desc(runs.createdAt), desc(runs.id)).limit(1);
     if(!locked)throw new AppError(409,"No run to retry.");
-    if(locked.status!=="failed")throw new AppError(409,"Only a failed run can be retried.");
+    const all=await tx.select().from(tasks).where(eq(tasks.runId,locked.id));
+    const eligible=all.filter(t=>t.status!=="completed"&&t.attempts<2);
+    const hasRunning=all.some(t=>t.status==="running");
+    if(locked.status==="completed")throw new AppError(409,"Run has already finished.");
+    if(locked.status==="running" && hasRunning)throw new AppError(409,"Run is currently active. Cancel the run before retrying.");
+    if(!["failed","paused","canceled","pending","running"].includes(locked.status))throw new AppError(409,"Only a failed, paused, or interrupted run can be retried.");
     const [bible]=await tx.select().from(bibles).where(and(eq(bibles.id,locked.bibleId),eq(bibles.projectId,id)));
     if(!bible||bible.version!==project.version)throw new AppError(409,"The approved Bible changed. Review the current plan before retrying.");
     if (project.brief.intake) await assertCurrentPlanningApproval(project, bible, await tx.select().from(proposals)
       .where(and(eq(proposals.projectId, id), inArray(proposals.kind, planningKinds))).limit(201));
-    const all=await tx.select().from(tasks).where(eq(tasks.runId,locked.id));
-    const eligible=all.filter(t=>t.status!=="completed"&&t.attempts<2);
     if(!eligible.length)throw new AppError(409,"The one-retry limit has been reached. Completed outputs are preserved.");
     for(const task of eligible){
       const saved=task.savedInput as {version?:unknown;brief?:unknown;bible?:unknown}|null;
@@ -511,7 +514,7 @@ export async function retryRun(ownerId: string, id: string, dispatch=true) {
         throw new AppError(409,"Saved task dependencies changed. Start a new run from the current approved plan.");
     }
     for(const task of eligible)await tx.update(tasks).set({status:"pending",error:null,updatedAt:new Date()}).where(eq(tasks.id,task.id));
-    await tx.update(runs).set({status:"pending"}).where(eq(runs.id,locked.id));
+    await tx.update(runs).set({status:"pending",canceledAt:null}).where(eq(runs.id,locked.id));
     runId=locked.id;
   });
   if(!runId)throw new AppError(409,"No run to retry.");

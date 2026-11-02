@@ -187,7 +187,14 @@ export async function finishRun(runId: string) {
       await (await import("../server/read-revision-workflow")).executeReadConnectedRun(runId, fixtureEditorialModel(), fixtureEditorialModel(), watch.signal);
       return {};
     } catch (error) {
-      if (error instanceof Error && (error.message === "EXPLICIT_AUTHENTICATED_READ_REQUEST_REQUIRED" || error.message === "CURRENT_READ_CONSISTENCY_REQUIRED")) {
+      const isReadReqErr = error instanceof Error && (
+        error.message === "EXPLICIT_AUTHENTICATED_READ_REQUEST_REQUIRED" ||
+        error.message === "CURRENT_READ_CONSISTENCY_REQUIRED" ||
+        error.message === "PERSISTED_EDITORIAL_AUTHORITY_REQUIRED" ||
+        error.message === "PERSISTED_EDITORIAL_AUTHORITY_CHANGED" ||
+        error.name === "ReadConnectionError"
+      );
+      if (isReadReqErr) {
         const isIntake = await db.transaction(async tx => {
           const [run] = await tx.select().from(runs).where(eq(runs.id, runId));
           if (!run) return false;
@@ -277,31 +284,37 @@ export async function finishRun(runId: string) {
     let manuscriptB: RevisedManuscript;
 
     if (canUseLiveModel && project) {
-      const modelA = storyWriteModel(project.ownerId, project.id, `${runId}:editor:a`);
-      const modelB = storyWriteModel(project.ownerId, project.id, `${runId}:editor:b`);
       const editorialSignal = AbortSignal.timeout(limits.timeoutMs);
-      const [resA, resB] = await Promise.all([
-        generateEditorialProposal({
-          role: "critic_editor_a",
-          bibleVersion: bible.version,
-          approvedBible: bible.data,
-          baseChapters: outputs,
-          handoff: validHandoff,
-          userEditorialInstructions: recordedRequest,
-          brief: saved?.brief ?? project.brief,
-        }, modelA, editorialSignal),
-        generateEditorialProposal({
-          role: "critic_editor_b",
-          bibleVersion: bible.version,
-          approvedBible: bible.data,
-          baseChapters: outputs,
-          handoff: validHandoff,
-          userEditorialInstructions: recordedRequest,
-          brief: saved?.brief ?? project.brief,
-        }, modelB, editorialSignal),
-      ]);
-      manuscriptA = resA.proposal;
-      manuscriptB = resB.proposal;
+      try {
+        const modelA = storyWriteModel(project.ownerId, project.id, `${runId}:editor:a`);
+        const modelB = storyWriteModel(project.ownerId, project.id, `${runId}:editor:b`);
+        const [resA, resB] = await Promise.all([
+          generateEditorialProposal({
+            role: "critic_editor_a",
+            bibleVersion: bible.version,
+            approvedBible: bible.data,
+            baseChapters: outputs,
+            handoff: validHandoff,
+            userEditorialInstructions: recordedRequest,
+            brief: saved?.brief ?? project.brief,
+          }, modelA, editorialSignal),
+          generateEditorialProposal({
+            role: "critic_editor_b",
+            bibleVersion: bible.version,
+            approvedBible: bible.data,
+            baseChapters: outputs,
+            handoff: validHandoff,
+            userEditorialInstructions: recordedRequest,
+            brief: saved?.brief ?? project.brief,
+          }, modelB, editorialSignal),
+        ]);
+        manuscriptA = resA.proposal;
+        manuscriptB = resB.proposal;
+      } catch (err) {
+        console.error("Live critique proposal generation encountered an error; falling back to editorial fixtures:", err);
+        manuscriptA = criticEditorA(validHandoff, outputs, bible.data);
+        manuscriptB = criticEditorB(validHandoff, outputs, bible.data);
+      }
     } else {
       manuscriptA = criticEditorA(validHandoff, outputs, bible.data);
       manuscriptB = criticEditorB(validHandoff, outputs, bible.data);
@@ -518,7 +531,13 @@ async function executeRequestedRevision(
       await (await import("../server/read-revision-workflow")).executeReadConnectedRun(run.id,fixtureEditorialModel(),fixtureEditorialModel(),cancelWatch.signal);
       return;
     } catch (error) {
-      if (!(error instanceof Error && error.message === "EXPLICIT_AUTHENTICATED_READ_REQUEST_REQUIRED")) {
+      if (!(error instanceof Error && (
+        error.message === "EXPLICIT_AUTHENTICATED_READ_REQUEST_REQUIRED" ||
+        error.message === "CURRENT_READ_CONSISTENCY_REQUIRED" ||
+        error.message === "PERSISTED_EDITORIAL_AUTHORITY_REQUIRED" ||
+        error.message === "PERSISTED_EDITORIAL_AUTHORITY_CHANGED" ||
+        error.name === "ReadConnectionError"
+      ))) {
         throw error;
       }
     }

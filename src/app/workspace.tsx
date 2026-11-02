@@ -577,12 +577,21 @@ export default function Workspace({ workId }: { workId?: string }) {
   const isRunTimeout = (isRunFailed && (hasTaskTimeout || fixture === "timeout")) || isRunElapsedTimeout;
   const completedTaskCount = state?.tasks?.filter(t => t.status === "completed").length || 0;
   const totalTaskCount = state?.tasks?.length || 3;
+  const hasRetryableTasks = Boolean(state?.tasks && state.tasks.some(t => t.status !== "completed" && t.attempts < 2));
+  const hasFailedTasks = Boolean(state?.tasks && state.tasks.some(t => t.status === "failed"));
+  const hasRunningTasks = Boolean(state?.tasks && state.tasks.some(t => t.status === "running"));
+  const isRunInterruptedOrStalled = hasFailedTasks && !hasRunningTasks && state?.run?.status === "running";
+  const canRetryRun = Boolean(
+    !busy &&
+    hasRetryableTasks &&
+    (["failed", "paused", "canceled"].includes(state?.run?.status || "") || isRunInterruptedOrStalled || isRunTimeout)
+  );
 
   let draftState: ModelRunningState = "idle";
   let draftTitle = "";
   let draftMessage = "";
 
-  if (isRunActive && !isRunElapsedTimeout) {
+  if (isRunActive && !isRunElapsedTimeout && !isRunInterruptedOrStalled) {
     draftState = "loading";
     if (state.run?.status === "pending") {
       draftTitle = "Drafting Run Queued: Waiting for Story Worker";
@@ -605,15 +614,30 @@ export default function Workspace({ workId }: { workId?: string }) {
   } else if (isRunTimeout) {
     draftState = "timeout";
     draftTitle = "Drafting Run Timed Out (120s limit reached)";
-    draftMessage = "The drafting run exceeded the 120-second timeout limit. If running locally, check that 'npm run worker' is active. You can cancel or retry the run below.";
-  } else if (isRunFailed) {
+    if (hasRetryableTasks) {
+      draftMessage = "The drafting run exceeded the 120-second timeout limit. If running locally, check that 'npm run worker' is active. You can retry failed tasks once or start a new run below.";
+    } else {
+      draftMessage = "The drafting run exceeded the 120-second timeout limit. The one-retry limit (2 attempts) has been reached. Click 'Start new chapter run' to start fresh.";
+    }
+  } else if (isRunFailed || isRunInterruptedOrStalled) {
     draftState = "fail";
     draftTitle = "Drafting Run Failed";
     const failedTasks = state?.tasks?.filter(t => t.status === "failed") || [];
-    if (failedTasks.length > 0) {
-      draftMessage = `Failure in: ${failedTasks.map(t => `Chapter ${t.chapterIndex} (${WRITER_ALIASES[t.chapterIndex]?.name || "Writer"}): ${t.error || "Task failed"}`).join("; ")}. Review task status cards below and use 'Retry failed tasks once'.`;
+    const allTasksCompleted = state?.tasks?.length === 3 && state.tasks.every(t => t.status === "completed");
+    if (allTasksCompleted) {
+      draftMessage = "All 3 chapters were generated successfully, but the final editorial review step was interrupted. Click 'Start new chapter run' to finalize with editorial review.";
+    } else if (failedTasks.length > 0) {
+      if (hasRetryableTasks) {
+        draftMessage = `Failure in: ${failedTasks.map(t => `Chapter ${t.chapterIndex} (${WRITER_ALIASES[t.chapterIndex]?.name || "Writer"}): ${t.error || "Task failed"}`).join("; ")}. Review task status cards below and use 'Retry failed tasks once'.`;
+      } else {
+        draftMessage = `Failure in: ${failedTasks.map(t => `Chapter ${t.chapterIndex} (${WRITER_ALIASES[t.chapterIndex]?.name || "Writer"}): ${t.error || "Task failed"}`).join("; ")}. The one-retry limit (2 attempts) has been reached. Review task status cards below and click 'Start new chapter run' to begin a fresh run.`;
+      }
     } else {
-      draftMessage = modelActionError || "One or more chapter tasks failed. Review the task status cards below and use 'Retry failed tasks once'.";
+      if (hasRetryableTasks) {
+        draftMessage = modelActionError || "One or more chapter tasks failed. Review the task status cards below and use 'Retry failed tasks once'.";
+      } else {
+        draftMessage = modelActionError || "The drafting run failed and the retry limit has been reached. Click 'Start new chapter run' to begin a fresh run.";
+      }
     }
   } else if (isRunCompleted) {
     draftState = "success";
@@ -1605,14 +1629,24 @@ export default function Workspace({ workId }: { workId?: string }) {
                 </select>
                 <div className={styles.actions}>
                   <button
-                    disabled={busy || !state.bible || ["pending", "running"].includes(state.run?.status || "")}
+                    disabled={busy || !state.bible || (["pending", "running"].includes(state.run?.status || "") && !isRunInterruptedOrStalled && !isRunElapsedTimeout)}
                     className={styles.primary}
                     onClick={() => action({ action: "run", fixture })}
                   >
-                    {state.run?.status === "failed" ? "Start new chapter run" : (state.project.brief.intake ? "Start chapter drafting run" : "Start synthetic run")}
+                    {state.run?.status === "failed" || isRunInterruptedOrStalled || isRunTimeout ? "Start new chapter run" : (state.project.brief.intake ? "Start chapter drafting run" : "Start synthetic run")}
                   </button>
                   <button disabled={busy || !["pending", "running", "paused", "failed"].includes(state.run?.status || "")} onClick={() => action({ action: "cancel" })}>Cancel run</button>
-                  <button disabled={busy || state.run?.status !== "failed" || !state.tasks.some(t => t.status !== "completed" && t.attempts < 2)} onClick={() => action({ action: "retry" })}>Retry failed tasks once</button>
+                  <button
+                    disabled={!canRetryRun}
+                    title={
+                      !hasRetryableTasks && hasFailedTasks
+                        ? "The one-retry limit (2 attempts) has been reached for this run. Click 'Start new chapter run' to start fresh."
+                        : undefined
+                    }
+                    onClick={() => action({ action: "retry" })}
+                  >
+                    Retry failed tasks once
+                  </button>
                   <button
                     disabled={busy || !state.acceptedManuscript}
                     className={state.acceptedManuscript ? styles.exportButtonHighlight : ""}
