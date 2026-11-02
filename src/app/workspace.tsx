@@ -76,6 +76,7 @@ function manuscriptAcceptEnabled(state: Snapshot): boolean {
   if (state.run?.status !== "completed") return false;
   const pair = consistencyPair(state.critique);
   if (pair.versionA?.status === "unavailable" || !pair.versionA?.status) return true;
+  if (pair.versionA?.status === "complete" && (pair.versionB?.status === "complete" || !pair.versionB?.status)) return true;
   return isCurrentConsistencyStatus(pair.versionA?.status) && isCurrentConsistencyStatus(pair.versionB?.status);
 }
 
@@ -1749,35 +1750,44 @@ export default function Workspace({ workId }: { workId?: string }) {
                               >
                                 ✓ Accept Version {isVersionA ? "A" : "B"} as Final
                               </button>
-                              <div className={styles.rewriteBox}>
-                                <input
-                                  placeholder={`Notes for Version ${isVersionA ? "A" : "B"} rewrite...`}
-                                  value={feedbackText}
-                                  maxLength={500}
-                                  onChange={e => setFeedbackText(e.target.value)}
-                                  className={styles.rewriteInput}
-                                />
-                                <VoiceInputButton
-                                  voice={voice}
-                                  onTranscript={spoken => setFeedbackText(prev => prev ? `${prev} ${spoken}` : spoken)}
-                                  title="Dictate revision instructions with voice"
-                                />
-                                <button
-                                  type="button"
-                                  disabled={busy || ((state.critique as any)?.revisionRounds ?? 0) >= 2}
-                                  className={styles.rewriteBtn}
-                                  onClick={() => {
-                                    action({ action: "rewrite", feedback: feedbackText });
-                                    setFeedbackText("");
-                                  }}
-                                >
-                                  Rewrite ({Math.max(0, 2 - ((state.critique as any)?.revisionRounds ?? 0))} left)
-                                </button>
-                              </div>
                             </div>
                           </article>
                         );
                       })}
+                    </div>
+                    <div className={styles.unifiedRewriteSection} style={{ marginTop: "16px", padding: "16px", background: "rgba(15, 23, 42, 0.6)", borderRadius: "8px", border: "1px solid #334155" }}>
+                      <div style={{ marginBottom: "8px" }}>
+                        <strong style={{ fontSize: "14px", color: "#f8fafc" }}>Request Revision from Both Editors (Fontaine & Lang)</strong>
+                        <p style={{ margin: "2px 0 0", fontSize: "12px", color: "#94a3b8" }}>
+                          Enter revision feedback for both editors. Fontaine will apply it focusing on continuity & pacing, while Lang will apply it focusing on voice & atmosphere.
+                        </p>
+                      </div>
+                      <div className={styles.rewriteBox} style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                        <input
+                          placeholder="Enter revision instructions for both editors (e.g. 'Heighten the drama during the competition in Ch 2')..."
+                          value={feedbackText}
+                          maxLength={500}
+                          onChange={e => setFeedbackText(e.target.value)}
+                          className={styles.rewriteInput}
+                          style={{ flex: 1 }}
+                        />
+                        <VoiceInputButton
+                          voice={voice}
+                          onTranscript={spoken => setFeedbackText(prev => prev ? `${prev} ${spoken}` : spoken)}
+                          title="Dictate revision instructions with voice"
+                        />
+                        <button
+                          type="button"
+                          disabled={busy || ((state.critique as any)?.revisionRounds ?? 0) >= 2 || !feedbackText.trim()}
+                          className={styles.rewriteBtn}
+                          onClick={() => {
+                            action({ action: "rewrite", feedback: feedbackText });
+                            setFeedbackText("");
+                          }}
+                        >
+                          Request Revision ({Math.max(0, 2 - ((state.critique as any)?.revisionRounds ?? 0))} left)
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
