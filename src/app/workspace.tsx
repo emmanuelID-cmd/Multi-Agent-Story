@@ -983,36 +983,11 @@ export default function Workspace({ workId }: { workId?: string }) {
                 />
               )}
 
-              {/* Sequential Connection Pipeline Header & Checkpoint Drop-box */}
+              {/* Sequential Connection Pipeline Header & Checkpoint Stepper */}
               <div className={styles.pipelineBar}>
-                <div className={styles.checkpointDropdownRow}>
-                  <div className={styles.checkpointDropdownGroup}>
-                    <label htmlFor="pipeline-checkpoint" className={styles.checkpointLabel}>
-                      <span className={styles.checkpointIcon}>📍</span> Pipeline Checkpoint:
-                    </label>
-                    <select
-                      id="pipeline-checkpoint"
-                      className={styles.checkpointSelect}
-                      value={activeStage}
-                      onChange={e => handleSelectStage(e.target.value as PipelineStage)}
-                    >
-                      {PIPELINE_STAGES.map(s => {
-                        const complete = isStageComplete(s.id);
-                        const accessible = isStageAccessible(s.id);
-                        const isActive = activeStage === s.id;
-                        let statusSuffix = "";
-                        if (complete) statusSuffix = "✓ Completed";
-                        else if (isActive) statusSuffix = "• Active Setup";
-                        else if (accessible) statusSuffix = "Available";
-                        else statusSuffix = "🔒 Locked";
-
-                        return (
-                          <option key={s.id} value={s.id} disabled={!accessible}>
-                            Stage {s.number}: {s.title} ({statusSuffix})
-                          </option>
-                        );
-                      })}
-                    </select>
+                <div className={styles.checkpointHeaderRow}>
+                  <div className={styles.checkpointLabel}>
+                    <span className={styles.checkpointIcon}>📍</span> Pipeline Checkpoint:
                   </div>
                   <div className={styles.pipelineStagePill}>
                     {activeStage === "intake" && "Stage 1 of 4 · Story Scope Setup"}

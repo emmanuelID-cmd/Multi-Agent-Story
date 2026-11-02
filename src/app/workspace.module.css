@@ -940,33 +940,24 @@
 }
 
 /* ============================================================
-   SEQUENTIAL PIPELINE & CHECKPOINT DROP-BOX
+   SEQUENTIAL PIPELINE & CHECKPOINT STEPPER
    ============================================================ */
 
 .pipelineBar {
   background: #0e1526;
   border: 1px solid #222f4c;
   border-radius: 12px;
-  padding: 18px 20px;
-  margin: 18px 0 22px;
+  padding: 14px 18px 16px;
+  margin: 16px 0 20px;
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
 }
 
-.checkpointDropdownRow {
+.checkpointHeaderRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  flex-wrap: wrap;
-  padding-bottom: 16px;
-  border-bottom: 1px solid #1e293b;
-}
-
-.checkpointDropdownGroup {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
+  margin-bottom: 12px;
 }
 
 .checkpointLabel {
@@ -984,25 +975,6 @@
   font-size: 15px;
 }
 
-.checkpointSelect {
-  background: #161f36;
-  color: #f8fafc;
-  border: 1.5px solid #d4af37;
-  border-radius: 8px;
-  padding: 8px 14px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  box-shadow: 0 0 10px rgba(212, 175, 55, 0.15);
-  outline: none;
-  min-width: 280px;
-}
-
-.checkpointSelect:focus {
-  border-color: #fef08a;
-  box-shadow: 0 0 14px rgba(212, 175, 55, 0.35);
-}
-
 .pipelineStagePill {
   font-size: 11px;
   font-weight: 700;
@@ -1010,17 +982,17 @@
   letter-spacing: 1px;
   background: #1a2238;
   color: #94a3b8;
-  padding: 5px 12px;
+  padding: 4px 12px;
   border-radius: 20px;
   border: 1px solid #334155;
 }
 
-/* Horizontal Stepper */
+/* Horizontal Stepper - Moved up directly under checkpoint header */
 .pipelineStepper {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 10px;
-  margin-top: 16px;
+  margin-top: 0;
   position: relative;
 }
 
@@ -1044,6 +1016,8 @@
 .stepperStep:hover:not(:disabled) {
   background: #182238;
   border-color: #3b82f6;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
 }
 
 .stepperStepActive {
