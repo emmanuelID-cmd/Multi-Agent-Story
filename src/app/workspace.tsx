@@ -11,6 +11,9 @@ import ResearchReview from "./research-review";
 import { showBibleCandidate, canRetryBiblePlanning } from "./planning-visibility";
 import { manuscriptConsistencyLabel } from "./manuscript-status";
 import { isCurrentConsistencyStatus } from "../agents/consistency-current";
+import { useStoryVoice } from "./hooks/use-story-voice";
+import { AudioPlayer } from "./components/audio-player";
+import { VoiceInputButton } from "./components/voice-input-button";
 
 type Snapshot = Awaited<ReturnType<typeof projectState>>;
 type Fields = Record<string, string[]>;
@@ -100,8 +103,105 @@ function saveRecent(item: RecentStory) {
   try {
     const list = loadRecents().filter(s => s.id !== item.id);
     list.unshift(item);
-    localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, 10)));
+    localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, 50)));
   } catch {}
+}
+
+function getProsePlaybackState({
+  chapters,
+  currentChapterIndex,
+  activeSourceId,
+  currentPlayingSourceId,
+  isSpeaking,
+  spokenCharIndex,
+  spokenCharLength,
+}: {
+  chapters?: { chapterIndex: number; text: string }[];
+  currentChapterIndex: number;
+  activeSourceId: string;
+  currentPlayingSourceId: string | undefined;
+  isSpeaking: boolean;
+  spokenCharIndex: number;
+  spokenCharLength: number;
+}): { isSpeaking: boolean; spokenCharIndex: number; spokenCharLength: number } {
+  if (!isSpeaking || !currentPlayingSourceId || spokenCharIndex < 0) {
+    return { isSpeaking: false, spokenCharIndex: -1, spokenCharLength: 0 };
+  }
+
+  if (currentPlayingSourceId === `${activeSourceId}_ch_${currentChapterIndex}`) {
+    return { isSpeaking: true, spokenCharIndex, spokenCharLength };
+  }
+
+  if (currentPlayingSourceId === activeSourceId && chapters) {
+    let offset = 0;
+    for (const ch of chapters) {
+      const prefix = `Chapter ${ch.chapterIndex}. `;
+      const chStart = offset + prefix.length;
+      const chEnd = chStart + ch.text.length;
+      if (ch.chapterIndex === currentChapterIndex) {
+        if (spokenCharIndex >= chStart && spokenCharIndex <= chEnd) {
+          return {
+            isSpeaking: true,
+            spokenCharIndex: Math.max(0, spokenCharIndex - chStart),
+            spokenCharLength,
+          };
+        }
+        return { isSpeaking: false, spokenCharIndex: -1, spokenCharLength: 0 };
+      }
+      offset = chEnd + 2;
+    }
+  }
+
+  return { isSpeaking: false, spokenCharIndex: -1, spokenCharLength: 0 };
+}
+
+function HighlightedStoryProse({
+  text,
+  isSpeaking,
+  spokenCharIndex,
+  spokenCharLength,
+}: {
+  text: string;
+  isSpeaking: boolean;
+  spokenCharIndex: number;
+  spokenCharLength: number;
+}) {
+  const activeWordRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (isSpeaking && spokenCharIndex >= 0 && activeWordRef.current) {
+      activeWordRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
+    }
+  }, [spokenCharIndex, isSpeaking]);
+
+  if (!isSpeaking || spokenCharIndex < 0 || spokenCharIndex >= text.length) {
+    return <p className={styles.prose}>{text}</p>;
+  }
+
+  const start = spokenCharIndex;
+  let len = spokenCharLength;
+  if (!len || len <= 0) {
+    const match = text.slice(start).match(/^\S+/);
+    len = match ? match[0].length : 1;
+  }
+  const end = Math.min(text.length, start + len);
+
+  const before = text.slice(0, start);
+  const word = text.slice(start, end);
+  const after = text.slice(end);
+
+  return (
+    <p className={styles.prose}>
+      <span>{before}</span>
+      <mark ref={activeWordRef} className={styles.spokenWordHighlight}>
+        {word}
+      </mark>
+      <span>{after}</span>
+    </p>
+  );
 }
 
 export default function Workspace({ workId }: { workId?: string }) {
@@ -115,6 +215,7 @@ export default function Workspace({ workId }: { workId?: string }) {
   const [state, setState] = useState<Snapshot | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [activeStage, setActiveStage] = useState<PipelineStage>("intake");
+  const voice = useStoryVoice();
   const stageManuallySelected = useRef(false);
   const isInitialized = useRef(false);
   const prevMilestones = useRef({
@@ -129,6 +230,7 @@ export default function Workspace({ workId }: { workId?: string }) {
   const [recoveryAcknowledged, setRecoveryAcknowledged] = useState<Record<string, boolean>>({});
   const [planningAcknowledged, setPlanningAcknowledged] = useState<Record<string, boolean>>({});
   const [recents, setRecents] = useState<RecentStory[]>([]);
+  const [sidebarPage, setSidebarPage] = useState<number>(1);
   const [copied, setCopied] = useState(false);
   const [activeModelAction, setActiveModelAction] = useState<string | null>(null);
   const [modelElapsedSeconds, setModelElapsedSeconds] = useState(0);
@@ -287,6 +389,118 @@ export default function Workspace({ workId }: { workId?: string }) {
     }
   };
 
+  const handleExport = async () => {
+    await perform(async () => {
+      const response = await fetch(`/api/projects/${selected}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "export" }),
+      });
+      if (!response.ok) throw Error("Export unavailable.");
+      const url = URL.createObjectURL(await response.blob());
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${state?.project.brief.premise.slice(0, 30).replace(/[^a-zA-Z0-9]/g, "-") || "synthetic-story"}.md`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setMessage("Export downloaded.");
+    });
+  };
+
+  const [selectedVoiceSourceId, setSelectedVoiceSourceId] = useState<string>("");
+
+  const acceptedText = state?.acceptedManuscript
+    ? ((state.acceptedManuscript.data as any).chapters?.map((ch: any) => `Chapter ${ch.chapterIndex}. ${ch.text}`).join("\n\n") ?? "")
+    : "";
+
+  const draftText = state?.chapters && state.chapters.length > 0
+    ? state.chapters.map(c => `Chapter ${c.chapterIndex}. ${c.text}`).join("\n\n")
+    : "";
+
+  const pendingManuscripts = state?.pending
+    ? state.pending.filter(p => p.kind.startsWith("manuscript_") && p.baseVersion === state.project.version)
+    : [];
+
+  const proposalA = pendingManuscripts.find(p => p.kind === "manuscript_a");
+  const proposalB = pendingManuscripts.find(p => p.kind === "manuscript_b");
+  const proposalAText = proposalA
+    ? ((proposalA.data as any).chapters?.map((ch: any) => `Chapter ${ch.chapterIndex}. ${ch.text}`).join("\n\n") ?? "")
+    : "";
+  const proposalBText = proposalB
+    ? ((proposalB.data as any).chapters?.map((ch: any) => `Chapter ${ch.chapterIndex}. ${ch.text}`).join("\n\n") ?? "")
+    : "";
+
+  const voiceSources: { id: string; label: string; text: string }[] = [];
+  if (state?.acceptedManuscript && acceptedText) {
+    voiceSources.push({
+      id: "accepted",
+      label: `Final (${state.acceptedManuscript.kind === "manuscript_a" ? "Ver A" : "Ver B"})`,
+      text: acceptedText,
+    });
+  }
+  if (proposalA && proposalAText) {
+    voiceSources.push({ id: "version_a", label: "Rev A (Fontaine)", text: proposalAText });
+  }
+  if (proposalB && proposalBText) {
+    voiceSources.push({ id: "version_b", label: "Rev B (Lang)", text: proposalBText });
+  }
+  if (draftText) {
+    voiceSources.push({ id: "draft", label: "Drafts (All 3 Ch)", text: draftText });
+    state?.chapters.forEach(c => {
+      voiceSources.push({
+        id: `draft_ch_${c.chapterIndex}`,
+        label: `Draft Ch ${c.chapterIndex}`,
+        text: c.text,
+      });
+    });
+  }
+
+  const currentVoiceSource = voiceSources.find(s => s.id === selectedVoiceSourceId) || voiceSources[0];
+  const currentVoiceText = currentVoiceSource?.text || "";
+
+  const [activeDraftChapterIndex, setActiveDraftChapterIndex] = useState<number>(1);
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStartX(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX === null) return;
+    const diff = touchStartX - e.changedTouches[0].clientX;
+    if (diff > 50) {
+      setActiveDraftChapterIndex(prev => Math.min(state?.chapters.length || 3, prev + 1));
+    } else if (diff < -50) {
+      setActiveDraftChapterIndex(prev => Math.max(1, prev - 1));
+    }
+    setTouchStartX(null);
+  };
+
+  // Auto-switch active draft chapter tab as voice reads through the chapters
+  useEffect(() => {
+    if (!voice.isSpeaking || !state?.chapters?.length) return;
+    if (currentVoiceSource?.id?.startsWith("draft_ch_")) {
+      const chNum = parseInt(currentVoiceSource.id.replace("draft_ch_", ""), 10);
+      if (chNum && activeDraftChapterIndex !== chNum) {
+        setActiveDraftChapterIndex(chNum);
+      }
+    } else if (currentVoiceSource?.id === "draft") {
+      let offset = 0;
+      for (const ch of state.chapters) {
+        const prefix = `Chapter ${ch.chapterIndex}. `;
+        const chStart = offset;
+        const chEnd = chStart + prefix.length + ch.text.length;
+        if (voice.spokenCharIndex >= chStart && voice.spokenCharIndex <= chEnd) {
+          if (activeDraftChapterIndex !== ch.chapterIndex) {
+            setActiveDraftChapterIndex(ch.chapterIndex);
+          }
+          break;
+        }
+        offset = chEnd + 2;
+      }
+    }
+  }, [voice.isSpeaking, voice.spokenCharIndex, currentVoiceSource?.id, state?.chapters, activeDraftChapterIndex]);
+
   const isPlanningRunning = (busy && (activeModelAction === "plan" || activeModelAction === "retry-bible-planning")) || state?.latestPlanning?.status === "running";
   const isPlanningFailed = state?.latestPlanning?.status === "failed" || (!!modelActionError && (activeModelAction === "plan" || activeModelAction === "retry-bible-planning"));
   const isPlanningTimeout = isPlanningFailed && (modelActionError?.toLowerCase().includes("timeout") || modelElapsedSeconds >= 120);
@@ -409,6 +623,7 @@ export default function Workspace({ workId }: { workId?: string }) {
 
   const handleSelectStage = (newStage: PipelineStage) => {
     if (!isStageAccessible(newStage)) return;
+    voice.stop();
     stageManuallySelected.current = true;
     setActiveStage(newStage);
   };
@@ -450,44 +665,183 @@ export default function Workspace({ workId }: { workId?: string }) {
   return (
     <div className={styles.shell}>
       <a className={styles.skip} href="#workspace">Skip to workspace</a>
-      <aside className={styles.sidebar}>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
-          <img src="/weaver-logo.png" alt="Weaver Logo" style={{ width: "32px", height: "32px", borderRadius: "6px", border: "1px solid #d4af37", background: "#0c111e", padding: "2px", objectFit: "contain" }} />
-          <p className={styles.brand}>Weaver</p>
+
+      <header className={styles.header}>
+        <div className={styles.bannerBrandZone}>
+          <img src="/weaver-logo.png" alt="Weaver Logo" className={styles.bannerLogoDilated} />
+          <div className={styles.bannerBrandText}>
+            <p className={styles.brand}>Weaver</p>
+            <p className={styles.eyebrow}>THREADKEEPER</p>
+          </div>
         </div>
-        <p className={styles.eyebrow}>THREADKEEPER ENGINE</p>
-        <p className={styles.railCopy}>One shared plan.<br />Three coordinated chapters.<br />Live Claude Haiku.</p>
-        <div className={styles.owners}>Manny · READ Agents<br />Justin · WRITE Agents</div>
+        <div className={styles.headerLeft}>
+          <div className={styles.scrollPenBadge} title="Weaver: Ink Pen Writing on Scroll">
+            <span className={styles.scrollEmoji}>📜</span>
+            <span className={styles.penEmoji}>🖋️</span>
+          </div>
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <h1 className={styles.headerBrandTitle}>WEAVER</h1>
+              <span className={styles.headerBrandTag}>MIDNIGHT FOLIO</span>
+            </div>
+            <p className={styles.headerBrandSub}>
+              One shared plan · Three coordinated chapters · Live AI storytelling
+            </p>
+          </div>
+        </div>
+        {currentVoiceText && (
+          <div className={styles.bannerVoiceContainer}>
+            <div className={styles.bannerVoiceSourceBox}>
+              <span className={styles.bannerVoiceIcon}>📖</span>
+              {voiceSources.length > 1 ? (
+                <select
+                  className={styles.bannerVoiceSelect}
+                  value={currentVoiceSource?.id}
+                  onChange={e => {
+                    voice.stop();
+                    setSelectedVoiceSourceId(e.target.value);
+                  }}
+                  title="Select story version to narrate"
+                >
+                  {voiceSources.map(s => (
+                    <option key={s.id} value={s.id}>{s.label}</option>
+                  ))}
+                </select>
+              ) : (
+                <span className={styles.bannerVoiceLabel}>{currentVoiceSource?.label}</span>
+              )}
+            </div>
+            <AudioPlayer
+              text={currentVoiceText}
+              id={`banner-voice-${currentVoiceSource?.id || "story"}`}
+              label={currentVoiceSource?.label || "Story Voice"}
+              voice={voice}
+            />
+          </div>
+        )}
+        <div className={styles.headerRight}>
+          {selected && (
+            <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+              {state?.acceptedManuscript && (
+                <button
+                  type="button"
+                  className={styles.headerExportBtn}
+                  disabled={busy}
+                  onClick={handleExport}
+                  title="Download complete accepted manuscript as Markdown"
+                >
+                  📥 Export (.md)
+                </button>
+              )}
+              <button type="button" className={styles.headerBtn} disabled={busy} onClick={copyLink}>{copied ? "✓ Copied" : "🔗 Copy link"}</button>
+            </div>
+          )}
+        </div>
+      </header>
+
+      <aside className={styles.sidebar}>
+        <button
+          type="button"
+          className={styles.sidebarNewStoryBtn}
+          onClick={() => router.push("/")}
+        >
+          ➕ New Story
+        </button>
+
+        <div className={styles.sidebarProjectsSection}>
+          <div className={styles.sidebarProjectsHeader}>
+            <span className={styles.sidebarProjectsTitle}>SAVED PROJECTS</span>
+            <span className={styles.sidebarProjectsCount}>{recents.length}</span>
+          </div>
+
+          <div className={styles.sidebarProjectsList}>
+            {recents.length === 0 ? (
+              <p className={styles.sidebarNoProjects}>No saved stories yet.</p>
+            ) : (() => {
+              const PROJECTS_PER_PAGE = 5;
+              const totalProjectsPages = Math.max(1, Math.ceil(recents.length / PROJECTS_PER_PAGE));
+              const displayedProjects = recents.length > PROJECTS_PER_PAGE
+                ? recents.slice((sidebarPage - 1) * PROJECTS_PER_PAGE, sidebarPage * PROJECTS_PER_PAGE)
+                : recents;
+              return displayedProjects.map(r => {
+                const isCurrent = r.id === selected;
+                return (
+                  <div
+                    key={r.id}
+                    className={`${styles.sidebarProjectItem} ${isCurrent ? styles.sidebarProjectActive : ""}`}
+                    onClick={() => {
+                      if (!isCurrent) router.push(`/${r.id}`);
+                    }}
+                    title={r.premise || "Untitled Story"}
+                  >
+                    <div className={styles.sidebarProjectTop}>
+                      <span className={styles.sidebarProjectPremise}>
+                        {r.premise || "Untitled Story"}
+                      </span>
+                      {isCurrent && <span className={styles.sidebarActiveDot} title="Current story">●</span>}
+                    </div>
+                    <div className={styles.sidebarProjectMeta}>
+                      <span>{new Date(r.updatedAt).toLocaleDateString()}</span>
+                      <span>ID: {r.id.slice(0, 6)}…</span>
+                    </div>
+                  </div>
+                );
+              });
+            })()}
+          </div>
+
+          {recents.length > 5 && (() => {
+            const PROJECTS_PER_PAGE = 5;
+            const totalProjectsPages = Math.max(1, Math.ceil(recents.length / PROJECTS_PER_PAGE));
+            return (
+              <div className={styles.sidebarPagination}>
+                <div className={styles.sidebarPaginationButtons}>
+                  <button
+                    type="button"
+                    disabled={sidebarPage <= 1}
+                    onClick={() => setSidebarPage(p => Math.max(1, p - 1))}
+                    className={styles.sidebarPageBtn}
+                    title="Previous page of saved projects"
+                  >
+                    ◀ Prev
+                  </button>
+                  <span className={styles.sidebarPageIndicator}>
+                    {sidebarPage} / {totalProjectsPages}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={sidebarPage >= totalProjectsPages}
+                    onClick={() => setSidebarPage(p => Math.min(totalProjectsPages, p + 1))}
+                    className={styles.sidebarPageBtn}
+                    title="Next page of saved projects"
+                  >
+                    Next ▶
+                  </button>
+                </div>
+                <div className={styles.sidebarJumpRow}>
+                  <label htmlFor="sidebar-jump-select" className={styles.sidebarJumpLabel}>Jump to:</label>
+                  <select
+                    id="sidebar-jump-select"
+                    value={sidebarPage}
+                    onChange={e => setSidebarPage(Number(e.target.value))}
+                    className={styles.sidebarJumpSelect}
+                  >
+                    {Array.from({ length: totalProjectsPages }, (_, i) => i + 1).map(p => (
+                      <option key={p} value={p}>Page {p}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+
+        <div className={styles.sidebarFooter}>
+          <div className={styles.owners}>Manny · READ Lane<br />Justin · WRITE Lane</div>
+        </div>
       </aside>
+
       <div className={styles.main}>
-        <header className={styles.header}>
-          <div className={styles.headerLeft}>
-            <div className={styles.scrollPenBadge} title="Weaver: Ink Pen Writing on Scroll">
-              <span className={styles.scrollEmoji}>📜</span>
-              <span className={styles.penEmoji}>🖋️</span>
-            </div>
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <h1 className={styles.headerBrandTitle}>WEAVER</h1>
-                <span className={styles.headerBrandTag}>MIDNIGHT FOLIO</span>
-              </div>
-              <p className={styles.headerBrandSub}>
-                One shared plan · Three coordinated chapters · Live AI storytelling
-              </p>
-            </div>
-          </div>
-          <div className={styles.headerRight}>
-            {selected && (
-              <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                <button type="button" className={styles.headerBtn} disabled={busy} onClick={copyLink}>{copied ? "✓ Copied" : "🔗 Copy link"}</button>
-                <button type="button" className={styles.headerBtn} disabled={busy} onClick={() => router.push("/")}>➕ New story</button>
-              </div>
-            )}
-            <div className={styles.logoContainer} title="Weaver Threadkeeper Logo">
-              <img src="/weaver-logo.png" alt="Weaver Logo" className={styles.topRightLogo} />
-            </div>
-          </div>
-        </header>
         <main id="workspace" className={styles.content}>
           <span className={styles.badge}>LIVE STORY WORKSPACE · THREADKEEPER</span>
           <h1>A story starts with<br />a decision you approve.</h1>
@@ -629,36 +983,11 @@ export default function Workspace({ workId }: { workId?: string }) {
                 />
               )}
 
-              {/* Sequential Connection Pipeline Header & Checkpoint Drop-box */}
+              {/* Sequential Connection Pipeline Header & Checkpoint Stepper */}
               <div className={styles.pipelineBar}>
-                <div className={styles.checkpointDropdownRow}>
-                  <div className={styles.checkpointDropdownGroup}>
-                    <label htmlFor="pipeline-checkpoint" className={styles.checkpointLabel}>
-                      <span className={styles.checkpointIcon}>📍</span> Pipeline Checkpoint:
-                    </label>
-                    <select
-                      id="pipeline-checkpoint"
-                      className={styles.checkpointSelect}
-                      value={activeStage}
-                      onChange={e => handleSelectStage(e.target.value as PipelineStage)}
-                    >
-                      {PIPELINE_STAGES.map(s => {
-                        const complete = isStageComplete(s.id);
-                        const accessible = isStageAccessible(s.id);
-                        const isActive = activeStage === s.id;
-                        let statusSuffix = "";
-                        if (complete) statusSuffix = "✓ Completed";
-                        else if (isActive) statusSuffix = "• Active Setup";
-                        else if (accessible) statusSuffix = "Available";
-                        else statusSuffix = "🔒 Locked";
-
-                        return (
-                          <option key={s.id} value={s.id} disabled={!accessible}>
-                            Stage {s.number}: {s.title} ({statusSuffix})
-                          </option>
-                        );
-                      })}
-                    </select>
+                <div className={styles.checkpointHeaderRow}>
+                  <div className={styles.checkpointLabel}>
+                    <span className={styles.checkpointIcon}>📍</span> Pipeline Checkpoint:
                   </div>
                   <div className={styles.pipelineStagePill}>
                     {activeStage === "intake" && "Stage 1 of 4 · Story Scope Setup"}
@@ -1224,21 +1553,8 @@ export default function Workspace({ workId }: { workId?: string }) {
                   <button disabled={busy || state.run?.status !== "failed" || !state.tasks.some(t => t.status !== "completed" && t.attempts < 2)} onClick={() => action({ action: "retry" })}>Retry failed tasks once</button>
                   <button
                     disabled={busy || !state.acceptedManuscript}
-                    onClick={() => perform(async () => {
-                      const response = await fetch(`/api/projects/${selected}`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ action: "export" }),
-                      });
-                      if (!response.ok) throw Error("Export unavailable.");
-                      const url = URL.createObjectURL(await response.blob());
-                      const a = document.createElement("a");
-                      a.href = url;
-                      a.download = "synthetic-story.md";
-                      a.click();
-                      setTimeout(() => URL.revokeObjectURL(url), 1000);
-                      setMessage("Export downloaded.");
-                    })}
+                    className={state.acceptedManuscript ? styles.exportButtonHighlight : ""}
+                    onClick={handleExport}
                   >Export Markdown</button>
                 </div>
                 {!state.bible && <p>Approve a plan in “Plan &amp; approve” first.</p>}
@@ -1254,102 +1570,389 @@ export default function Workspace({ workId }: { workId?: string }) {
                   ))}
                 </div>
                 {state.run && state.run.status !== "completed" && <p role="status">Partial run · completed outputs remain available. Final critique waits for all three chapters.</p>}
-                {state.chapters.map(c => (
-                  <article className={styles.proposal} key={c.id}>
-                    <h3>Draft Chapter {c.chapterIndex} · bible v{c.bibleVersion}</h3>
-                    <p className={styles.prose}>{c.text}</p>
-                  </article>
-                ))}
-                {state.acceptedManuscript && (
-                  <article className={styles.proposal} style={{ borderColor: "#10b981", background: "#f0fdf4" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
-                      <h3>Accepted Final Manuscript · {state.acceptedManuscript.kind === "manuscript_a" ? "Version A (Continuity & Pacing · Fontaine)" : "Version B (Voice & Atmosphere · Lang)"}</h3>
-                      <span style={{ fontSize: "0.8rem", padding: "2px 8px", background: "#d1fae5", color: "#065f46", borderRadius: "4px", fontWeight: "bold" }}>ACCEPTED MANUSCRIPT</span>
+
+                {/* Single Draft Reader Box (Horizontal Chapter Switching / Touch Screen Slide, Vertical Text Scrolling) */}
+                {state.chapters.length > 0 && (() => {
+                  const currentDraft = state.chapters.find(c => c.chapterIndex === activeDraftChapterIndex) || state.chapters[0];
+                  return (
+                    <div className={styles.draftReaderCard}>
+                      <div className={styles.draftReaderHeader}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                          <h3 className={styles.draftReaderTitle}>
+                            Draft Chapter {currentDraft.chapterIndex} of {state.chapters.length}
+                          </h3>
+                          <span className={styles.draftBibleTag}>Bible v{currentDraft.bibleVersion}</span>
+                        </div>
+
+                        <div className={styles.draftNavGroup}>
+                          <button
+                            type="button"
+                            className={styles.chapterNavBtn}
+                            disabled={activeDraftChapterIndex <= 1}
+                            onClick={() => setActiveDraftChapterIndex(prev => Math.max(1, prev - 1))}
+                            title="Previous chapter (or swipe right)"
+                          >
+                            ◀ Prev
+                          </button>
+
+                          <div className={styles.chapterPillList}>
+                            {state.chapters.map(c => {
+                              const isActive = c.chapterIndex === activeDraftChapterIndex;
+                              return (
+                                <button
+                                  key={c.id}
+                                  type="button"
+                                  className={`${styles.chapterPill} ${isActive ? styles.chapterPillActive : ""}`}
+                                  onClick={() => setActiveDraftChapterIndex(c.chapterIndex)}
+                                >
+                                  Chapter {c.chapterIndex}
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          <button
+                            type="button"
+                            className={styles.chapterNavBtn}
+                            disabled={activeDraftChapterIndex >= state.chapters.length}
+                            onClick={() => setActiveDraftChapterIndex(prev => Math.min(state.chapters.length, prev + 1))}
+                            title="Next chapter (or swipe left)"
+                          >
+                            Next ▶
+                          </button>
+                        </div>
+                      </div>
+
+                      {(() => {
+                        const draftSpeech = getProsePlaybackState({
+                          chapters: state.chapters,
+                          currentChapterIndex: currentDraft.chapterIndex,
+                          activeSourceId: "draft",
+                          currentPlayingSourceId: currentVoiceSource?.id,
+                          isSpeaking: voice.isSpeaking,
+                          spokenCharIndex: voice.spokenCharIndex,
+                          spokenCharLength: voice.spokenCharLength,
+                        });
+                        return (
+                          <div
+                            className={styles.draftReaderBody}
+                            onTouchStart={handleTouchStart}
+                            onTouchEnd={handleTouchEnd}
+                          >
+                            <HighlightedStoryProse
+                              text={currentDraft.text}
+                              isSpeaking={draftSpeech.isSpeaking}
+                              spokenCharIndex={draftSpeech.spokenCharIndex}
+                              spokenCharLength={draftSpeech.spokenCharLength}
+                            />
+                          </div>
+                        );
+                      })()}
+
+                      <div className={styles.draftReaderFooter}>
+                        <span className={styles.draftReaderTip}>
+                          💡 Use ◀ / ▶ arrows or swipe horizontally to switch chapters. Scroll vertically to read.
+                        </span>
+                        <span className={styles.draftReaderStats}>
+                          {currentDraft.text.split(/\s+/).filter(Boolean).length} words · Bible v{currentDraft.bibleVersion}
+                        </span>
+                      </div>
                     </div>
-                    <p><strong>Rationale:</strong> {(state.acceptedManuscript.data as any).rationale}</p>
+                  );
+                })()}
+
+                {/* Competing Editorial Revisions Side-by-Side (2 Columns) */}
+                {pendingManuscripts.length > 0 && (
+                  <div className={styles.revisionsContainer}>
+                    <div className={styles.revisionsHeaderRow}>
+                      <h3 style={{ margin: 0, fontSize: "16px", color: "#fef08a" }}>
+                        Editorial Revisions (Side-by-Side Comparison)
+                      </h3>
+                      <p style={{ margin: "2px 0 0", fontSize: "12px", color: "#94a3b8" }}>
+                        Review competing editorial proposals from Fontaine and Lang side by side before accepting
+                      </p>
+                    </div>
+                    <div className={styles.revisionsGrid}>
+                      {pendingManuscripts.map(manuscript => {
+                        const isVersionA = manuscript.kind === "manuscript_a";
+                        const consistencyCurrent = manuscriptAcceptEnabled(state);
+                        const mData = manuscript.data as any;
+                        return (
+                          <article
+                            className={`${styles.revisionColumnCard} ${isVersionA ? styles.revisionCardA : styles.revisionCardB}`}
+                            key={manuscript.id}
+                          >
+                            <div className={styles.revisionCardHeader}>
+                              <div>
+                                <h4 className={styles.revisionTitle}>
+                                  {isVersionA ? "Version A · Continuity & Pacing" : "Version B · Voice & Atmosphere"}
+                                </h4>
+                                <span className={styles.revisionAuthor}>
+                                  {isVersionA ? "Lead Editor: Fontaine" : "Lead Editor: Lang"}
+                                </span>
+                              </div>
+                              <span className={styles.consistencyTag}>
+                                {manuscriptConsistencyLabel(manuscript.kind, state.critique)}
+                              </span>
+                            </div>
+
+                            <div className={styles.revisionRationaleBox}>
+                              <strong style={{ color: "#fef08a" }}>Editorial Rationale:</strong>
+                              <p style={{ margin: "4px 0 0" }}>{mData.rationale}</p>
+                            </div>
+
+                            {mData.changesMade && mData.changesMade.length > 0 && (
+                              <div className={styles.revisionChangesBox}>
+                                <strong>Located Editorial Changes:</strong>
+                                <ul>
+                                  {mData.changesMade.map((ch: any, idx: number) => (
+                                    <li key={idx}>
+                                      <strong>Ch {ch.chapterIndex}:</strong> {ch.summary}{" "}
+                                      <span style={{ color: "#64748b" }}>({ch.justification})</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+
+                            <div className={styles.revisionChaptersScroll}>
+                              {mData.chapters?.map((ch: any) => {
+                                const revSpeech = getProsePlaybackState({
+                                  chapters: mData.chapters,
+                                  currentChapterIndex: ch.chapterIndex,
+                                  activeSourceId: isVersionA ? "version_a" : "version_b",
+                                  currentPlayingSourceId: currentVoiceSource?.id,
+                                  isSpeaking: voice.isSpeaking,
+                                  spokenCharIndex: voice.spokenCharIndex,
+                                  spokenCharLength: voice.spokenCharLength,
+                                });
+                                return (
+                                  <div key={ch.chapterIndex} className={styles.revisionChapterBox}>
+                                    <span className={styles.revisionChapterTitle}>Chapter {ch.chapterIndex}</span>
+                                    <HighlightedStoryProse
+                                      text={ch.text}
+                                      isSpeaking={revSpeech.isSpeaking}
+                                      spokenCharIndex={revSpeech.spokenCharIndex}
+                                      spokenCharLength={revSpeech.spokenCharLength}
+                                    />
+                                  </div>
+                                );
+                              })}
+                            </div>
+
+                            <div className={styles.revisionFooterActions}>
+                              <button
+                                type="button"
+                                disabled={busy || !consistencyCurrent}
+                                className={styles.acceptButton}
+                                onClick={() => action({ action: "approve-manuscript", proposalId: manuscript.id })}
+                              >
+                                ✓ Accept Version {isVersionA ? "A" : "B"} as Final
+                              </button>
+                              <div className={styles.rewriteBox}>
+                                <input
+                                  placeholder={`Notes for Version ${isVersionA ? "A" : "B"} rewrite...`}
+                                  value={feedbackText}
+                                  maxLength={500}
+                                  onChange={e => setFeedbackText(e.target.value)}
+                                  className={styles.rewriteInput}
+                                />
+                                <VoiceInputButton
+                                  voice={voice}
+                                  onTranscript={spoken => setFeedbackText(prev => prev ? `${prev} ${spoken}` : spoken)}
+                                  title="Dictate revision instructions with voice"
+                                />
+                                <button
+                                  type="button"
+                                  disabled={busy || ((state.critique as any)?.revisionRounds ?? 0) >= 2}
+                                  className={styles.rewriteBtn}
+                                  onClick={() => {
+                                    action({ action: "rewrite", feedback: feedbackText });
+                                    setFeedbackText("");
+                                  }}
+                                >
+                                  Rewrite ({Math.max(0, 2 - ((state.critique as any)?.revisionRounds ?? 0))} left)
+                                </button>
+                              </div>
+                            </div>
+                          </article>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Accepted Final Manuscript (Immediate Export Available) */}
+                {state.acceptedManuscript && (
+                  <article className={styles.acceptedManuscriptCard}>
+                    <div className={styles.acceptedHeaderRow}>
+                      <div>
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", marginBottom: "4px" }}>
+                          <span className={styles.acceptedBadge}>✓ ACCEPTED FINAL MANUSCRIPT</span>
+                          <span style={{ fontSize: "12px", color: "#6ee7b7", fontWeight: 600 }}>
+                            {state.acceptedManuscript.kind === "manuscript_a" ? "Version A (Continuity & Pacing · Fontaine)" : "Version B (Voice & Atmosphere · Lang)"}
+                          </span>
+                        </div>
+                        <h3 className={styles.acceptedTitle}>Canonical Story Manuscript</h3>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        className={styles.exportPrimaryBtn}
+                        onClick={handleExport}
+                        title="Download complete accepted manuscript as Markdown"
+                      >
+                        📥 Export Markdown (.md)
+                      </button>
+                    </div>
+
+                    <div style={{ margin: "12px 0", color: "#d1fae5", fontSize: "13px" }}>
+                      <strong>Rationale:</strong> {(state.acceptedManuscript.data as any).rationale}
+                    </div>
+
                     {(state.acceptedManuscript.data as any).changesMade && (state.acceptedManuscript.data as any).changesMade.length > 0 && (
-                      <div style={{ margin: "10px 0", padding: "10px 14px", background: "#ffffff", borderRadius: "6px", border: "1px solid #d1fae5" }}>
-                        <strong style={{ fontSize: "13px", color: "#065f46" }}>Editorial Changes Applied:</strong>
-                        <ul style={{ margin: "6px 0 0 16px", padding: 0, fontSize: "13px", color: "#047857" }}>
+                      <div style={{ margin: "10px 0 16px", padding: "10px 14px", background: "#064e3b", borderRadius: "8px", border: "1px solid #059669" }}>
+                        <strong style={{ fontSize: "13px", color: "#a7f3d0" }}>Editorial Changes Applied:</strong>
+                        <ul style={{ margin: "6px 0 0 16px", padding: 0, fontSize: "13px", color: "#d1fae5" }}>
                           {(state.acceptedManuscript.data as any).changesMade.map((ch: any, idx: number) => (
                             <li key={idx} style={{ margin: "3px 0" }}>
-                              <strong>Chapter {ch.chapterIndex}:</strong> {ch.summary} <span style={{ color: "#6b7280" }}>({ch.justification})</span>
+                              <strong>Chapter {ch.chapterIndex}:</strong> {ch.summary}{" "}
+                              <span style={{ color: "#6ee7b7" }}>({ch.justification})</span>
                             </li>
                           ))}
                         </ul>
                       </div>
                     )}
-                    {(state.acceptedManuscript.data as any).chapters?.map((ch: any) => (
-                      <div key={ch.chapterIndex}>
-                        <p><strong>Chapter {ch.chapterIndex}</strong></p>
-                        <p className={styles.prose}>{ch.text}</p>
+
+                    <div className={styles.draftColumnsGrid}>
+                      {(state.acceptedManuscript.data as any).chapters?.map((ch: any) => {
+                        const accSpeech = getProsePlaybackState({
+                          chapters: (state.acceptedManuscript.data as any).chapters,
+                          currentChapterIndex: ch.chapterIndex,
+                          activeSourceId: "accepted",
+                          currentPlayingSourceId: currentVoiceSource?.id,
+                          isSpeaking: voice.isSpeaking,
+                          spokenCharIndex: voice.spokenCharIndex,
+                          spokenCharLength: voice.spokenCharLength,
+                        });
+                        return (
+                          <div key={ch.chapterIndex} className={styles.draftColumnCard} style={{ borderColor: "#059669", background: "#052e16" }}>
+                            <div className={styles.draftColumnHeader} style={{ borderColor: "#065f46" }}>
+                              <h4 className={styles.draftColumnTitle} style={{ color: "#6ee7b7" }}>Chapter {ch.chapterIndex}</h4>
+                              <span className={styles.draftBibleTag} style={{ background: "#064e3b", color: "#a7f3d0" }}>Final</span>
+                            </div>
+                            <div className={styles.draftColumnBody}>
+                              <HighlightedStoryProse
+                                text={ch.text}
+                                isSpeaking={accSpeech.isSpeaking}
+                                spokenCharIndex={accSpeech.spokenCharIndex}
+                                spokenCharLength={accSpeech.spokenCharLength}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className={styles.acceptedFooterBar}>
+                      <div style={{ color: "#a7f3d0", fontSize: "13px" }}>
+                        <strong>Ready for Publishing &amp; Distribution</strong>
+                        <p style={{ margin: "2px 0 0", color: "#6ee7b7", fontSize: "12px" }}>
+                          Your accepted manuscript is fully verified. Click below to export your story or copy your secret link.
+                        </p>
                       </div>
-                    ))}
+                      <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                        <button
+                          type="button"
+                          className={styles.secondaryAction}
+                          onClick={copyLink}
+                        >
+                          {copied ? "✓ Copied Link" : "🔗 Copy story link"}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          className={styles.exportPrimaryBtn}
+                          onClick={handleExport}
+                        >
+                          📥 Export Markdown (.md)
+                        </button>
+                      </div>
+                    </div>
                   </article>
                 )}
-                {state.pending.filter(p => p.kind.startsWith("manuscript_") && p.baseVersion === state.project.version).map(manuscript => {
-                  const consistencyCurrent = manuscriptAcceptEnabled(state);
-                  return (
-                    <article className={styles.proposal} key={manuscript.id}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
-                        <h3>{manuscript.kind === "manuscript_a" ? "Revised Version A · Continuity & Pacing (Fontaine)" : "Revised Version B · Voice & Atmosphere (Lang)"}</h3>
-                        <span style={{ fontSize: "0.8rem", padding: "2px 8px", background: "#fef3c7", color: "#92400e", borderRadius: "4px" }}>
-                          {manuscriptConsistencyLabel(manuscript.kind, state.critique)}
+                {state.critique && (
+                  <div className={styles.critiqueCard}>
+                    <div className={styles.critiqueHeader}>
+                      <div>
+                        <h3 style={{ margin: 0, fontSize: "15px", color: "#f8fafc" }}>
+                          Located Quality Critique &amp; Editorial Scores
+                        </h3>
+                        <p style={{ margin: "2px 0 0", fontSize: "12px", color: "#94a3b8" }}>
+                          Automated editorial evaluation of manuscript continuity, pacing, and style
+                        </p>
+                      </div>
+                      <span className={styles.critiqueBadge}>
+                        {(state.critique as any).synthetic ? "Synthetic Evaluation" : "Model Critique"}
+                      </span>
+                    </div>
+
+                    <div className={styles.critiqueMetricsGrid}>
+                      <div className={styles.critiqueMetricCard}>
+                        <span className={styles.critiqueMetricLabel}>Style Score</span>
+                        <span className={styles.critiqueMetricValue}>
+                          {(state.critique as any).style?.score ?? "N/A"}<small>/5</small>
+                        </span>
+                        <span className={styles.critiqueMetricSub}>
+                          {(state.critique as any).style?.label || "Evaluated quality"}
                         </span>
                       </div>
-                      <p><strong>Editorial Rationale:</strong> {(manuscript.data as any).rationale}</p>
-                      {(manuscript.data as any).changesMade && (manuscript.data as any).changesMade.length > 0 && (
-                        <div style={{ margin: "10px 0", padding: "10px 14px", background: "#f8fafc", borderRadius: "6px", border: "1px solid #e2e8f0" }}>
-                          <strong style={{ fontSize: "13px", color: "#334155" }}>Located Editorial Changes:</strong>
-                          <ul style={{ margin: "6px 0 0 16px", padding: 0, fontSize: "13px", color: "#475569" }}>
-                            {(manuscript.data as any).changesMade.map((ch: any, idx: number) => (
-                              <li key={idx} style={{ margin: "3px 0" }}>
-                                <strong>Chapter {ch.chapterIndex}:</strong> {ch.summary} <span style={{ color: "#64748b" }}>({ch.justification})</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                      {(manuscript.data as any).chapters?.map((ch: any) => (
-                        <div key={ch.chapterIndex}>
-                          <p><strong>Chapter {ch.chapterIndex}</strong></p>
-                          <p className={styles.prose}>{ch.text}</p>
-                        </div>
-                      ))}
-                      <div className={styles.actions} style={{ marginTop: "16px", paddingTop: "14px", borderTop: "1px solid #e2e8f0" }}>
-                        <button disabled={busy || !consistencyCurrent} className={styles.primary} onClick={() => action({ action: "approve-manuscript", proposalId: manuscript.id })}>
-                          Accept this version as Final
-                        </button>
-                        <div style={{ display: "flex", flexDirection: "column", gap: "6px", flex: 1, minWidth: "280px" }}>
-                          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
-                            <input
-                              placeholder="Enter custom fixes or instructions (e.g. cultural barrier, dialogue cadence...)"
-                              value={feedbackText}
-                              maxLength={500}
-                              onChange={e => setFeedbackText(e.target.value)}
-                              style={{ padding: "8px 12px", borderRadius: "6px", border: "1px solid #cbd5e1", flex: 1, minWidth: "220px", fontSize: "13px" }}
-                            />
-                            <button
-                              disabled={busy || ((state.critique as any)?.revisionRounds ?? 0) >= 2}
-                              onClick={() => {
-                                action({ action: "rewrite", feedback: feedbackText });
-                                setFeedbackText("");
-                              }}
-                            >Request editorial rewrite ({Math.max(0, 2 - ((state.critique as any)?.revisionRounds ?? 0))} left)</button>
-                          </div>
-                          <span style={{ fontSize: "11px", color: "#64748b" }}>
-                            Tip: You can request minor phrasing/grammar polish or major narrative adjustments based on your feedback.
-                          </span>
-                        </div>
+
+                      <div className={styles.critiqueMetricCard}>
+                        <span className={styles.critiqueMetricLabel}>Pacing Score</span>
+                        <span className={styles.critiqueMetricValue}>
+                          {(state.critique as any).pacing?.score ?? "N/A"}<small>/5</small>
+                        </span>
+                        <span className={styles.critiqueMetricSub}>
+                          {(state.critique as any).pacing?.label || "Narrative flow"}
+                        </span>
                       </div>
-                    </article>
-                  );
-                })}
-                {state.critique && (
-                  <article className={styles.proposal}>
-                    <h3>Located critique · synthetic fixture</h3>
-                    <pre>{JSON.stringify(state.critique, null, 2)}</pre>
-                  </article>
+
+                      <div className={styles.critiqueMetricCard}>
+                        <span className={styles.critiqueMetricLabel}>Continuity Score</span>
+                        <span className={styles.critiqueMetricValue}>
+                          {(state.critique as any).continuity?.score ?? "N/A"}<small>/5</small>
+                        </span>
+                        <span className={styles.critiqueMetricSub}>Fact &amp; beat consistency</span>
+                      </div>
+
+                      <div className={styles.critiqueMetricCard}>
+                        <span className={styles.critiqueMetricLabel}>Revision Rounds</span>
+                        <span className={styles.critiqueMetricValue}>
+                          {(state.critique as any).revisionRounds ?? 0}<small>/2</small>
+                        </span>
+                        <span className={styles.critiqueMetricSub}>Editorial passes used</span>
+                      </div>
+                    </div>
+
+                    {(state.critique as any).consistency && (
+                      <div className={styles.critiqueConsistencyNotice}>
+                        <strong style={{ color: "#fef08a", fontSize: "12px" }}>READ Consistency Lane Status:</strong>
+                        <p style={{ margin: "4px 0 0", fontSize: "12px", color: "#cbd5e1" }}>
+                          {((state.critique as any).consistency.versionA?.reason) || "Consistency diagnostics recorded."}
+                        </p>
+                      </div>
+                    )}
+
+                    <details className={styles.critiqueDebugDetails}>
+                      <summary style={{ cursor: "pointer", fontSize: "11px", color: "#64748b" }}>
+                        Show technical diagnostic payload
+                      </summary>
+                      <pre style={{ margin: "8px 0 0", padding: "8px", background: "#050914", borderRadius: "6px", fontSize: "11px", color: "#94a3b8" }}>
+                        {JSON.stringify(state.critique, null, 2)}
+                      </pre>
+                    </details>
+                  </div>
                 )}
               </section>
               )}
